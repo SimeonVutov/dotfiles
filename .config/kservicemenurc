@@ -1,0 +1,6 @@
+[Show]
+forgetfileitemaction=true
+kactivitymanagerd_fileitem_linking_plugin=true
+makefileactions=true
+mountisoaction=true
+tagsfileitemaction=true
