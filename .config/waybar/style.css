@@ -1,0 +1,423 @@
+* {
+    /* `otf-font-awesome` is required to be installed for icons */
+    font-family: FontAwesome, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+}
+
+window#waybar {
+    background-color: rgba(43, 48, 59, 0.5);
+    border-bottom: 3px solid rgba(100, 114, 125, 0.5);
+    color: #ffffff;
+    transition-property: background-color;
+    transition-duration: .5s;
+}
+
+window#waybar.hidden {
+    opacity: 0.2;
+}
+
+#workspaces {
+    margin: 5px 1px 6px 1px;
+    padding: 0px 1px;
+    border-radius: 15px;
+    border: 0px;
+    font-weight: bold;
+    font-style: normal;
+    font-size: 16px;
+    color: #000000;
+}
+
+#workspaces button {
+    padding: 0px 5px;
+    margin: 4px 3px;
+    border-radius: 15px;
+    border: 0px;
+    color: #FFFFFF;
+    transition: all 0.3s ease-in-out;
+}
+
+#workspaces button.active {
+    color: #000000;
+    background: #CCCCCC;
+    border-radius: 15px;
+    min-width: 40px;
+    transition: all 0.3s ease-in-out;
+}
+
+#workspaces button:hover {
+    color: #000000;
+    background: #CCCCCC;
+    border-radius: 15px;
+}
+
+@keyframes blink-warning {
+    70% {
+        color: #d8dee9;
+    }
+
+    to {
+        color: #D8DEE9;
+        background-color: #D8DEE9;
+    }
+}
+
+@keyframes blink-critical {
+    70% {
+      color: #D8DEE9;
+    }
+
+    to {
+        color: #D8DEE9;
+        background-color: #BF616A;
+    }
+}
+
+/* Each module that should blink */
+#mode,
+#memory,
+#temperature,
+#battery {
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+/* Each critical module */
+#memory.critical,
+#cpu.critical,
+#temperature.critical,
+#battery.critical {
+    color: #BF616A;
+}
+
+/* Each critical that should blink */
+#mode,
+#memory.critical,
+#temperature.critical,
+#battery.critical.discharging {
+    animation-name: blink-critical;
+    animation-duration: 2s;
+}
+
+/* =============================== */
+/* System Monitoring Modules */
+#cpu,
+#memory,
+#cpu {
+  color: #74c7ec;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-right: 0px;
+  padding-right: 5px;
+}
+
+/* Updates Module */
+#custom-updates {
+  color: #89dceb;
+}
+
+#custom-notifications {
+  color: #cba6f7;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding-left: 5px;
+  padding-right: 1.25rem;
+}
+
+#memory {
+  border-radius: 0px;
+  margin-right: 0px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+#custom-gpu {
+  color: #a6e3a1;
+  border-radius: 0px;
+  margin-right: 0px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#temperature {
+  color: #f38ba8;
+  border-radius: 0px;
+  margin-right: 0px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#language {
+    background: #00b093;
+    color: #740864;
+    padding: 0 5px;
+    margin: 0 5px;
+    min-width: 16px;
+}
+
+#keyboard-state {
+    background: #97e1ad;
+    color: #000000;
+    padding: 0 0px;
+    margin: 0 5px;
+    min-width: 16px;
+}
+
+#keyboard-state > label {
+    padding: 0 5px;
+}
+
+#keyboard-state > label.locked {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+#mode {
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 10px;
+    transition: none;
+    color: #ffffff;
+    background: #383c4a;
+}
+
+#clock {
+    background-color: rgba(22, 25, 37, 0.9);
+    color: #f9e2af;
+    border-radius: 16px;
+    padding: 0.5rem 1rem;
+    box-shadow: rgba(0, 0, 0, 0.116) 2px 2px 5px 2px;
+    margin-top: 10px;
+    /*
+    margin-bottom: 10px;
+     */
+    margin-right: 10px;
+}
+
+#clock:focus {
+    outline: none;
+}
+
+#pulseaudio {
+    margin-right: 8px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 10px;
+    transition: none;
+    color: #ffffff;
+    background: #383c4a;
+}
+
+#pulseaudio.muted {
+    background-color: #90b1b1;
+    color: #2a5c45;
+}
+
+#custom-mem {
+    margin-right: 8px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 10px;
+    transition: none;
+    color: #ffffff;
+    background: #383c4a;
+}
+#cpu,
+#memory,
+#custom-gpu,
+#temperature {
+    margin-right: 8px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 10px;
+    transition: none;
+    color: #ffffff;
+    background: #383c4a;
+}
+
+#temperature.critical {
+    background-color: #eb4d4b;
+}
+
+#backlight {
+    margin-right: 8px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 10px;
+    transition: none;
+    color: #ffffff;
+    background: #383c4a;
+}
+
+#battery {
+    margin-right: 8px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 10px;
+    transition: none;
+    color: #ffffff;
+    background: #383c4a;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#battery.charging {
+    color: #ffffff;
+    background-color: #26A65B;
+}
+
+#battery.warning:not(.charging) {
+    background-color: #ffbe61;
+    color: black;
+}
+
+#battery.critical:not(.charging) {
+    background-color: #f53c3c;
+    color: #ffffff;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#bluetooth {
+    background: #546484;
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 0 0.6em;
+}
+
+/* -----------------------------------------------------
+ * Custom Exit
+ * ----------------------------------------------------- */
+
+#custom-exit {
+    margin: 0px 20px 0px 0px;
+    padding:0px;
+    font-size:20px;
+    color: #FFFFFF;
+}
+
+/* -----------------------------------------------------
+ * Network
+ * ----------------------------------------------------- */
+
+#network {
+    background-color:  #000000;
+    font-size: 16px;
+    color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2px 10px 0px 10px;
+    margin: 5px 15px 5px 0px;
+    opacity:0.8;
+}
+
+#network.ethernet {
+    background-color: #000000;
+    color: #FFFFFF;
+}
+
+#network.wifi {
+    background-color: #000000;
+    color: #FFFFFF;
+}
+
+/* -----------------------------------------------------
+ * Bluetooth
+ * ----------------------------------------------------- */
+
+#bluetooth, #bluetooth.on, #bluetooth.connected {
+    background-color: #000000;
+    font-size: 16px;
+    color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2px 10px 0px 10px;
+    margin: 5px 15px 5px 0px;
+    opacity:0.8;
+}
+
+#bluetooth.off {
+    background-color: transparent;
+    padding: 0px;
+    margin: 0px;
+}
+
+/* -----------------------------------------------------
+ * Pulseaudio
+ * ----------------------------------------------------- */
+
+#pulseaudio {
+    background-color: #000000;
+    font-size: 16px;
+    color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2px 10px 0px 10px;
+    margin: 5px 15px 5px 0px;
+    opacity:0.8;
+}
+
+#pulseaudio.muted {
+    background-color: #000000;
+    color: #FFFFFF;
+}
+
+
+/* -----------------------------------------------------
+ * Battery
+ * ----------------------------------------------------- */
+
+#battery {
+    background-color: #000000;
+    font-size: 16px;
+    color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2px 15px 0px 10px;
+    margin: 5px 15px 5px 0px;
+    opacity:0.8;
+}
+
+#battery.charging, #battery.plugged {
+    color: #FFFFFF;
+    background-color: #000000;
+}
+
+@keyframes blink {
+    to {
+        background-color: #000000;
+        color: #FFFFFF;
+    }
+}
+
+#battery.critical:not(.charging) {
+    background-color: #f53c3c;
+    color: #000000;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-spotify .text {
+    color: #cba6f7;
+    border-radius: 7px 7px 7px 7px;
+    padding-left: 4px;
+    margin-left:  5px;
+    margin-right: 5px;
+}
+
+#tray {
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 10px;
+    transition: none;
+    color: #ffffff;
+    background: #383c4a;
+}
+
+@keyframes blink {
+    to {
+        background-color: #ffffff;
+        color: #000000;
+    }
+}

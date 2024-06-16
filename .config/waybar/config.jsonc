@@ -1,61 +1,39 @@
 {
     "layer": "top", // Waybar at top layer
-    // "position": "bottom", // Waybar position (top|bottom|left|right)
-    "height": 30, // Waybar height (to be removed for auto height)
-    // "width": 1280, // Waybar width
-    "spacing": 4, // Gaps between modules (4px)
-    // Choose the order of the modules
+    "margin": "0 0 0 0",
     "modules-left": [
         "hyprland/workspaces",
-        "sway/mode",
-        "sway/scratchpad",
-        "custom/media"
+        "group/hardware"
     ],
-    //"modules-center": [
-    //    "sway/window"
-    //],
+    "modules-center": [
+        "custom/weather",
+        "clock",
+        "custom/notifications"
+    ],
     "modules-right": [
-        "mpd",
-        "idle_inhibitor",
+        "custom/spotify",
         "pulseaudio",
         "network",
-        "power-profiles-daemon",
-        "cpu",
-        "memory",
-        "temperature",
-        "backlight",
-        "keyboard-state",
-        "sway/language",
+        "bluetooth",
         "battery",
-        "battery#bat2",
-        "clock",
-        "tray"
+        "custom/exit"
     ],
-    // Modules configuration
-    // "sway/workspaces": {
-    //     "disable-scroll": true,
-    //     "all-outputs": true,
-    //     "warp-on-scroll": false,
-    //     "format": "{name}: {icon}",
-    //     "format-icons": {
-    //         "1": "",
-    //         "2": "",
-    //         "3": "",
-    //         "4": "",
-    //         "5": "",
-    //         "urgent": "",
-    //         "focused": "",
-    //         "default": ""
-    //     }
-    // },
-    "keyboard-state": {
-        "numlock": true,
-        "capslock": true,
-        "format": "{name} {icon}",
-        "format-icons": {
-            "locked": "",
-            "unlocked": ""
-        }
+    "custom/updates": {
+        "interval": 7200, // every two hours
+        "format": "󱧘 {}",
+        "exec": "~/.config/waybar/scripts/arch_updates.sh",
+        "on-click": "kitty --class wm-floating --title all_is_kitty --hold --detach sh -c 'pacman -Syu'",
+        "tooltip": true
+    },
+    "custom/weather": {
+        "format": "{}",
+        "format-alt": "{alt}: {}",
+        "format-alt-click": "click",
+        "interval": 7200,
+        "return-type": "json",
+        "exec": "~/.config/scripts/Weather.sh",
+        "exec-if": "ping wttr.in -c1",
+        "tooltip": true
     },
     "sway/mode": {
         "format": "<span style=\"italic\">{}</span>"
@@ -105,24 +83,49 @@
         "spacing": 10
     },
     "clock": {
-        // "timezone": "America/New_York",
-        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-        "format-alt": "{:%Y-%m-%d}"
+        "format": "{:%H:%M %A, %d, %B}"
+    },
+     "group/hardware": {
+        "orientation": "inherit",
+        "modules": [
+            "cpu",
+            "memory",
+            "temperature"
+        ]
     },
     "cpu": {
-        "format": "{usage}% ",
-        "tooltip": false
+        "interval": 1,
+        "format": "󰍛   {usage}%",
+    // "format-alt": "{icon0}{icon1}{icon2}{icon3}",
+         "format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
+    // "tooltip": true,
+    // "format": "󰌢 {load}",
+        "tooltip": false,
+        "on-click": "missioncenter",
+        "on-click-right": "kitty --class wm-floating --title all_is_kitty --hold --detach sh -c 'btop'"
+    },
+    "custom/gpu": {
+        "interval": 1,
+        "exec": "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits",
+        "format": "󰢮   {}%",
+        "return-type": "",
+        "on-click": "missioncenter",
+        "on-click-right": "kitty --class wm-floating --title all_is_kitty --hold --detach sh -c 'nvidia-smi'"
     },
     "memory": {
-        "format": "{}% "
+        "interval": 2,
+        "format": "󰾅   {used}GB",
+        // "format-alt": "󰾆 {percentage}%",
+        "max-length": 30,
+        "tooltip": true,
+        "tooltip-format": " {used:0.1f}GB/{total:0.1f}GB",
+        "on-click": "missioncenter",
+        "on-click-right": "kitty --start-as=fullscreen --title all_is_kitty sh -c 'btop'"
     },
     "temperature": {
-        // "thermal-zone": 2,
-        // "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
-        "critical-threshold": 80,
-        // "format-critical": "{temperatureC}°C {icon}",
-        "format": "{temperatureC}°C {icon}",
-        "format-icons": ["", "", ""]
+        "interval": 2,
+        "format": "{temperatureC}°C  ",
+        "format-icons": ["", "", "", "", ""]
     },
     "backlight": {
         // "device": "acpi_video1",
@@ -137,15 +140,24 @@
         },
         "format": "{capacity}% {icon}",
         "format-full": "{capacity}% {icon}",
-        "format-charging": "{capacity}% ",
+        "format-charging": "{capacity}% ",
         "format-plugged": "{capacity}% ",
         "format-alt": "{time} {icon}",
         // "format-good": "", // An empty format will hide the module
         // "format-full": "",
         "format-icons": ["", "", "", "", ""]
     },
-    "battery#bat2": {
-        "bat": "BAT2"
+    "network": {
+        "format": "{ifname}",
+        "format-wifi": "   {signalStrength}%",
+        "format-ethernet": "  {ifname}",
+        "format-disconnected": "Disconnected",
+        "tooltip-format": " {ifname} via {gwaddri}",
+        "tooltip-format-wifi": "  {ifname} @ {essid}\nIP: {ipaddr}\nStrength: {signalStrength}%\nFreq: {frequency}MHz\nUp: {bandwidthUpBits} Down: {bandwidthDownBits}",
+        "tooltip-format-ethernet": " {ifname}\nIP: {ipaddr}\n up: {bandwidthUpBits} down: {bandwidthDownBits}",
+        "tooltip-format-disconnected": "Disconnected",
+        "max-length": 50,
+        "on-click": "kitty nmtui"
     },
     "power-profiles-daemon": {
       "format": "{icon}",
@@ -158,27 +170,18 @@
         "power-saver": ""
       }
     },
-    "network": {
-        // "interface": "wlp2*", // (Optional) To force the use of this interface
-        "format-wifi": "{essid} ({signalStrength}%) ",
-        "format-ethernet": "{ipaddr}/{cidr} ",
-        "tooltip-format": "{ifname} via {gwaddr} ",
-        "format-linked": "{ifname} (No IP) ",
-        "format-disconnected": "Disconnected ⚠",
-        "format-alt": "{ifname}: {ipaddr}/{cidr}"
-    },
     "pulseaudio": {
         // "scroll-step": 1, // %, can be a float
         "format": "{volume}% {icon} {format_source}",
         "format-bluetooth": "{volume}% {icon} {format_source}",
-        "format-bluetooth-muted": " {icon} {format_source}",
-        "format-muted": " {format_source}",
+        "format-bluetooth-muted": " {icon} {format_source}",
+        "format-muted": " {format_source}",
         "format-source": "{volume}% ",
         "format-source-muted": "",
         "format-icons": {
             "headphone": "",
-            "hands-free": "",
-            "headset": "",
+            "hands-free": "󱆏",
+            "headset": "",
             "phone": "",
             "portable": "",
             "car": "",
@@ -197,5 +200,72 @@
         "escape": true,
         "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
         // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
-    }
+    },
+    // Power Menu
+    "custom/exit": {
+        "format": "",
+        "on-click": "wlogout",
+        "tooltip-format": "Power Menu"
+    },
+
+    "hyprland/workspaces" : {
+        "on-scroll-up": "hyprctl dispatch workspace r-1",
+        "on-scroll-down": "hyprctl dispatch workspace r+1",        
+        "on-click": "activate",
+        "active-only": false,
+        "all-outputs": true,
+        "format": "{}",
+        "format-icons": {
+			"urgent": "",
+			"active": "",
+			"default": ""
+        },
+        "persistent-workspaces": {
+            "*": 5
+        }       
+    },
+    "bluetooth": {
+        "format": "",
+        "format-disabled": "󰂲",
+        "format-connected": "󰂱 {num_connections}",
+        "tooltip-format": "{device_alias}",
+        "format-connected-battery": "󰥈 {device_alias} {device_battery_percentage}%",
+        "tooltip-format-enumerate-connected": "{device_alias}",
+        "on-click": "blueberry"
+    },
+    "keyboard-state": {
+        "numlock": true,
+        "capslock": true,
+        "format": "{name} {icon}",
+        "format-icons": {
+            "locked": "",
+            "unlocked": ""
+        }
+    },
+    "custom/notifications": {
+        "tooltip": true,
+        "format": "{icon} {}",
+        "format-icons": {
+            "notification": "<span foreground='red'><sup></sup></span>",
+            "none": "",
+            "dnd-notification": "<span foreground='red'><sup></sup></span>",
+            "dnd-none": "",
+            "inhibited-notification": "<span foreground='red'><sup></sup></span>",
+            "inhibited-none": "",
+            "dnd-inhibited-notification": "<span foreground='red'><sup></sup></span>",
+            "dnd-inhibited-none": ""
+        },
+        "return-type": "json",
+        "exec-if": "which swaync-client",
+        "exec": "swaync-client -swb",
+        "on-click": "sleep 0.1 && swaync-client -t -sw",
+        "on-click-right": "swaync-client -d -sw",
+        "escape": true
+    },
+    "custom/spotify": {
+        "format": {},
+        "exec": "sh ~/test.sh",
+        "interval": 1000,
+        "scroll": true,
+    } 
 }
