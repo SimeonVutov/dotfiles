@@ -2,16 +2,15 @@
     "layer": "top", // Waybar at top layer
     "margin": "0 0 0 0",
     "modules-left": [
-        "hyprland/workspaces",
-        "group/hardware"
+        "clock",
+        "custom/spotify"
     ],
     "modules-center": [
-        "custom/weather",
-        "clock",
-        "custom/notifications"
+        "hyprland/workspaces"
     ],
     "modules-right": [
-        "custom/spotify",
+        "custom/notifications",
+        "custom/weather",
         "pulseaudio",
         "network",
         "bluetooth",
@@ -26,12 +25,12 @@
         "tooltip": true
     },
     "custom/weather": {
-        "format": "{}",
+        "format": " {} ",
         "format-alt": "{alt}: {}",
         "format-alt-click": "click",
         "interval": 7200,
         "return-type": "json",
-        "exec": "~/.config/scripts/Weather.sh",
+        "exec": "sh ~/.config/scripts/weather/Weather.sh",
         "exec-if": "ping wttr.in -c1",
         "tooltip": true
     },
