@@ -1,41 +1,26 @@
 {
-    "layer": "top", // Waybar at top layer
-    "margin": "0 0 0 0",
+    "layer": "top", 
     "modules-left": [
         "clock",
-        "custom/spotify"
+        "group/media"
     ],
     "modules-center": [
         "hyprland/workspaces"
     ],
     "modules-right": [
-        "custom/notifications",
-        "custom/weather",
+        "group/hardware",
         "pulseaudio",
-        "network",
-        "bluetooth",
+        "group/connections",
         "battery",
         "custom/exit"
     ],
-    "custom/updates": {
-        "interval": 7200, // every two hours
-        "format": "󱧘 {}",
-        "exec": "~/.config/waybar/scripts/arch_updates.sh",
-        "on-click": "kitty --class wm-floating --title all_is_kitty --hold --detach sh -c 'pacman -Syu'",
-        "tooltip": true
-    },
-    "custom/weather": {
-        "format": " {} ",
-        "format-alt": "{alt}: {}",
-        "format-alt-click": "click",
-        "interval": 7200,
-        "return-type": "json",
-        "exec": "sh ~/.config/scripts/weather/Weather.sh",
-        "exec-if": "ping wttr.in -c1",
-        "tooltip": true
-    },
-    "sway/mode": {
-        "format": "<span style=\"italic\">{}</span>"
+    "clock": {
+        "interval": 60,
+        "align": 0,
+        "rotate": 0,
+        "tooltip-format": "<big>{:%B %Y}</big>\n<tt><small>{calendar}</small></tt>",
+        "format": "{:%d %b, %I:%M %p}",
+        "format-alt": "{:%a %b %d, %G}"
     },
     "sway/scratchpad": {
         "format": "{icon} {count}",
@@ -44,32 +29,6 @@
         "tooltip": true,
         "tooltip-format": "{app}: {title}"
     },
-    "mpd": {
-        "format": "{stateIcon} {consumeIcon}{randomIcon}{repeatIcon}{singleIcon}{artist} - {album} - {title} ({elapsedTime:%M:%S}/{totalTime:%M:%S}) ⸨{songPosition}|{queueLength}⸩ {volume}% ",
-        "format-disconnected": "Disconnected ",
-        "format-stopped": "{consumeIcon}{randomIcon}{repeatIcon}{singleIcon}Stopped ",
-        "unknown-tag": "N/A",
-        "interval": 5,
-        "consume-icons": {
-            "on": " "
-        },
-        "random-icons": {
-            "off": "<span color=\"#f53c3c\"></span> ",
-            "on": " "
-        },
-        "repeat-icons": {
-            "on": " "
-        },
-        "single-icons": {
-            "on": "1 "
-        },
-        "state-icons": {
-            "paused": "",
-            "playing": ""
-        },
-        "tooltip-format": "MPD (connected)",
-        "tooltip-format-disconnected": "MPD (disconnected)"
-    },
     "idle_inhibitor": {
         "format": "{icon}",
         "format-icons": {
@@ -77,57 +36,40 @@
             "deactivated": ""
         }
     },
-    "tray": {
-        // "icon-size": 21,
-        "spacing": 10
-    },
-    "clock": {
-        "format": "{:%H:%M %A, %d, %B}"
-    },
-     "group/hardware": {
+    "group/hardware": {
         "orientation": "inherit",
         "modules": [
             "cpu",
             "memory",
             "temperature"
-        ]
+        ],
+        "on-click-right": "kitty --class wm-floating --title all_is_kitty --hold --detach sh -c 'btop'"
     },
     "cpu": {
-        "interval": 1,
+        "interval": 2,
         "format": "󰍛   {usage}%",
-    // "format-alt": "{icon0}{icon1}{icon2}{icon3}",
-         "format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
-    // "tooltip": true,
-    // "format": "󰌢 {load}",
-        "tooltip": false,
-        "on-click": "missioncenter",
-        "on-click-right": "kitty --class wm-floating --title all_is_kitty --hold --detach sh -c 'btop'"
+        "tooltip": false
     },
     "custom/gpu": {
         "interval": 1,
         "exec": "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits",
         "format": "󰢮   {}%",
-        "return-type": "",
-        "on-click": "missioncenter",
-        "on-click-right": "kitty --class wm-floating --title all_is_kitty --hold --detach sh -c 'nvidia-smi'"
+        "return-type": ""
     },
     "memory": {
-        "interval": 2,
+        "interval": 4,
         "format": "󰾅   {used}GB",
-        // "format-alt": "󰾆 {percentage}%",
         "max-length": 30,
         "tooltip": true,
-        "tooltip-format": " {used:0.1f}GB/{total:0.1f}GB",
-        "on-click": "missioncenter",
-        "on-click-right": "kitty --start-as=fullscreen --title all_is_kitty sh -c 'btop'"
+        "tooltip-format": "   {used:0.1f}GB/{total:0.1f}GB"
     },
     "temperature": {
-        "interval": 2,
-        "format": "{temperatureC}°C  ",
+        "interval": 5,
+        "format": "   {temperatureC}°C",
         "format-icons": ["", "", "", "", ""]
     },
     "backlight": {
-        // "device": "acpi_video1",
+        "device": "acpi_video1",
         "format": "{percent}% {icon}",
         "format-icons": ["", "", "", "", "", "", "", "", ""]
     },
@@ -139,35 +81,51 @@
         },
         "format": "{capacity}% {icon}",
         "format-full": "{capacity}% {icon}",
-        "format-charging": "{capacity}% ",
-        "format-plugged": "{capacity}% ",
+        "format-charging": "{capacity}%  ",
+        "format-plugged": "{capacity}%  ",
         "format-alt": "{time} {icon}",
         // "format-good": "", // An empty format will hide the module
         // "format-full": "",
         "format-icons": ["", "", "", "", ""]
     },
+    "group/connections": {
+        "orientation": "inherit",
+        "modules": [
+            "network",
+            "bluetooth"
+        ]
+    },
     "network": {
         "format": "{ifname}",
         "format-wifi": "   {signalStrength}%",
-        "format-ethernet": "  {ifname}",
+        "format-ethernet": "󰈀  {ifname}",
         "format-disconnected": "Disconnected",
         "tooltip-format": " {ifname} via {gwaddri}",
         "tooltip-format-wifi": "  {ifname} @ {essid}\nIP: {ipaddr}\nStrength: {signalStrength}%\nFreq: {frequency}MHz\nUp: {bandwidthUpBits} Down: {bandwidthDownBits}",
-        "tooltip-format-ethernet": " {ifname}\nIP: {ipaddr}\n up: {bandwidthUpBits} down: {bandwidthDownBits}",
+        "tooltip-format-ethernet": "󰈀  {ifname}\nIP: {ipaddr}\n up: {bandwidthUpBits} down: {bandwidthDownBits}",
         "tooltip-format-disconnected": "Disconnected",
         "max-length": 50,
         "on-click": "kitty nmtui"
     },
+     "bluetooth": {
+        "format": "",
+        "format-disabled": "󰂲",
+        "format-connected": "󰂱  {num_connections}",
+        "tooltip-format": "{device_alias}",
+        "format-connected-battery": "󰥈 {device_alias} {device_battery_percentage}%",
+        "tooltip-format-enumerate-connected": "{device_alias}",
+        "on-click": "blueberry"
+    },
     "power-profiles-daemon": {
-      "format": "{icon}",
-      "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
-      "tooltip": true,
-      "format-icons": {
-        "default": "",
-        "performance": "",
-        "balanced": "",
-        "power-saver": ""
-      }
+        "format": "{icon}",
+        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+        "tooltip": true,
+        "format-icons": {
+            "default": "",
+            "performance": "",
+            "balanced": "",
+            "power-saver": ""
+        }
     },
     "pulseaudio": {
         // "scroll-step": 1, // %, can be a float
@@ -175,7 +133,7 @@
         "format-bluetooth": "{volume}% {icon} {format_source}",
         "format-bluetooth-muted": " {icon} {format_source}",
         "format-muted": " {format_source}",
-        "format-source": "{volume}% ",
+        "format-source": " {volume}% ",
         "format-source-muted": "",
         "format-icons": {
             "headphone": "",
@@ -187,18 +145,6 @@
             "default": ["", "", ""]
         },
         "on-click": "pavucontrol"
-    },
-    "custom/media": {
-        "format": "{icon} {}",
-        "return-type": "json",
-        "max-length": 40,
-        "format-icons": {
-            "spotify": "",
-            "default": "🎜"
-        },
-        "escape": true,
-        "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
-        // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
     },
     // Power Menu
     "custom/exit": {
@@ -223,24 +169,6 @@
             "*": 5
         }       
     },
-    "bluetooth": {
-        "format": "",
-        "format-disabled": "󰂲",
-        "format-connected": "󰂱 {num_connections}",
-        "tooltip-format": "{device_alias}",
-        "format-connected-battery": "󰥈 {device_alias} {device_battery_percentage}%",
-        "tooltip-format-enumerate-connected": "{device_alias}",
-        "on-click": "blueberry"
-    },
-    "keyboard-state": {
-        "numlock": true,
-        "capslock": true,
-        "format": "{name} {icon}",
-        "format-icons": {
-            "locked": "",
-            "unlocked": ""
-        }
-    },
     "custom/notifications": {
         "tooltip": true,
         "format": "{icon} {}",
@@ -261,10 +189,38 @@
         "on-click-right": "swaync-client -d -sw",
         "escape": true
     },
-    "custom/spotify": {
+    "custom/media_metadata": {
         "format": {},
-        "exec": "sh ~/test.sh",
-        "interval": 1000,
-        "scroll": true,
-    } 
+        "exec": "sh ~/.config/scripts/media_player/player_metadata.sh",
+        "interval": 2,
+        "max-length": 55
+    },
+    "custom/media_forward": {
+        "format": "{icon}",
+        "format-icons": ["󰓗"],
+        "on-click": "playerctl next",
+        "tooltip": false
+    },
+    "custom/media_previous": {
+        "format": "{icon}",
+        "format-icons": ["󰓕"],
+        "on-click": "playerctl previous",
+        "tooltip": false
+    },
+    "custom/media_startpause": {
+        "format": {},
+        "exec": "sh ~/.config/scripts/media_player/start_pause_icon.sh",
+        "on-click": "sh ~/.config/scripts/media_player/start_pause.sh",
+        "interval": 1,
+        "tooltip": false
+    },
+    "group/media": {
+        "orientation": "inherit",
+        "modules": [
+            "custom/media_metadata",
+            "custom/media_previous",
+            "custom/media_startpause",
+            "custom/media_forward"
+        ]
+    }
 }

@@ -1,12 +1,11 @@
 * {
     /* `otf-font-awesome` is required to be installed for icons */
     font-family: FontAwesome, Roboto, Helvetica, Arial, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 window#waybar {
-    background-color: rgba(43, 48, 59, 0.5);
-    border-bottom: 3px solid rgba(100, 114, 125, 0.5);
+    background-color: transparent;
     color: #ffffff;
     transition-property: background-color;
     transition-duration: .5s;
@@ -16,14 +15,31 @@ window#waybar.hidden {
     opacity: 0.2;
 }
 
+/* Default settings */
+#clock,
+#hardware,
+#pulseaudio,
+#connections,
+#battery,
+#media {
+    background-color:  #000000;
+    font-size: 15px;
+    color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2px 15px 2px 15px;
+    margin: 5px 15px 5px 0px;
+    opacity:0.8;
+}
+
 #workspaces {
+    background-color: #000000;
+    opacity: 0.8;
     margin: 5px 1px 6px 1px;
     padding: 0px 1px;
     border-radius: 15px;
     border: 0px;
     font-weight: bold;
     font-style: normal;
-    font-size: 16px;
     color: #000000;
 }
 
@@ -48,28 +64,6 @@ window#waybar.hidden {
     color: #000000;
     background: #CCCCCC;
     border-radius: 15px;
-}
-
-@keyframes blink-warning {
-    70% {
-        color: #d8dee9;
-    }
-
-    to {
-        color: #D8DEE9;
-        background-color: #D8DEE9;
-    }
-}
-
-@keyframes blink-critical {
-    70% {
-      color: #D8DEE9;
-    }
-
-    to {
-        color: #D8DEE9;
-        background-color: #BF616A;
-    }
 }
 
 /* Each module that should blink */
@@ -103,17 +97,15 @@ window#waybar.hidden {
 /* System Monitoring Modules */
 #cpu,
 #memory,
-#cpu {
-  color: #74c7ec;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  margin-right: 0px;
-  padding-right: 5px;
+#custom-gpu,
+#temperature {
+    transition: none;
+    padding-left: 5px;
+    padding-right: 5px;
 }
 
-/* Updates Module */
-#custom-updates {
-  color: #89dceb;
+#temperature.critical {
+    background-color: #eb4d4b;
 }
 
 #custom-notifications {
@@ -122,52 +114,6 @@ window#waybar.hidden {
   border-bottom-left-radius: 0;
   padding-left: 5px;
   padding-right: 1.25rem;
-}
-
-#memory {
-  border-radius: 0px;
-  margin-right: 0px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-#custom-gpu {
-  color: #a6e3a1;
-  border-radius: 0px;
-  margin-right: 0px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-#temperature {
-  color: #f38ba8;
-  border-radius: 0px;
-  margin-right: 0px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-#language {
-    background: #00b093;
-    color: #740864;
-    padding: 0 5px;
-    margin: 0 5px;
-    min-width: 16px;
-}
-
-#keyboard-state {
-    background: #97e1ad;
-    color: #000000;
-    padding: 0 0px;
-    margin: 0 5px;
-    min-width: 16px;
-}
-
-#keyboard-state > label {
-    padding: 0 5px;
-}
-
-#keyboard-state > label.locked {
-    background: rgba(0, 0, 0, 0.2);
 }
 
 #mode {
@@ -180,61 +126,8 @@ window#waybar.hidden {
 }
 
 #clock {
-    background-color: rgba(22, 25, 37, 0.9);
-    color: #f9e2af;
-    border-radius: 16px;
-    padding: 0.5rem 1rem;
+    margin-left: 5px;
     box-shadow: rgba(0, 0, 0, 0.116) 2px 2px 5px 2px;
-    margin-top: 10px;
-    /*
-    margin-bottom: 10px;
-     */
-    margin-right: 10px;
-}
-
-#clock:focus {
-    outline: none;
-}
-
-#pulseaudio {
-    margin-right: 8px;
-    padding-left: 16px;
-    padding-right: 16px;
-    border-radius: 10px;
-    transition: none;
-    color: #ffffff;
-    background: #383c4a;
-}
-
-#pulseaudio.muted {
-    background-color: #90b1b1;
-    color: #2a5c45;
-}
-
-#custom-mem {
-    margin-right: 8px;
-    padding-left: 16px;
-    padding-right: 16px;
-    border-radius: 10px;
-    transition: none;
-    color: #ffffff;
-    background: #383c4a;
-}
-#cpu,
-#memory,
-#custom-gpu,
-#temperature {
-    margin-right: 8px;
-    padding-left: 16px;
-    padding-right: 16px;
-    border-radius: 10px;
-    transition: none;
-    color: #ffffff;
-    background: #383c4a;
-}
-
-#temperature.critical {
-    background-color: #eb4d4b;
 }
 
 #backlight {
@@ -247,55 +140,14 @@ window#waybar.hidden {
     background: #383c4a;
 }
 
-#battery {
-    margin-right: 8px;
-    padding-left: 16px;
-    padding-right: 16px;
-    border-radius: 10px;
-    transition: none;
-    color: #ffffff;
-    background: #383c4a;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-direction: alternate;
-}
-
-#battery.charging {
-    color: #ffffff;
-    background-color: #26A65B;
-}
-
-#battery.warning:not(.charging) {
-    background-color: #ffbe61;
-    color: black;
-}
-
-#battery.critical:not(.charging) {
-    background-color: #f53c3c;
-    color: #ffffff;
-    animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-direction: alternate;
-}
-
-#bluetooth {
-    background: #546484;
-    font-size: 1.2em;
-    font-weight: bold;
-    padding: 0 0.6em;
-}
-
 /* -----------------------------------------------------
  * Custom Exit
  * ----------------------------------------------------- */
 
 #custom-exit {
-    margin: 0px 20px 0px 0px;
-    padding:0px;
-    font-size:20px;
-    color: #FFFFFF;
+    font-size: 20px;
+    color: black;
+    margin: 2px 20px 2px 0px;
 }
 
 /* -----------------------------------------------------
@@ -303,13 +155,8 @@ window#waybar.hidden {
  * ----------------------------------------------------- */
 
 #network {
-    background-color:  #000000;
-    font-size: 16px;
-    color: #FFFFFF;
-    border-radius: 15px;
-    padding: 2px 10px 0px 10px;
-    margin: 5px 15px 5px 0px;
-    opacity:0.8;
+    padding-right: 5px;
+    font-size: 15px;
 }
 
 #network.ethernet {
@@ -326,39 +173,21 @@ window#waybar.hidden {
  * Bluetooth
  * ----------------------------------------------------- */
 
-#bluetooth, #bluetooth.on, #bluetooth.connected {
-    background-color: #000000;
-    font-size: 16px;
-    color: #FFFFFF;
-    border-radius: 15px;
-    padding: 2px 10px 0px 10px;
-    margin: 5px 15px 5px 0px;
-    opacity:0.8;
+#bluetooth {
+    padding-left: 5px;
 }
 
-#bluetooth.off {
-    background-color: transparent;
-    padding: 0px;
-    margin: 0px;
-}
 
 /* -----------------------------------------------------
  * Pulseaudio
  * ----------------------------------------------------- */
 
 #pulseaudio {
-    background-color: #000000;
-    font-size: 16px;
-    color: #FFFFFF;
-    border-radius: 15px;
-    padding: 2px 10px 0px 10px;
-    margin: 5px 15px 5px 0px;
-    opacity:0.8;
+
 }
 
 #pulseaudio.muted {
-    background-color: #000000;
-    color: #FFFFFF;
+
 }
 
 
@@ -367,13 +196,26 @@ window#waybar.hidden {
  * ----------------------------------------------------- */
 
 #battery {
-    background-color: #000000;
-    font-size: 16px;
-    color: #FFFFFF;
-    border-radius: 15px;
-    padding: 2px 15px 0px 10px;
-    margin: 5px 15px 5px 0px;
-    opacity:0.8;
+    padding-right: 22px;
+    transition: none;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#battery.warning:not(.charging) {
+    background-color: #ffbe61;
+    color: black;
+}
+
+#battery.critical:not(.charging) {
+    background-color: #f53c3c;
+    color: #ffffff;
+    animation-name: blink-warning;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
 }
 
 #battery.charging, #battery.plugged {
@@ -381,29 +223,36 @@ window#waybar.hidden {
     background-color: #000000;
 }
 
-@keyframes blink {
-    to {
-        background-color: #000000;
-        color: #FFFFFF;
-    }
-}
-
 #battery.critical:not(.charging) {
     background-color: #f53c3c;
     color: #000000;
-    animation-name: blink;
+    animation-name: blink-critical;
     animation-duration: 0.5s;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
     animation-direction: alternate;
 }
 
-#custom-spotify .text {
-    color: #cba6f7;
-    border-radius: 7px 7px 7px 7px;
-    padding-left: 4px;
-    margin-left:  5px;
+/* -----------------------------------------------------
+ * Media Player 
+ * ----------------------------------------------------- */
+
+#custom-media_previous,
+#custom-media_startpause,
+#custom-media_forward {
+    font-size: 22px;
+}
+
+#custom-media_forward {
+    margin-left: 10px;
     margin-right: 5px;
+}
+#custom-media_previous {
+    margin-left: 20px;
+    margin-right: 10px;
+}
+#custom-media_startpause {
+    margin: 0px 5px 0px 5px;
 }
 
 #tray {
@@ -415,9 +264,25 @@ window#waybar.hidden {
     background: #383c4a;
 }
 
-@keyframes blink {
+/* Animations */
+@keyframes blink-warning {
+    70% {
+        color: #d8dee9;
+    }
+
     to {
-        background-color: #ffffff;
-        color: #000000;
+        color: #D8DEE9;
+        background-color: #D8DEE9;
+    }
+}
+
+@keyframes blink-critical {
+    70% {
+      color: #D8DEE9;
+    }
+
+    to {
+        color: #D8DEE9;
+        background-color: #BF616A;
     }
 }
