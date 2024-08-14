@@ -221,6 +221,7 @@
             "custom/media_previous",
             "custom/media_startpause",
             "custom/media_forward"
-        ]
+        ],
+        "exec-if": "sh ~/.config/scripts/media_player/player_available.sh"
     }
 }
