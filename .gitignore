@@ -1,4 +1,8 @@
 gh
-obs-studio/profiler_data
-obs-studio/logs
+.config/obs-studio/logs/
+.config/obs-studio/profiler_data/
 spotify
+.config/vesktop/Crashpad/
+.config/vesktop/sessionData/
+.config/JetBrains/
+*.log
