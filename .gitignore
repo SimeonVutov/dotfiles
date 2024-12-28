@@ -1,1 +1,33 @@
+# General
+*.log
+*.logs
+*.env
+# Auto generated
+.config/pulse/cookie
+
+#Systemd auto generated files
+.config/systemd/user/*.wants
+.config/systemd/user/*.service
+
+# Dconf
+.config/dconf
+
+# NeoVim
+.config/nvim/lazy-lock.json
+
+# Github
 gh
+
+# OBS
+.config/obs-studio/logs/
+.config/obs-studio/profiler_data/
+
+# Spotify
+spotify
+.config/spicetify/Backup/
+.config/spicetify/Extracted/
+
+# Discord
+.config/vesktop/Crashpad/
+.config/vesktop/sessionData/
+.config/JetBrains/
