@@ -1,6 +1,7 @@
 # General
 *.log
 *.logs
+*.env
 
 # Github
 gh
