@@ -12,6 +12,9 @@
 # Dconf
 .config/dconf
 
+# NeoVim
+.config/nvim/lazy-lock.json
+
 # Github
 gh
 
