@@ -2,6 +2,15 @@
 *.log
 *.logs
 *.env
+# Auto generated
+.config/pulse/cookie
+
+#Systemd auto generated files
+.config/systemd/user/*.wants
+.config/systemd/user/*.service
+
+# Dconf
+.config/dconf
 
 # Github
 gh
