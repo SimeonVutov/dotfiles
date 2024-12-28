@@ -114,7 +114,7 @@
         "tooltip-format": "{device_alias}",
         "format-connected-battery": "󰥈 {device_alias} {device_battery_percentage}%",
         "tooltip-format-enumerate-connected": "{device_alias}",
-        "on-click": "blueberry"
+        "on-click": "blueman-manager"
     },
     "power-profiles-daemon": {
         "format": "{icon}",
@@ -221,6 +221,7 @@
             "custom/media_previous",
             "custom/media_startpause",
             "custom/media_forward"
-        ]
+        ],
+        "exec-if": "sh ~/.config/scripts/media_player/player_available.sh"
     }
 }

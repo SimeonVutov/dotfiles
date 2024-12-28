@@ -1,1 +1,21 @@
+# General
+*.log
+*.logs
+*.env
+
+# Github
 gh
+
+# OBS
+.config/obs-studio/logs/
+.config/obs-studio/profiler_data/
+
+# Spotify
+spotify
+.config/spicetify/Backup/
+.config/spicetify/Extracted/
+
+# Discord
+.config/vesktop/Crashpad/
+.config/vesktop/sessionData/
+.config/JetBrains/
