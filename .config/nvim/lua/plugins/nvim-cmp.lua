@@ -14,9 +14,7 @@ return {
     },
     config = function()
         local cmp = require("cmp")
-
         local luasnip = require("luasnip")
-
         local lspkind = require("lspkind")
 
         -- loads vscode style snippets from installed plugins (e.g. friendly-snippets)
@@ -55,6 +53,12 @@ return {
                 ellipsis_char = "...",
             }),
         },
+    })
+
+    cmp.setup({
+        sources = cmp.config.sources({
+            { name = "path", keyword_length = 4 }, -- Only load after typing 4 characters
+        }),
     })
 end,
 }
