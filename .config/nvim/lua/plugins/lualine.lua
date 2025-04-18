@@ -1,8 +1,11 @@
 return {
-	"nvim-lualine/lualine.nvim",
-	lazy = false, -- load immediately so there is no flickering
-	dependencies = "nvim-tree/nvim-web-devicons",
-	opts = {
+    "nvim-lualine/lualine.nvim",
+    event='VeryLazy',
+    dependencies = {
+        "nvim-tree/nvim-web-devicons",
+        "Alexis12119/nightly.nvim",
+    },
+    opts = {
         options = {
             icons_enabled = true,
             theme = 'nightly',
@@ -17,9 +20,9 @@ return {
             always_divide_middle = true,
             globalstatus = false,
             refresh = {
-                statusline = 1000,
-                tabline = 1000,
-                winbar = 1000,
+                statusline = 100,
+                tabline = 100,
+                winbar = 100,
             }
         },
         sections = {

@@ -6,7 +6,7 @@ return {
         "hrsh7th/cmp-path", -- source for file system paths
         {
             "L3MON4D3/LuaSnip",
-            version = "v2.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
+            event='InsertEnter',
         },
         "saadparwaiz1/cmp_luasnip", -- for autocompletion
         "rafamadriz/friendly-snippets", -- useful snippets
@@ -14,7 +14,9 @@ return {
     },
     config = function()
         local cmp = require("cmp")
+
         local luasnip = require("luasnip")
+
         local lspkind = require("lspkind")
 
         -- loads vscode style snippets from installed plugins (e.g. friendly-snippets)
@@ -53,12 +55,6 @@ return {
                 ellipsis_char = "...",
             }),
         },
-    })
-
-    cmp.setup({
-        sources = cmp.config.sources({
-            { name = "path", keyword_length = 4 }, -- Only load after typing 4 characters
-        }),
     })
 end,
 }

@@ -1,5 +1,6 @@
 return {
     "rcarriga/nvim-dap-ui",
+    enabled=false,
     event = 'VeryLazy',
     config = function()
         local dap, dapui = require("dap"), require("dapui")

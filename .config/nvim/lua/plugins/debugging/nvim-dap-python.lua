@@ -1,5 +1,7 @@
 return {
     "mfussenegger/nvim-dap-python",
+    enabled=false,
+    event="VeryLazy",
     config = function()
         local dap = require('dap')
 

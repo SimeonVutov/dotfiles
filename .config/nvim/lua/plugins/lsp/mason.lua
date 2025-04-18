@@ -1,9 +1,11 @@
 return {
     'williamboman/mason.nvim',
+    enabled=false,
     dependencies = {
         'williamboman/mason-lspconfig.nvim',
         'WhoIsSethDaniel/mason-tool-installer.nvim',
     },
+    event='VeryLazy',
     config = function()
         local mason = require('mason')
 
@@ -31,17 +33,26 @@ return {
                 'eslint',
                 'jdtls',
                 'jsonls',
-                'pyright',
-                'sqlls'
+                'pyright'
             },
         })
 
-        mason_tool_installer.setup({
-            ensure_installed = {
-                'stylua', -- lua formatter
-                'eslint_d',
-                'flake8',
-            },
-        })
+        -- mason_tool_installer.setup({
+        --     ensure_installed = {
+        --         'stylua', -- lua formatter
+        --         'eslint_d',
+        --         'flake8',
+        --     },
+        -- })
+        -- Defer tool installer to avoid slowing startup
+        -- vim.defer_fn(function()
+        --     mason_tool_installer.setup({
+        --         ensure_installed = {
+        --             'stylua',  -- lua formatter
+        --             'eslint_d',
+        --             'flake8',
+        --         },
+        --     })
+        -- end, 100)
     end,
 }
