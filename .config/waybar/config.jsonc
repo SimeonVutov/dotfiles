@@ -161,9 +161,9 @@
         "all-outputs": true,
         "format": "{}",
         "format-icons": {
-			"urgent": "",
-			"active": "",
-			"default": ""
+            "urgent": "",
+            "active": "",
+            "default": ""
         },
         "persistent-workspaces": {
             "*": 5
@@ -190,10 +190,14 @@
         "escape": true
     },
     "custom/media_metadata": {
+        "return-type": "json",
         "format": {},
         "exec": "sh ~/.config/scripts/media_player/player_metadata.sh",
-        "interval": 2,
-        "max-length": 55
+        "interval": 1,
+        "tooltip": true,
+        "tooltip-format": {},
+        "max-length": 30,
+        "min-length": 30
     },
     "custom/media_forward": {
         "format": "{icon}",
@@ -217,11 +221,10 @@
     "group/media": {
         "orientation": "inherit",
         "modules": [
-            "custom/media_metadata",
             "custom/media_previous",
             "custom/media_startpause",
-            "custom/media_forward"
-        ],
-        "exec-if": "sh ~/.config/scripts/media_player/player_available.sh"
+            "custom/media_forward",
+            "custom/media_metadata"
+        ]
     }
 }
