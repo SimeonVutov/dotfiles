@@ -69,7 +69,11 @@ ZSH_THEME="agnoster"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git)
+plugins=(
+    git
+    archlinux
+    zsh-autosuggestions
+)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -105,4 +109,25 @@ source $ZSH/oh-my-zsh.sh
 #  tmux new-session -A -s main
 #fi
 
-export QT_QPA_PLATFORMTHEME=qt6ct
+# fastfetch. Will be disabled if above colorscript was chosen to install
+fastfetch -c $HOME/.config/fastfetch/config.jsonc
+
+# Set-up icons for files/folders in terminal
+alias ls='eza -a --icons'
+alias ll='eza -al --icons'
+alias lt='eza -a --tree --level=1 --icons'
+
+# Set-up FZF key bindings (CTRL R for fuzzy history finder)
+source <(fzf --zsh)
+
+HISTSIZE=10000
+SAVEHIST=10000
+setopt appendhistory
+
+# pnpm
+export PNPM_HOME="/home/simeon32/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
