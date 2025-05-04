@@ -105,7 +105,7 @@
         "tooltip-format-ethernet": "󰈀  {ifname}\nIP: {ipaddr}\n up: {bandwidthUpBits} down: {bandwidthDownBits}",
         "tooltip-format-disconnected": "Disconnected",
         "max-length": 50,
-        "on-click": "kitty nmtui"
+        "on-click": "kitty --title wifi-tui -e impala"
     },
      "bluetooth": {
         "format": "",
@@ -114,7 +114,7 @@
         "tooltip-format": "{device_alias}",
         "format-connected-battery": "󰥈 {device_alias} {device_battery_percentage}%",
         "tooltip-format-enumerate-connected": "{device_alias}",
-        "on-click": "blueman-manager"
+        "on-click": "kitty --title bluetooth-tui -e bluetui"
     },
     "power-profiles-daemon": {
         "format": "{icon}",
@@ -144,7 +144,7 @@
             "car": "",
             "default": ["", "", ""]
         },
-        "on-click": "pavucontrol"
+        "on-click": "kitty --title pulsemixer -e pulsemixer"
     },
     // Power Menu
     "custom/exit": {
