@@ -15,7 +15,7 @@ fi
 
 if [[ "$1" == "lock" ]]; then
     echo ":: Lock"
-    sleep 0.5
+    sleep 0.3
     hyprlock    
 fi
 
@@ -24,7 +24,7 @@ if [[ "$1" == "reboot" ]]; then
     if [[ -f "$FILE" ]]; then
         rm $FILE
     fi
-    sleep 0.5
+    sleep 0.3
     systemctl reboot
 fi
 
@@ -33,18 +33,20 @@ if [[ "$1" == "shutdown" ]]; then
     if [[ -f "$FILE" ]]; then
         rm $FILE
     fi
-    sleep 0.5
+    sleep 0.3
     systemctl poweroff
 fi
 
 if [[ "$1" == "suspend" ]]; then
     echo ":: Suspend"
-    sleep 0.5
-    systemctl suspend    
+    sleep 0.3
+    systemctl suspend
+    hyprlock
 fi
 
 if [[ "$1" == "hibernate" ]]; then
     echo ":: Hibernate"
     sleep 1; 
-    systemctl hibernate    
+    systemctl hibernate
+    hyprlock
 fi

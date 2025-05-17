@@ -240,6 +240,11 @@ window#waybar.hidden {
  * Media Player 
  * ----------------------------------------------------- */
 
+#custom-media_metadata {
+    margin-left: 10px;
+    margin-right: 5px;
+}
+
 #custom-media_previous,
 #custom-media_startpause,
 #custom-media_forward {
@@ -247,15 +252,18 @@ window#waybar.hidden {
 }
 
 #custom-media_forward {
-    margin-left: 10px;
+    padding: 0px;
     margin-right: 5px;
+    margin-left: 10px;
 }
 #custom-media_previous {
-    margin-left: 20px;
+    padding: 0px;
     margin-right: 10px;
+    margin-left: 5px;
 }
 #custom-media_startpause {
-    margin: 0px 5px 0px 5px;
+    margin: 0px 5px 0px 8px;
+    padding: 0px;
 }
 
 #tray {

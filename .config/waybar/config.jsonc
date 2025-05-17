@@ -105,7 +105,7 @@
         "tooltip-format-ethernet": "󰈀  {ifname}\nIP: {ipaddr}\n up: {bandwidthUpBits} down: {bandwidthDownBits}",
         "tooltip-format-disconnected": "Disconnected",
         "max-length": 50,
-        "on-click": "kitty nmtui"
+        "on-click": "kitty --title wifi-tui -e impala"
     },
      "bluetooth": {
         "format": "",
@@ -114,7 +114,7 @@
         "tooltip-format": "{device_alias}",
         "format-connected-battery": "󰥈 {device_alias} {device_battery_percentage}%",
         "tooltip-format-enumerate-connected": "{device_alias}",
-        "on-click": "blueman-manager"
+        "on-click": "kitty --title bluetooth-tui -e bluetui"
     },
     "power-profiles-daemon": {
         "format": "{icon}",
@@ -144,7 +144,7 @@
             "car": "",
             "default": ["", "", ""]
         },
-        "on-click": "pavucontrol"
+        "on-click": "kitty --title pulsemixer -e pulsemixer"
     },
     // Power Menu
     "custom/exit": {
@@ -161,9 +161,9 @@
         "all-outputs": true,
         "format": "{}",
         "format-icons": {
-			"urgent": "",
-			"active": "",
-			"default": ""
+            "urgent": "",
+            "active": "",
+            "default": ""
         },
         "persistent-workspaces": {
             "*": 5
@@ -190,10 +190,14 @@
         "escape": true
     },
     "custom/media_metadata": {
+        "return-type": "json",
         "format": {},
         "exec": "sh ~/.config/scripts/media_player/player_metadata.sh",
-        "interval": 2,
-        "max-length": 55
+        "interval": 1,
+        "tooltip": true,
+        "tooltip-format": {},
+        "max-length": 30,
+        "min-length": 30
     },
     "custom/media_forward": {
         "format": "{icon}",
@@ -217,11 +221,10 @@
     "group/media": {
         "orientation": "inherit",
         "modules": [
-            "custom/media_metadata",
             "custom/media_previous",
             "custom/media_startpause",
-            "custom/media_forward"
-        ],
-        "exec-if": "sh ~/.config/scripts/media_player/player_available.sh"
+            "custom/media_forward",
+            "custom/media_metadata"
+        ]
     }
 }

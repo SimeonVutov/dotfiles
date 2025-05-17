@@ -5,3 +5,5 @@ if [[ $(playerctl status | grep Playing) ]]; then
 elif [[ $(playerctl status | grep Pause) ]]; then
     echo "󰐊" 
 fi
+
+echo "󰏤"
