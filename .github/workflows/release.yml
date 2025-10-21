@@ -1,0 +1,44 @@
+name: Auto Release on Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - master
+
+jobs:
+  create_release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract version from PR title (Release vX.Y.Z format)
+        id: extract_version
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          VERSION=$(echo "$TITLE" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+")
+          if [ -z "$VERSION" ]; then
+            echo "❌ No valid version (vX.Y.Z) found in PR title."
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Detected version: $VERSION"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Git tag
+        uses: rickstaa/action-create-tag@v1
+        with:
+          tag: ${{ steps.extract_version.outputs.version }}
+          message: "Release ${{ steps.extract_version.outputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.extract_version.outputs.version }}
+          name: "${{ github.event.pull_request.title }}"
+          body: ${{ github.event.pull_request.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
