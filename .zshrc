@@ -124,6 +124,9 @@ if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then
   fi
 fi
 
+# Always enforce thin beam cursor when returning to prompt
+PROMPT=$'%{\e[6 q%}'$PROMPT
+
 # fastfetch. Will be disabled if above colorscript was chosen to install
 fastfetch -c $HOME/.config/fastfetch/config.jsonc
 
