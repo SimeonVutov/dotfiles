@@ -15,9 +15,6 @@
 # Github
 gh
 
-# Tmux
-.config/tmux/plugins/
-
 # OBS
 .config/obs-studio/logs/
 .config/obs-studio/profiler_data/

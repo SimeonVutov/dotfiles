@@ -103,29 +103,11 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# --- Auto attach/create session with FZF when starting shell ---
-if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then
-  SESSION_COUNT=$(tmux ls 2>/dev/null | wc -l)
-
-  if [ "$SESSION_COUNT" -eq 0 ]; then
-    # No sessions exist → create main
-    tmux new -s main
-  elif [ "$SESSION_COUNT" -eq 1 ]; then
-    # One session → auto-attach
-    tmux attach
-  else
-    # Multiple sessions → use FZF to select one
-    SELECTED=$(tmux ls | cut -d: -f1 | fzf --prompt="Select tmux session: ")
-    if [ -n "$SELECTED" ]; then
-      tmux attach -t "$SELECTED"
-    else
-      tmux new -s main
-    fi
-  fi
-fi
-
-# Always enforce thin beam cursor when returning to prompt
-PROMPT=$'%{\e[6 q%}'$PROMPT
+#if [ -n "$PS1" ] && [ -z "$TMUX" ]; then
+  # Adapted from https://unix.stackexchange.com/a/176885/347104
+  # Create session 'main' or attach to 'main' if already exists.
+#  tmux new-session -A -s main
+#fi
 
 # fastfetch. Will be disabled if above colorscript was chosen to install
 fastfetch -c $HOME/.config/fastfetch/config.jsonc
@@ -143,13 +125,9 @@ SAVEHIST=10000
 setopt appendhistory
 
 # pnpm
-export PNPM_HOME="$HOME/.local/share/pnpm"
+export PNPM_HOME="/home/simeon32/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 # pnpm end
-
-export QUESTASIM_HOME=$HOME/manual_software/questa_sim/installation/questasim
-export PATH=$QUESTASIM_HOME/linux_x86_64:$PATH
-
