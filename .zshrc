@@ -131,9 +131,7 @@ fi
 # Refresh tmux environment variables before showing each prompt
 refresh_tmux_env() {
   if [[ -n "$TMUX" ]]; then
-    eval $(tmux show-env -s DISPLAY 2>/dev/null)
-    eval $(tmux show-env -s WAYLAND_DISPLAY 2>/dev/null)
-    eval $(tmux show-env -s XAUTHORITY 2>/dev/null)
+    eval $(tmux show-env -s DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR 2>/dev/null)
   fi
 }
 autoload -Uz add-zsh-hook
