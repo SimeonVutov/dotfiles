@@ -23,7 +23,7 @@ jobs:
       - name: Install Copilot CLI
         run: npm install -g @github/copilot
 
-      - name: Generate PR Summary and Update
+      - name: Generate PR Summary
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,32 +38,36 @@ jobs:
           """
           EOF
           
-          # Append current description
+          # Append current description safely
           gh pr view $PR_NUMBER --json body -q .body >> prompt.txt
           
-          # 2. Append Commit Messages (Headline + Body)
-          echo '"""' >> prompt.txt
-          echo 'Commit Messages:' >> prompt.txt
-          echo '"""' >> prompt.txt
-          gh pr view $PR_NUMBER --json commits --jq '.commits[] | "- \(.messageHeadline) \(.messageBody)"' >> prompt.txt
+          # Append Commit Messages (Last 20)
+          echo -e '\n"""\nCommit Messages:\n"""' >> prompt.txt
+          gh pr view $PR_NUMBER --json commits --jq '.commits[-20:] | .[] | "- \(.messageHeadline)"' >> prompt.txt
           
-          # 3. Append the raw Git Diff
-          echo '"""' >> prompt.txt
-          echo 'Git Diff of changes:' >> prompt.txt
-          echo '"""' >> prompt.txt
-          gh pr diff $PR_NUMBER >> prompt.txt
+          # Append Git Diff Summary
+          echo -e '\n"""\nGit Diff Summary:\n"""' >> prompt.txt
+          gh pr diff $PR_NUMBER --stat >> prompt.txt
           
-          # 4. Append the formatting and style instructions
+          # Append Actual Code Changes (Filtered & Truncated)
+          echo -e '\n"""\nActual Code Changes:\n"""' >> prompt.txt
+          gh pr diff $PR_NUMBER -- . ':(exclude)*.lock' ':(exclude)*-lock.json' | head -n 400 >> prompt.txt
+          
+          # Append formatting instructions
           cat << 'EOF' >> prompt.txt
           """
           
+          CRITICAL AGENT INSTRUCTIONS:
+          1. DO NOT attempt to write to files, execute shell commands, or use any tools.
+          2. Output ONLY the raw Markdown text directly in your response. 
+          3. Do not include any conversational filler (e.g., "Here is the summary...").
+          
           Based on the diff, the commit messages, and the initial description, rewrite the PR description using EXACTLY the following Markdown format. 
-
+          
           STRICT WRITING GUIDELINES:
           - Be extremely concise and direct. 
-          - Remove redundant technical descriptors (e.g., write "Hyprland" instead of "Hyprland window manager", write "Tmux" instead of "Tmux terminal multiplexer").
+          - Remove redundant technical descriptors (e.g., write "Hyprland" instead of "Hyprland window manager").
           - Rely heavily on the commit messages to understand the intent behind the changes.
-          - Do not add extra pleasantries, intro text, or acknowledge this command.
           
           ## 📦 Summary (Short Description)
           [Write a 1-2 sentence high-level summary here followed by bullet points if necessary]
@@ -81,10 +85,10 @@ jobs:
           [List any notes here. If none, write "None"]
           EOF
           
-          # 5. Send the prompt to Copilot CLI
+          # Send prompt to Copilot CLI (-p for prompt, -s to suppress agent chatter)
           echo "Sending prompt to Copilot..."
-          copilot -p "$(cat prompt.txt)" > new_description.md
+          copilot -p "$(cat prompt.txt)" -s > new_description.md
           
-          # 6. Update the Pull Request with the AI output
+          # Update the Pull Request with the AI output
           echo "Updating Pull Request..."
           gh pr edit $PR_NUMBER --body-file new_description.md
