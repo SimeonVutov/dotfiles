@@ -69,6 +69,8 @@ ZSH_THEME="agnoster"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
+export ZSH_CUSTOM="$HOME/manual_software"
+
 plugins=(
     git
     archlinux
@@ -103,26 +105,37 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# --- Auto attach/create session with FZF when starting shell ---
 if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then
-  SESSION_COUNT=$(tmux ls 2>/dev/null | wc -l)
 
-  if [ "$SESSION_COUNT" -eq 0 ]; then
-    # No sessions exist → create main
+  # 1) If no sessions → create "main"
+  if ! tmux ls >/dev/null 2>&1; then
     tmux new -s main
-  elif [ "$SESSION_COUNT" -eq 1 ]; then
-    # One session → auto-attach
-    tmux attach
   else
-    # Multiple sessions → use FZF to select one
-    SELECTED=$(tmux ls | cut -d: -f1 | fzf --prompt="Select tmux session: ")
-    if [ -n "$SELECTED" ]; then
-      tmux attach -t "$SELECTED"
+    # 2) Search for a session with 0 clients → attach to it
+    FREE=$(tmux ls | cut -d: -f1 | while read -r s; do
+      [ "$(tmux list-clients -t "$s" | wc -l)" -eq 0 ] && echo "$s" && break
+    done)
+
+    if [ -n "$FREE" ]; then
+      tmux attach -t "$FREE"
     else
-      tmux new -s main
+      # 3) All sessions occupied → create a new one with incrementing number
+      NEXT=$(tmux ls | cut -d: -f1 | grep -Eo '[0-9]+$' | sort -n | tail -1)
+      NEXT=$((NEXT+1))
+      tmux new -s "session${NEXT}"
     fi
   fi
+
 fi
+
+# Refresh tmux environment variables before showing each prompt
+refresh_tmux_env() {
+  if [[ -n "$TMUX" ]]; then
+    eval $(tmux show-env -s DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR 2>/dev/null)
+  fi
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd refresh_tmux_env
 
 # Always enforce thin beam cursor when returning to prompt
 PROMPT=$'%{\e[6 q%}'$PROMPT
@@ -153,3 +166,8 @@ esac
 export QUESTASIM_HOME=$HOME/manual_software/questa_sim/installation/questasim
 export PATH=$QUESTASIM_HOME/linux_x86_64:$PATH
 
+export PICO_SDK_PATH="$HOME/manual_software/pico-sdk"
+
+export Picotool_DIR="$HOME/manual_software/picotool/install/lib/cmake/picotool"
+
+export PATH="$HOME/manual_software/picotool/install/bin:$PATH"

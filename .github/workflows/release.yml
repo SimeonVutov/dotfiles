@@ -10,12 +10,17 @@ jobs:
   create_release:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
 
     steps:
       - name: Extract version from PR title (Release vX.Y.Z format)
         id: extract_version
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
+          TITLE="$PR_TITLE"
           VERSION=$(echo "$TITLE" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+")
           if [ -z "$VERSION" ]; then
             echo "❌ No valid version (vX.Y.Z) found in PR title."

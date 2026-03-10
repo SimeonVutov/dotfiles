@@ -1,0 +1,37 @@
+" --- VISUAL SETTINGS ---
+set wso=vertical       " Vertical split (Code left, Debugger right)
+set syntax             " Enable colors
+set number             " Show line numbers
+set cursorline         " Highlight current line
+set tabstop=4          " Tab width
+set scroll=3           " Keep 3 lines context when scrolling
+
+" --- SEARCH SETTINGS ---
+set ignorecase         " Case insensitive search
+set smartcase          " Smart case sensitivity
+
+" --- KEY MAPPINGS (Vim Syntax) ---
+
+" 1. Essential Navigation
+map <Esc> <Esc>        " ESC always goes to source window
+map o :set wso=toggle<CR> " 'o' toggles vertical/horizontal split
+map R :redraw<CR>      " 'R' redraws screen (fixes glitches)
+
+" 2. Function Keys (Standard Debugger)
+map <F5> :continue<CR>
+map <F6> :run<CR>
+map <F10> :next<CR>
+map <F11> :step<CR>
+map <F12> :finish<CR>
+
+" 3. Power User Tools
+map t :bt<CR>          " 't' prints backtrace
+map r :tty<CR>         " 'r' shows registers
+map - :winsize -5%<CR> " Decrease split size
+map + :winsize +5%<CR> " Increase split size
+
+" 4. Shortcuts for your Professor's Macros (from .gdbinit)
+"    Pressing 'L' types ':phead ' for you
+map L :phead 
+"    Pressing 'N' types ':pnext ' for you
+map N :pnext
