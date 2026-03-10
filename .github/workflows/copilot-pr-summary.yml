@@ -1,0 +1,80 @@
+name: Copilot PR Summarizer
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  summarize-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Required for `gh pr edit` to overwrite the description
+      contents: read       # Required for `actions/checkout`
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Generate PR Summary and Update
+        env:
+          # Your Fine-grained PAT to authenticate Copilot
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+          # The built-in GitHub token so the GitHub CLI can read/edit the PR
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # 1. Start building the prompt file
+          cat << 'EOF' > prompt.txt
+          You are an expert developer reviewing a Pull Request.
+          I will provide you with the current PR description and the Git diff of the changes.
+          
+          Specifically written description currently:
+          """
+          EOF
+          
+          # 2. Append the current PR description safely using the GitHub CLI
+          gh pr view $PR_NUMBER --json body -q .body >> prompt.txt
+          
+          # 3. Append the raw Git Diff
+          echo '"""' >> prompt.txt
+          echo 'Git Diff of changes:' >> prompt.txt
+          echo '"""' >> prompt.txt
+          gh pr diff $PR_NUMBER >> prompt.txt
+          
+          # 4. Append the formatting instructions
+          cat << 'EOF' >> prompt.txt
+          """
+          
+          Based on the diff and the initial description, rewrite the PR description using EXACTLY the following Markdown format. Do not add extra pleasantries, intro text, or acknowledge this command.
+          
+          ## 📦 Summary (Short Description)
+          [Write a 1-2 sentence high-level summary here followed by bullet points if necessary]
+          ---
+          ## 🚀 Major Updates (Breaking or high-impact changes)
+          [List major changes here based on the diff. If none, write "None"]
+          ---
+          ## ✨ Minor Updates (Enhancements or small changes)
+          [List minor changes, refactors, or formatting here. If none, write "None"]
+          ---
+          ## 🐞 Fixes (Bug fixes or corrections)
+          [List bugs fixed here based on the diff. If none, write "None"]
+          ---
+          ## 📁 Additional Notes / Migration Steps (if needed)
+          [List any notes here. If none, write "None"]
+          EOF
+          
+          # 5. Send the prompt to Copilot CLI (-p runs programmatic mode)
+          echo "Sending prompt to Copilot..."
+          copilot -p "$(cat prompt.txt)" > new_description.md
+          
+          # 6. Update the Pull Request with the AI output
+          echo "Updating Pull Request..."
+          gh pr edit $PR_NUMBER --body-file new_description.md
