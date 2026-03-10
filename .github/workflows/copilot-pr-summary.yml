@@ -8,8 +8,8 @@ jobs:
   summarize-pr:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write # Required for `gh pr edit` to overwrite the description
-      contents: read       # Required for `actions/checkout`
+      pull-requests: write 
+      contents: read       
     
     steps:
       - name: Checkout Code
@@ -25,23 +25,27 @@ jobs:
 
       - name: Generate PR Summary and Update
         env:
-          # Your Fine-grained PAT to authenticate Copilot
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
-          # The built-in GitHub token so the GitHub CLI can read/edit the PR
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # 1. Start building the prompt file
           cat << 'EOF' > prompt.txt
           You are an expert developer reviewing a Pull Request.
-          I will provide you with the current PR description and the Git diff of the changes.
+          I will provide you with the current PR description, the commit messages, and the Git diff.
           
           Specifically written description currently:
           """
           EOF
           
-          # 2. Append the current PR description safely using the GitHub CLI
+          # Append current description
           gh pr view $PR_NUMBER --json body -q .body >> prompt.txt
+          
+          # 2. Append Commit Messages (Headline + Body)
+          echo '"""' >> prompt.txt
+          echo 'Commit Messages:' >> prompt.txt
+          echo '"""' >> prompt.txt
+          gh pr view $PR_NUMBER --json commits --jq '.commits[] | "- \(.messageHeadline) \(.messageBody)"' >> prompt.txt
           
           # 3. Append the raw Git Diff
           echo '"""' >> prompt.txt
@@ -49,17 +53,23 @@ jobs:
           echo '"""' >> prompt.txt
           gh pr diff $PR_NUMBER >> prompt.txt
           
-          # 4. Append the formatting instructions
+          # 4. Append the formatting and style instructions
           cat << 'EOF' >> prompt.txt
           """
           
-          Based on the diff and the initial description, rewrite the PR description using EXACTLY the following Markdown format. Do not add extra pleasantries, intro text, or acknowledge this command.
+          Based on the diff, the commit messages, and the initial description, rewrite the PR description using EXACTLY the following Markdown format. 
+
+          STRICT WRITING GUIDELINES:
+          - Be extremely concise and direct. 
+          - Remove redundant technical descriptors (e.g., write "Hyprland" instead of "Hyprland window manager", write "Tmux" instead of "Tmux terminal multiplexer").
+          - Rely heavily on the commit messages to understand the intent behind the changes.
+          - Do not add extra pleasantries, intro text, or acknowledge this command.
           
           ## 📦 Summary (Short Description)
           [Write a 1-2 sentence high-level summary here followed by bullet points if necessary]
           ---
           ## 🚀 Major Updates (Breaking or high-impact changes)
-          [List major changes here based on the diff. If none, write "None"]
+          [List major changes here. If none, write "None"]
           ---
           ## ✨ Minor Updates (Enhancements or small changes)
           [List minor changes, refactors, or formatting here. If none, write "None"]
@@ -71,7 +81,7 @@ jobs:
           [List any notes here. If none, write "None"]
           EOF
           
-          # 5. Send the prompt to Copilot CLI (-p runs programmatic mode)
+          # 5. Send the prompt to Copilot CLI
           echo "Sending prompt to Copilot..."
           copilot -p "$(cat prompt.txt)" > new_description.md
           
