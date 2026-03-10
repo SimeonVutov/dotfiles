@@ -45,9 +45,9 @@ jobs:
           echo -e '\n"""\nCommit Messages:\n"""' >> prompt.txt
           gh pr view $PR_NUMBER --json commits --jq '.commits[-20:] | .[] | "- \(.messageHeadline)"' >> prompt.txt
           
-          # Append Git Diff Summary
-          echo -e '\n"""\nGit Diff Summary:\n"""' >> prompt.txt
-          gh pr diff $PR_NUMBER --stat >> prompt.txt
+          # Append Git Diff Summary (FIXED: using --name-only instead of --stat)
+          echo -e '\n"""\nChanged Files:\n"""' >> prompt.txt
+          gh pr diff $PR_NUMBER --name-only >> prompt.txt
           
           # Append Actual Code Changes (Filtered & Truncated)
           echo -e '\n"""\nActual Code Changes:\n"""' >> prompt.txt
