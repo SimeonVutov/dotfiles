@@ -148,6 +148,39 @@ alias ls='eza -a --icons'
 alias ll='eza -al --icons'
 alias lt='eza -a --tree --level=1 --icons'
 
+# ==========================================
+# power-mode Zsh Autocompletion
+# ==========================================
+_power_mode() {
+  local -a commands
+
+  # If the previous word is -gov, only suggest the two valid governors
+  if [[ "${words[CURRENT-1]}" == "-gov" ]]; then
+      _values 'governor' 'powersave' 'performance'
+      return
+  fi
+
+  # If the previous word is -min or -max, just show a helpful hint (no autocomplete needed for numbers)
+  if [[ "${words[CURRENT-1]}" == "-min" || "${words[CURRENT-1]}" == "-max" ]]; then
+      _message "frequency in MHz (e.g., 415, 3000)"
+      return
+  fi
+
+  # Default autocomplete options with helpful descriptions
+  commands=(
+    'ultimate:Activate the Ultimate preset (Full Power)'
+    'balanced:Activate the Balanced preset (Power Saver)'
+    '-min:Specify minimum frequency (MHz)'
+    '-max:Specify maximum frequency (MHz)'
+    '-gov:Specify CPU governor (powersave or performance)'
+  )
+  
+  _describe -t commands 'power-mode options' commands
+}
+
+# Bind the function to our command
+compdef _power_mode power-mode
+
 # Set-up FZF key bindings (CTRL R for fuzzy history finder)
 source <(fzf --zsh)
 
@@ -171,3 +204,5 @@ export PICO_SDK_PATH="$HOME/manual_software/pico-sdk"
 export Picotool_DIR="$HOME/manual_software/picotool/install/lib/cmake/picotool"
 
 export PATH="$HOME/manual_software/picotool/install/bin:$PATH"
+export PATH="$HOME/.local/share/coursier/bin:$PATH"
+
