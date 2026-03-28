@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Strict error handling: fail on error, fail on unset variables, fail on pipe errors
+set -euo pipefail
+
+# Define secure paths relative to the user's home directory
+CONFIG_DIR="$HOME/.config/power-mode"
+ULTIMATE_CONF="$CONFIG_DIR/auto-cpufreq.ultimate.conf"
+BALANCED_CONF="$CONFIG_DIR/auto-cpufreq.balanced.conf"
+DEST_CONF="/etc/auto-cpufreq.conf"
+
+# Default custom values
+MIN="415000"
+MAX="3000000"
+GOV="powersave"
+MODE=""
+
+usage() {
+    echo "Usage:"
+    echo "  power-mode ultimate                 # Use ultimate preset"
+    echo "  power-mode balanced                 # Use balanced preset"
+    echo "  power-mode -min <MHz> -max <MHz> -gov <powersave|performance>"
+    exit 1
+}
+
+# Parse arguments
+if [[ "${1:-}" == "ultimate" ]]; then
+    MODE="ultimate"
+elif [[ "${1:-}" == "balanced" ]]; then
+    MODE="balanced"
+elif [[ "${1:-}" == -* ]]; then
+    MODE="custom"
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -min)
+                if ! [[ "${2:-}" =~ ^[0-9]+$ ]]; then echo "Error: -min requires an integer (MHz)."; exit 1; fi
+                MIN="${2}000"
+                shift 2 ;;
+            -max)
+                if ! [[ "${2:-}" =~ ^[0-9]+$ ]]; then echo "Error: -max requires an integer (MHz)."; exit 1; fi
+                MAX="${2}000"
+                shift 2 ;;
+            -gov)
+                if [[ "${2:-}" != "powersave" && "${2:-}" != "performance" ]]; then
+                    echo "Error: -gov must be 'powersave' or 'performance'."
+                    exit 1
+                fi
+                GOV="$2"
+                shift 2 ;;
+            *) usage ;;
+        esac
+    done
+else
+    usage
+fi
+
+apply_config() {
+    local src_file="$1"
+    if [[ ! -f "$src_file" ]]; then
+        echo "Error: Configuration file $src_file not found in $CONFIG_DIR."
+        exit 1
+    fi
+    sudo cp "$src_file" "$DEST_CONF"
+    
+    # Hard restart
+    sudo systemctl stop auto-cpufreq
+    sudo systemctl start auto-cpufreq
+}
+
+# Apply chosen mode
+if [[ "$MODE" == "ultimate" ]]; then
+    apply_config "$ULTIMATE_CONF"
+    echo "🚀 Ultimate Mode Activated"
+elif [[ "$MODE" == "balanced" ]]; then
+    apply_config "$BALANCED_CONF"
+    echo "⚖️ Balanced Mode Activated"
+elif [[ "$MODE" == "custom" ]]; then
+    # Map EPP and Turbo based on chosen governor
+    if [[ "$GOV" == "performance" ]]; then
+        EPP="performance"
+        TURBO="auto"
+    else
+        EPP="power"
+        TURBO="never"
+    fi
+
+    # Safely generate custom config using validated variables
+    cat <<EOF | sudo tee "$DEST_CONF" > /dev/null
+[charger]
+governor = $GOV
+energy_performance_preference = $EPP
+scaling_min_freq = $MIN
+scaling_max_freq = $MAX
+turbo = $TURBO
+
+[battery]
+governor = $GOV
+energy_performance_preference = $EPP
+scaling_min_freq = $MIN
+scaling_max_freq = $MAX
+turbo = $TURBO
+EOF
+    
+    # Hard restart
+    sudo systemctl stop auto-cpufreq
+    sudo systemctl start auto-cpufreq
+    echo "🛠️ Custom Universal Mode: ${GOV} @ ${MAX}kHz (Min: ${MIN}kHz)"
+fi
+
+# Wait a second for the daemon to spin up and talk to the kernel
+sleep 1
+
+# Check if it actually survived the restart
+if systemctl is-active --quiet auto-cpufreq; then
+    echo "✅ auto-cpufreq service is running and applied."
+else
+    echo "❌ ERROR: auto-cpufreq crashed during restart!"
+    echo "Run 'systemctl status auto-cpufreq' to see why."
+    exit 1
+fi
