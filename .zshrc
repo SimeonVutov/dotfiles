@@ -204,5 +204,3 @@ export PICO_SDK_PATH="$HOME/manual_software/pico-sdk"
 export Picotool_DIR="$HOME/manual_software/picotool/install/lib/cmake/picotool"
 
 export PATH="$HOME/manual_software/picotool/install/bin:$PATH"
-export PATH="$HOME/.local/share/coursier/bin:$PATH"
-
