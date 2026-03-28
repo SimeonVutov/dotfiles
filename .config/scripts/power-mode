@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Strict error handling: fail on error, fail on unset variables, fail on pipe errors
+set -euo pipefail
+
+# Define secure paths relative to the user's home directory
+CONFIG_DIR="$HOME/.config/power-mode"
+ULTIMATE_CONF="$CONFIG_DIR/auto-cpufreq.ultimate.conf"
+BALANCED_CONF="$CONFIG_DIR/auto-cpufreq.balanced.conf"
+DEST_CONF="/etc/auto-cpufreq.conf"
+
+# Default values
+MIN="415000"
+MAX="3000000"
+GOV="powersave"
+MODE=""
+
+usage() {
+    echo "Usage:"
+    echo "  power-mode ultimate                 # Use ultimate preset"
+    echo "  power-mode balanced                 # Use balanced preset"
+    echo "  power-mode -min <MHz> -max <MHz> -gov <powersave|performance>"
+    exit 1
+}
+
+# Parse arguments
+if [[ "${1:-}" == "ultimate" ]]; then
+    MODE="ultimate"
+elif [[ "${1:-}" == "balanced" ]]; then
+    MODE="balanced"
+elif [[ "${1:-}" == -* ]]; then
+    MODE="custom"
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -min)
+                # Security: Enforce strict integer validation
+                if ! [[ "${2:-}" =~ ^[0-9]+$ ]]; then echo "Error: -min requires an integer (MHz)."; exit 1; fi
+                MIN="${2}000"
+                shift 2 ;;
+            -max)
+                # Security: Enforce strict integer validation
+                if ! [[ "${2:-}" =~ ^[0-9]+$ ]]; then echo "Error: -max requires an integer (MHz)."; exit 1; fi
+                MAX="${2}000"
+                shift 2 ;;
+            -gov)
+                # Security: Strictly allowlist accepted governors
+                if [[ "${2:-}" != "powersave" && "${2:-}" != "performance" ]]; then
+                    echo "Error: -gov must be 'powersave' or 'performance'."
+                    exit 1
+                fi
+                GOV="$2"
+                shift 2 ;;
+            *) usage ;;
+        esac
+    done
+else
+    usage
+fi
+
+apply_config() {
+    local src_file="$1"
+    if [[ ! -f "$src_file" ]]; then
+        echo "Error: Configuration file $src_file not found in $CONFIG_DIR."
+        exit 1
+    fi
+    sudo cp "$src_file" "$DEST_CONF"
+    sudo systemctl restart auto-cpufreq
+}
+
+# Apply chosen mode
+if [[ "$MODE" == "ultimate" ]]; then
+    apply_config "$ULTIMATE_CONF"
+    echo "🚀 Ultimate Mode Activated"
+elif [[ "$MODE" == "balanced" ]]; then
+    apply_config "$BALANCED_CONF"
+    echo "⚖️ Balanced Mode Activated"
+elif [[ "$MODE" == "custom" ]]; then
+    EPP="power"
+    [[ "$GOV" == "performance" ]] && EPP="performance"
+
+    # Safely generate custom config using validated variables
+    cat <<EOF | sudo tee "$DEST_CONF" > /dev/null
+[charger]
+governor = $GOV
+energy_performance_preference = $EPP
+scaling_max_freq = $MAX
+turbo = auto
+
+[battery]
+governor = $GOV
+energy_performance_preference = $EPP
+scaling_max_freq = $MAX
+turbo = auto
+EOF
+    sudo systemctl restart auto-cpufreq
+    echo "🛠️ Custom Universal Mode: ${GOV} @ ${MAX}kHz"
+fi
