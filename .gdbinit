@@ -1,4 +1,9 @@
+# --- 1. System & Security ---
+set auto-load safe-path /
 set confirm off
+set pagination off
+
+source /usr/share/gef/gef.py
 
 # Enable pretty printing (Crucial for structures)
 set print pretty on
