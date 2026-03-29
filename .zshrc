@@ -105,27 +105,23 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then
+# Only run if we are in an interactive shell (prevents background apps from creating ghost sessions)
+if [[ $- == *i* ]] && [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then
+  # 1) Look for any existing session with 0 attached clients
+  FREE=$(tmux ls -F '#{session_name} #{session_attached}' 2>/dev/null | awk '$2 == 0 {print $1; exit}')
 
-  # 1) If no sessions → create "main"
-  if ! tmux ls >/dev/null 2>&1; then
-    tmux new -s main
+  if [ -n "$FREE" ]; then
+    # Attach to the free session
+    tmux attach -t "$FREE"
   else
-    # 2) Search for a session with 0 clients → attach to it
-    FREE=$(tmux ls | cut -d: -f1 | while read -r s; do
-      [ "$(tmux list-clients -t "$s" | wc -l)" -eq 0 ] && echo "$s" && break
-    done)
-
-    if [ -n "$FREE" ]; then
-      tmux attach -t "$FREE"
-    else
-      # 3) All sessions occupied → create a new one with incrementing number
-      NEXT=$(tmux ls | cut -d: -f1 | grep -Eo '[0-9]+$' | sort -n | tail -1)
-      NEXT=$((NEXT+1))
-      tmux new -s "session${NEXT}"
-    fi
+    # 2) No free sessions exist (or tmux isn't running). Create next sessionX.
+    NEXT_ID=$(tmux ls -F '#{session_name}' 2>/dev/null | grep -Eo '^session[0-9]+$' | grep -Eo '[0-9]+$' | sort -n | tail -1)
+    
+    # Defaults to 0 on first launch, becoming session1
+    NEXT_ID=$(( ${NEXT_ID:-0} + 1 ))
+    
+    tmux new -s "session${NEXT_ID}"
   fi
-
 fi
 
 # Fixes 'GPGME error: General error' when running pacman inside tmux
