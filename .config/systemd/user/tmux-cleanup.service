@@ -1,0 +1,11 @@
+[Unit]
+Description=Tmux Idle Session Cleanup Daemon
+After=default.target
+
+[Service]
+ExecStart=%h/.config/scripts/tmux-cleanup.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
