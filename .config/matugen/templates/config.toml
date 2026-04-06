@@ -1,0 +1,28 @@
+[config]
+reload_apps = false      # we handle reloads manually in the script
+set_wallpaper = false    # swww handles this
+
+# --- Hyprland colors (replaces ~/.cache/wal/colors-hyprland.conf) ---
+[templates.hyprland]
+input_path  = "~/.config/matugen/templates/colors-hyprland.conf"
+output_path = "~/.cache/matugen/colors-hyprland.conf"
+
+# --- Kitty terminal ---
+[templates.kitty]
+input_path  = "~/.config/matugen/templates/colors-kitty.conf"
+output_path = "~/.cache/matugen/colors-kitty.conf"
+
+# --- Hyprlock (lockscreen) ---
+[templates.hyprlock]
+input_path  = "~/.config/matugen/templates/colors-hyprlock.conf"
+output_path = "~/.cache/matugen/colors-hyprlock.conf"
+
+# --- CSS (for waybar, rofi, AGS, anything web-like) ---
+[templates.css]
+input_path  = "~/.config/matugen/templates/colors.css"
+output_path = "~/.cache/matugen/colors.css"
+
+# --- JSON (for scripts, eww, anything that reads JSON) ---
+[templates.json]
+input_path  = "~/.config/matugen/templates/colors.json"
+output_path = "~/.cache/matugen/colors.json"
