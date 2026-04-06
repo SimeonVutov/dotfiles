@@ -73,6 +73,9 @@ PanelWindow {
         warningFlash = 0.0
         focusZone = "wallpapers"
         paletteColorFocusIndex = -1
+        Qt.callLater(function() {
+            Qt.quit()
+        })
     }
 
     function loadIndex() {

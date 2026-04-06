@@ -47,9 +47,9 @@ else
 
     log "Setting image wallpaper via awww"
     awww img "$WALLPAPER" \
-        --transition-type fade \
-        --transition-duration 1.5 \
-        --transition-fps 60
+        --transition-type any \
+        --transition-duration 1 \
+        --transition-fps 240
 fi
 
 key=$(printf '%s' "$WALLPAPER" | sha1sum | awk '{print $1}')
@@ -90,12 +90,13 @@ for socket in /tmp/kitty-*; do
         "$MATUGEN_CACHE/colors-kitty.conf" 2>/dev/null || true
 done
 
-hyprctl reload 2>/dev/null || true
-pkill -SIGUSR2 waybar 2>/dev/null || true
-
 log "Generating blurred wallpaper cache"
 magick "$TMP_PNG" -resize 75% "$BLURRED_WALLPAPER"
 [[ "$BLUR" != "0x0" ]] && magick "$BLURRED_WALLPAPER" -blur "$BLUR" "$BLURRED_WALLPAPER"
 
 rm -f "$TMP_PNG"
 log "Done"
+
+# Kill quickshell as it is not needed anymore
+# !!! IMPORTANT: If we add more functionality in quickshell like top bar, REMOVE THIS LINE
+pkill -f "qs -c wallpaper" 2>/dev/null || true
