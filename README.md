@@ -23,9 +23,6 @@
 
 <br>
 
-<!-- 📸 Replace the path below with your actual hero screenshot -->
-<!-- Recommended: a clean 1920×1080 desktop shot with waybar visible -->
-
 ![Desktop Preview](./screenshots/desktop.png)
 
 <br>
@@ -49,7 +46,6 @@
 
 <div align="center">
 
-<!-- Replace with your actual screenshots -->
 | Desktop | Workflow |
 |---|---|
 | ![Desktop](./screenshots/desktop.png) | ![Workflow](./screenshots/workflow.png) |
