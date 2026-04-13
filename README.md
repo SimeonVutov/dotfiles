@@ -179,8 +179,9 @@ App launcher, window switcher, and dmenu replacement with a custom theme.
 
 Full Neovim configuration tracked as its own submodule for independent versioning.
 
-![Neovim](./screenshots/nvim.png)
-![Neovim](./screenshots/nvim2.png)
+|||
+|---|---|
+| ![Neovim](./screenshots/nvim.png) | ![Neovim](./screenshots/nvim2.png) |
 
 - **Plugin Manager** — lazy.nvim for fast, on-demand plugin loading
 - **LSP** — full Language Server Protocol support via nvim-lspconfig (C/C++, Python, Lua, JS, …)
