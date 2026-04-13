@@ -250,7 +250,6 @@ A custom CLI tool for managing CPU performance profiles on-the-fly — useful fo
 
 - **Presets** — `ultimate` (full power) and `balanced` (power saver) quick-apply modes
 - **Fine-Grained Control** — `-min` / `-max` frequency bounds and `-gov` governor selection (`powersave` / `performance`)
-- **TLP Integration** — coordinates with TLP (`/.config/tlp/`) for battery management policies
 - **Zsh Completion** — full autocompletion with contextual hints registered via `compdef`
 
 ---
