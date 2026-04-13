@@ -104,8 +104,7 @@ Hyprland is the core of this setup — a dynamic tiling Wayland compositor with 
 
 Custom status bar written in CSS with Python-powered modules.
 
-<!-- ![Waybar](./screenshots/waybar.png) -->
-> 📸 *Screenshot — add to [`screenshots/waybar.png`](./screenshots/)*
+![Waybar](./screenshots/waybar.png)
 
 - **Workspaces** — Hyprland workspace indicators with active/urgent/occupied states
 - **Media Player** — live track info with playback controls (play/pause/skip), scroll to change volume
@@ -127,8 +126,7 @@ Custom status bar written in CSS with Python-powered modules.
 
 GPU-accelerated terminal with a clean, distraction-free look.
 
-<!-- ![Kitty](./screenshots/kitty.png) -->
-> 📸 *Screenshot — add to [`screenshots/kitty.png`](./screenshots/)*
+![Kitty](./screenshots/kitty.png)
 
 - **Font** — Nerd Font with ligature support
 - **Colors** — custom color scheme consistent with the overall pywal theme
@@ -146,8 +144,7 @@ GPU-accelerated terminal with a clean, distraction-free look.
 
 Lightweight notification daemon styled to match the rest of the setup.
 
-<!-- ![Dunst](./screenshots/dunst.png) -->
-> 📸 *Screenshot — add to [`screenshots/dunst.png`](./screenshots/)*
+![Dunst](./screenshots/dunst.png)
 
 - **Custom Geometry** — top-right position with defined size and offsets
 - **Rounded Corners** — corner radius matching the Hyprland rounding value
@@ -165,8 +162,7 @@ Lightweight notification daemon styled to match the rest of the setup.
 
 App launcher, window switcher, and dmenu replacement with a custom theme.
 
-<!-- ![Rofi](./screenshots/rofi.png) -->
-> 📸 *Screenshot — add to [`screenshots/rofi.png`](./screenshots/)*
+![Rofi](./screenshots/rofi.png)
 
 - **Custom `.rasi` Theme** — hand-crafted layout with styled input bar, results list, and scrollbar
 - **App Launcher** (`drun` mode) — fuzzy search across all installed desktop entries
@@ -183,8 +179,7 @@ App launcher, window switcher, and dmenu replacement with a custom theme.
 
 Full Neovim configuration tracked as its own submodule for independent versioning.
 
-<!-- ![Neovim](./screenshots/nvim.png) -->
-> 📸 *Screenshot — add to [`screenshots/nvim.png`](./screenshots/)*
+![Neovim](./screenshots/nvim.png)
 
 - **Plugin Manager** — lazy.nvim for fast, on-demand plugin loading
 - **LSP** — full Language Server Protocol support via nvim-lspconfig (C/C++, Python, Lua, JS, …)
