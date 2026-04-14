@@ -27,6 +27,6 @@ spotify
 .config/spicetify/Backup/
 .config/spicetify/Extracted/
 
-# Discord
-.config/vesktop/Crashpad/
-.config/vesktop/sessionData/
+# Vesktop
+# For now there is nothing special to sync
+.config/vesktop
