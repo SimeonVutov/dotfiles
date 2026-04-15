@@ -31,12 +31,12 @@ window#waybar.hidden {
     border-radius: 15px;
     padding: 2px 15px 2px 15px;
     margin: 5px 15px 5px 0px;
-    opacity:0.8;
+    opacity: 0.85;
 }
 
 #workspaces {
     background-color: #000000;
-    opacity: 0.8;
+    opacity: 0.85;
     margin: 5px 1px 6px 1px;
     padding: 0px 1px;
     border-radius: 15px;
