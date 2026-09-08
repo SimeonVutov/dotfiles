@@ -158,16 +158,16 @@
         "on-scroll-down": "hyprctl dispatch workspace r+1",        
         "on-click": "activate",
         "active-only": false,
-        "all-outputs": true,
+        "all-outputs": false,
         "format": "{}",
         "format-icons": {
             "urgent": "",
             "active": "",
             "default": ""
-        },
-        "persistent-workspaces": {
-            "*": 5
-        }       
+        }
+        // No static "persistent-workspaces": waybar reads persistence
+        // from Hyprland's own workspace rules instead, kept up to date by
+        // scripts/hyprland/monitors/{profile-menu,mode-menu}.sh.
     },
     "custom/notifications": {
         "tooltip": true,
