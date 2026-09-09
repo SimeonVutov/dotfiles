@@ -39,6 +39,14 @@ Singleton {
     readonly property color popupSurface: "#1A1A1A"
     readonly property real popupRadius: 18
 
+    readonly property color graphCpu: "#91B9EE"
+    readonly property color graphMemory: "#B5A0DC"
+    readonly property color graphTemperature: "#E8AE87"
+    readonly property color graphGpu: "#8DC5B0"
+    readonly property int popupPadding: 20
+    readonly property int popupSpacing: 12
+    readonly property int popupSectionSpacing: 18
+
     // ── Metrics (mirrors the old waybar CSS box model) ─────────
     readonly property int barHeight: 43
     readonly property int pillRadius: 15

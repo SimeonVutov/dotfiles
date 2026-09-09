@@ -36,7 +36,10 @@ Item {
         font.family: Theme.fontFamily
         font.pixelSize: root.size
         textFormat: Text.PlainText
-        renderType: Text.NativeRendering
+        // NativeRendering pre-rasterizes glyphs pixel-hinted at this exact
+        // size; scaling that raster (below) shows up as a doubled/ghosted
+        // glyph. QtRendering scales cleanly since it isn't hint-locked.
+        renderType: Text.QtRendering
 
         scale: mouseArea.pressed ? 0.88 : (mouseArea.containsMouse && root.enabled ? 1.15 : 1)
 

@@ -3,19 +3,25 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.Common
 
-// Shared plumbing for anything that drops down from the bar: window placement,
-// the open/close animation, and dismissing on a click elsewhere. Panels put
-// their content inside and set panelWidth/panelHeight.
+// Shared chrome, content grid, and floating-menu layer for every panel.
 PopupWindow {
     id: root
 
     property Item anchorItem: null
     property bool open: false
     property int panelWidth: 320
-    property int panelHeight: 200
+    property int panelHeight: layout.implicitHeight + contentPadding * 2
+    property int contentPadding: Theme.popupPadding
+    property alias columns: layout.columns
+    property alias rowSpacing: layout.rowSpacing
+    property alias columnSpacing: layout.columnSpacing
+    readonly property alias overlayItem: overlay
+    property Component overlayPage: null
+    property bool overlayActive: false
+    signal overlayDismissed
     property int gap: 6
 
-    default property alias content: panel.data
+    default property alias content: layout.data
 
     function toggle() {
         open = !open;
@@ -26,7 +32,11 @@ PopupWindow {
     }
 
     anchor.item: anchorItem
+    anchor.rect.x: anchorItem ? Math.round((anchorItem.width - panelWidth) / 2) : 0
     anchor.rect.y: anchorItem ? anchorItem.height + gap : 0
+    anchor.edges: Edges.Top | Edges.Left
+    anchor.gravity: Edges.Bottom | Edges.Right
+    anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.SlideY
 
     implicitWidth: panelWidth
     implicitHeight: panelHeight
@@ -56,6 +66,58 @@ PopupWindow {
         scale: root.open ? 1 : 0.96
         y: root.open ? 0 : -10
         transformOrigin: Item.Top
+
+        PanelLayout {
+            id: layout
+            x: root.contentPadding
+            y: root.contentPadding
+            width: parent.width - root.contentPadding * 2
+            enabled: !root.overlayPage || !root.overlayActive
+            opacity: root.overlayPage && root.overlayActive ? 0 : 1
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Theme.durationFast
+                }
+            }
+        }
+
+        Item {
+            id: overlay
+            anchors.fill: parent
+            z: 10
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.overlayActive
+                onClicked: root.overlayDismissed()
+            }
+
+            // Content pages share the existing window and never affect its size.
+            Loader {
+                anchors.fill: parent
+                anchors.margins: root.contentPadding
+                sourceComponent: root.overlayPage
+                active: root.overlayPage !== null
+                enabled: root.overlayActive
+                visible: opacity > 0
+                opacity: root.overlayActive ? 1 : 0
+                scale: root.overlayActive ? 1 : 0.985
+                transformOrigin: Item.Bottom
+                focus: root.overlayActive && active
+                Keys.onEscapePressed: root.overlayDismissed()
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: Theme.durationFast
+                    }
+                }
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: Theme.durationFast
+                        easing.type: Theme.easingEmphasized
+                    }
+                }
+            }
+        }
 
         Behavior on opacity {
             NumberAnimation {

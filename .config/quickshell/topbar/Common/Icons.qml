@@ -18,6 +18,16 @@ Singleton {
     readonly property string memoryTooltip: cp(0xe266)
     readonly property string temperature: cp(0xf2c9)
 
+    readonly property string gpu: cp(0xf0253)
+    readonly property string rocket: cp(0xf135)
+    readonly property string balance: cp(0xf24e)
+    readonly property string leaf: cp(0xf06c)
+    readonly property string flame: cp(0xf06d)
+    readonly property string chevronDown: cp(0xf078)
+    readonly property string check: cp(0xf00c)
+    readonly property string close: cp(0xf00d)
+    readonly property string automatic: cp(0xf021)
+
     // Battery: index 0 is empty, 4 is full.
     readonly property var batteryLevels: [cp(0xf244), cp(0xf243), cp(0xf242), cp(0xf241), cp(0xf240)]
     readonly property string batteryCharging: cp(0xf492)
