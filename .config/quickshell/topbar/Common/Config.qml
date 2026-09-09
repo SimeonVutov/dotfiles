@@ -67,14 +67,6 @@ Singleton {
             maxVolume: 100
         })
 
-    readonly property var network: ({
-            onClick: ["kitty", "--single-instance", "--title", "wifi-tui", "-e", "impala"]
-        })
-
-    readonly property var bluetooth: ({
-            onClick: ["kitty", "--single-instance", "--title", "bluetooth-tui", "-e", "bluetui"]
-        })
-
     readonly property var battery: ({
             warningThreshold: 30,
             criticalThreshold: 15
