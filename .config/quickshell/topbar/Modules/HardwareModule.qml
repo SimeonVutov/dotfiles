@@ -3,6 +3,7 @@ import Quickshell
 import qs.Common
 import qs.Ui
 import qs.Services
+import qs.Popups
 
 // CPU, memory and temperature in one pill. Right click opens btop, same as the
 // old waybar group binding.
@@ -10,8 +11,17 @@ BarModule {
     id: root
 
     // The sampler only runs while at least one of these is on screen.
-    Component.onCompleted: SysMon.subscribe(true)
-    Component.onDestruction: SysMon.subscribe(false)
+    property bool subscribed: false
+    function syncSubscription() {
+        if (subscribed === visible)
+            return;
+        SysMon.subscribe(visible);
+        subscribed = visible;
+    }
+    onVisibleChanged: syncSubscription()
+    Component.onCompleted: syncSubscription()
+    Component.onDestruction: if (subscribed)
+        SysMon.subscribe(false)
 
     Pill {
         id: pill
@@ -39,15 +49,25 @@ BarModule {
                 leftPadding: Theme.groupItemPaddingH
                 rightPadding: Theme.groupItemPaddingH
                 font.pixelSize: Theme.fontSizeSmall
-                text: Icons.temperature + "   " + Math.round(SysMon.temperature) + "°C"
+                text: Icons.temperature + "   " + (isFinite(SysMon.temperature) ? Math.round(SysMon.temperature) + "°C" : "—")
             }
         }
     }
 
+    HardwarePopup {
+        id: hardwarePopup
+        anchorItem: pill
+    }
+
     MouseArea {
         anchors.fill: pill
-        acceptedButtons: Qt.RightButton
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: Quickshell.execDetached(Config.hardware.onRightClick)
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton)
+                Quickshell.execDetached(Config.hardware.onRightClick);
+            else
+                hardwarePopup.toggle();
+        }
     }
 }
