@@ -1,5 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import Quickshell
+import QtQuick.Layouts
 import qs.Common
 import qs.Ui
 import qs.Services
@@ -9,18 +11,30 @@ PopupPanel {
     id: root
 
     panelWidth: 400
-    panelHeight: 168
+    contentPadding: 18
+    rowSpacing: Theme.popupSpacing
+    overlayActive: sourcePicker.expanded
+    onOverlayDismissed: sourcePicker.expanded = false
+    overlayPage: Component {
+        MediaSourceMenu {
+            onDismissed: sourcePicker.expanded = false
+        }
+    }
 
     // Position updates only run while this is actually on screen.
-    onOpenChanged: Players.watchPosition(open)
+    onOpenChanged: {
+        Players.watchPosition(open);
+        if (!open)
+            sourcePicker.expanded = false;
+    }
     Component.onDestruction: {
         if (open)
             Players.watchPosition(false);
     }
 
     Item {
-        anchors.fill: parent
-        anchors.margins: 18
+        Layout.fillWidth: true
+        implicitHeight: 132
 
         AlbumArt {
             id: art
@@ -108,7 +122,7 @@ PopupPanel {
                     icon: Icons.mediaPrevious
                     size: 20
                     color: Theme.popupText
-                    enabled: Players.hasPlayer
+                    enabled: Players.canGoPrevious
                     onClicked: Players.previous()
                 }
 
@@ -124,7 +138,7 @@ PopupPanel {
                         icon: Players.isPlaying ? Icons.mediaPause : Icons.mediaPlay
                         size: 18
                         color: Theme.popupBackground
-                        enabled: Players.hasPlayer
+                        enabled: !!Players.activePlayer && Players.activePlayer.canTogglePlaying
                         onClicked: Players.togglePlaying()
                     }
                 }
@@ -139,5 +153,9 @@ PopupPanel {
                 }
             }
         }
+    }
+    MediaSourcePicker {
+        id: sourcePicker
+        Layout.fillWidth: true
     }
 }

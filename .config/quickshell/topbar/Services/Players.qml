@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 pragma Singleton
 
 import QtQuick
@@ -5,15 +6,25 @@ import Quickshell
 import Quickshell.Services.Mpris
 import qs.Common
 
-// Picks which MPRIS player the bar should follow and exposes it as one stable
-// object, so every media surface (bar module, popup, dashboard) shows the same
-// thing. Entirely event driven — no polling unless something is watching the
-// playback position.
+// Shared media selection and transport; position refresh is subscriber driven.
 Singleton {
     id: root
 
     readonly property var allPlayers: Mpris.players.values
     property var activePlayer: null
+    // Store the bus name rather than a QObject that may be destroyed.
+    property string manualPlayerId: ""
+
+    function selectPlayer(player) {
+        manualPlayerId = player ? player.dbusName : "";
+        resolveActivePlayer();
+    }
+
+    function sourceName(player) {
+        const name = player.identity || player.desktopEntry || "Media player";
+        const duplicates = allPlayers.filter(p => (p.identity || p.desktopEntry || "Media player") === name);
+        return duplicates.length > 1 ? name + " · " + player.dbusName.replace("org.mpris.MediaPlayer2.", "") : name;
+    }
 
     readonly property bool hasPlayer: activePlayer !== null
     readonly property bool isPlaying: !!activePlayer && activePlayer.isPlaying
@@ -30,6 +41,7 @@ Singleton {
             return "";
         return artist ? title + Config.media.separator + artist : title;
     }
+    readonly property string trackKey: activePlayer ? String(activePlayer.uniqueId || label) : ""
 
     readonly property bool canGoNext: !!activePlayer && activePlayer.canGoNext
     readonly property bool canGoPrevious: !!activePlayer && activePlayer.canGoPrevious
@@ -46,6 +58,14 @@ Singleton {
     // another player once the current one is gone or stopped.
     function resolveActivePlayer() {
         const players = allPlayers;
+        if (manualPlayerId) {
+            const selected = players.find(p => p.dbusName === manualPlayerId);
+            if (selected) {
+                activePlayer = selected;
+                return;
+            }
+            manualPlayerId = "";
+        }
         const playing = players.filter(p => p.isPlaying);
         if (playing.length > 0) {
             const controllable = playing.find(p => p.canControl);
