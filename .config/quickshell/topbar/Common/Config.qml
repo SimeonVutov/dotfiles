@@ -12,23 +12,49 @@ import Quickshell
 Singleton {
     id: root
 
+    readonly property string homeDir: Quickshell.env("HOME") || ""
+    readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || homeDir + "/.config"
+
     property var modulesLeft: ["clock", "media"]
     property var modulesCenter: ["workspaces"]
     property var modulesRight: ["hardware", "volume", "connections", "battery", "power"]
 
     // ── Module settings ────────────────────────────────────────
     readonly property var clock: ({
-            format: "dd MMM, hh:mm AP",       // 08 Sep, 09:30 PM
-            formatAlt: "ddd MMM dd, yyyy",    // Mon Sep 08, 2026
+            format: "dd MMM, hh:mm AP",
+            formatAlt: "ddd MMM dd, yyyy",
             openDashboardOnClick: true
         })
 
+    // Session preferences shared by every monitor's hardware popup.
+    property var hardwareGraphs: ({
+            cpu: true,
+            memory: true,
+            temperature: true,
+            gpu: true
+        })
+
+    function toggleHardwareGraph(metric) {
+        const next = Object.assign({}, hardwareGraphs);
+        next[metric] = !next[metric];
+        hardwareGraphs = next;
+    }
+
     readonly property var hardware: ({
-            // One shared tick drives cpu/memory/temperature so the bar wakes
-            // the CPU once every 2s instead of three times on three timers.
+            // Graphs temporarily raise the shared cadence while visible.
             tickInterval: 2000,
-            memoryEveryNTicks: 2,             // ~4s, matched the old waybar interval
-            temperatureEveryNTicks: 3,        // ~6s
+            graphInterval: 500,
+            memoryEveryNTicks: 2,
+            temperatureEveryNTicks: 3,
+            gpuPath: "/sys/class/drm/card2/device/gpu_busy_percent",
+            // 240 samples * 500ms keeps the same 2-minute window at 2x resolution.
+            historySamples: 240,
+            powerCommand: root.configDir + "/power-mode/power-mode",
+            powerConfig: "/etc/auto-cpufreq.conf",
+            powerPresets: {
+                ultimate: root.configDir + "/power-mode/auto-cpufreq.ultimate.conf",
+                balanced: root.configDir + "/power-mode/auto-cpufreq.balanced.conf"
+            },
             thermalZone: "/sys/class/thermal/thermal_zone0/temp",
             onRightClick: ["kitty", "--class", "wm-floating", "--title", "all_is_kitty", "--hold", "--detach", "sh", "-c", "btop"]
         })
