@@ -13,6 +13,7 @@ Rectangle {
     property color background: Theme.pillBackground
     property real backgroundOpacity: Theme.pillOpacity
     property int paddingH: Theme.pillPaddingH
+    property bool animateWidth: true
 
     implicitWidth: contentItem.width + paddingH * 2
     implicitHeight: Theme.barHeight - Theme.pillMarginV * 2
@@ -20,6 +21,7 @@ Rectangle {
     radius: Theme.pillRadius
     color: background
     opacity: backgroundOpacity
+    clip: true
 
     Behavior on color {
         ColorAnimation {
@@ -29,6 +31,7 @@ Rectangle {
     }
 
     Behavior on implicitWidth {
+        enabled: root.animateWidth
         NumberAnimation {
             duration: Theme.durationNormal
             easing.type: Theme.easingEmphasized

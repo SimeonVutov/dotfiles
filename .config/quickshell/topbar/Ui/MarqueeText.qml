@@ -15,6 +15,7 @@ Item {
 
     readonly property real overflow: Math.max(0, label.implicitWidth - width)
     readonly property bool shouldScroll: overflow > 1
+    readonly property int cycleDuration: startPause + endPause + Math.round((overflow + width + repeatGap) / pixelsPerSecond * 1000)
 
     implicitHeight: label.implicitHeight
     clip: true
@@ -22,14 +23,23 @@ Item {
     function restart() {
         scroll.stop();
         ticker.x = 0;
-        if (shouldScroll && visible)
-            scroll.start();
+        Qt.callLater(function () {
+            if (root.shouldScroll && root.visible)
+                scroll.start();
+        });
     }
 
-    onTextChanged: Qt.callLater(restart)
-    onRestartKeyChanged: Qt.callLater(restart)
-    onWidthChanged: Qt.callLater(restart)
-    onVisibleChanged: restart()
+    onTextChanged: restart()
+    onRestartKeyChanged: restart()
+    onWidthChanged: restart()
+    onVisibleChanged: {
+        if (visible)
+            restart();
+        else {
+            scroll.stop();
+            ticker.x = 0;
+        }
+    }
 
     Item {
         id: ticker

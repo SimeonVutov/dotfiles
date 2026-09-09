@@ -11,6 +11,9 @@ PopupWindow {
     property bool open: false
     property int panelWidth: 320
     property int panelHeight: layout.implicitHeight + contentPadding * 2
+    property bool animateHeight: false
+    property bool smoothAnchorMovement: false
+    property real anchorOffsetX: anchorItem ? Math.round((anchorItem.width - panelWidth) / 2) : 0
     property int contentPadding: Theme.popupPadding
     property alias columns: layout.columns
     property alias rowSpacing: layout.rowSpacing
@@ -31,8 +34,16 @@ PopupWindow {
         open = false;
     }
 
+    Behavior on anchorOffsetX {
+        enabled: root.smoothAnchorMovement && root.open
+        SmoothedAnimation {
+            duration: Theme.durationFast
+            easing.type: Theme.easingEmphasized
+        }
+    }
+
     anchor.item: anchorItem
-    anchor.rect.x: anchorItem ? Math.round((anchorItem.width - panelWidth) / 2) : 0
+    anchor.rect.x: anchorOffsetX
     anchor.rect.y: anchorItem ? anchorItem.height + gap : 0
     anchor.edges: Edges.Top | Edges.Left
     anchor.gravity: Edges.Bottom | Edges.Right
@@ -41,6 +52,14 @@ PopupWindow {
     implicitWidth: panelWidth
     implicitHeight: panelHeight
     color: "transparent"
+
+    Behavior on panelHeight {
+        enabled: root.animateHeight
+        NumberAnimation {
+            duration: Theme.durationNormal
+            easing.type: Theme.easingEmphasized
+        }
+    }
 
     // Stays mapped until the close animation has finished playing out.
     visible: open || panel.opacity > 0.01
@@ -61,6 +80,7 @@ PopupWindow {
         color: Theme.popupBackground
         border.color: Theme.popupBorder
         border.width: 1
+        clip: root.animateHeight
 
         opacity: root.open ? Theme.popupOpacity : 0
         scale: root.open ? 1 : 0.96

@@ -9,6 +9,7 @@ BarModule {
     Pill {
         id: pill
         paddingH: 12
+        animateWidth: false
         Row {
             spacing: 12
             Item {
