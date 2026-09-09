@@ -66,7 +66,11 @@ Singleton {
         })
 
     readonly property var media: ({
-            textWidth: 250,                   // ≈ the 30 characters waybar reserved
+            textWidth: 250,
+            animationStepDuration: 420,
+            scrollPixelsPerSecond: 32,
+            scrollStartPause: 1100,
+            scrollEndPause: 700,
             separator: " - "
         })
 }
