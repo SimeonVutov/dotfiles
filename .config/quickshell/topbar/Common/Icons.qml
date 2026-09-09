@@ -34,6 +34,7 @@ Singleton {
 
     // Network
     readonly property string wifi: cp(0xf1eb)
+    readonly property string wifiDisabled: cp(0xf092d)
     readonly property string ethernet: cp(0xf0200)
 
     // Bluetooth
