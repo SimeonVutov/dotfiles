@@ -43,8 +43,43 @@ Item {
     }
     onPresentingChanged: {
         arrivalAnimation.stop();
+        departureAnimation.stop();
         root.armed = false;
         root.arrival = 0;
+        root.departure = 0;
+    }
+
+    // Cancelling runs the collapse in reverse: a Big Bang blows the void open
+    // from the singularity and hands the desktop back. The window only goes
+    // away once this finishes, via dismissed().
+    property real departure: 0
+    readonly property bool departing: departureAnimation.running
+
+    function dismiss() {
+        if (root.departing)
+            return;
+        // Cancelling mid-open is an abort, not a set piece: the vortex is still
+        // drawing the desktop on top of the void, so a blast underneath it
+        // would be invisible until the vortex snapped away. Just close.
+        if (root.arrival < 1) {
+            root.dismissed();
+            return;
+        }
+        departureAnimation.restart();
+    }
+
+    NumberAnimation {
+        id: departureAnimation
+        target: root
+        property: "departure"
+        from: 0
+        to: 1
+        duration: 400
+        // Linear on purpose: the shader's own curve front-loads the blast, and
+        // easing it again here finished the whole thing in the first ~20% and
+        // left the rest of the animation as dead time before the window went.
+        easing.type: Easing.Linear
+        onFinished: root.dismissed()
     }
     // No capture means nothing to swirl: fall back to the rings rather than
     // holding an invisible window open forever.
@@ -140,7 +175,7 @@ Item {
             if (root.armedAction)
                 root.armedAction = "";
             else
-                dismissed();
+                dismiss();
         } else {
             const index = actions.findIndex(a => a.key === event.text.toUpperCase());
             if (index < 0)
@@ -153,6 +188,18 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Theme.abyss
+        // Handing over to the blast is seamless: at progress 0 the shader is
+        // opaque black too. Keeping the shader mounted instead of swapping
+        // costs a wasted full-screen pass under the vortex every frame, which
+        // is enough to make the open animation stutter.
+        visible: root.departure === 0
+    }
+    ShaderEffect {
+        anchors.fill: parent
+        visible: root.departure > 0
+        property real progress: root.departure
+        property real aspect: width / Math.max(1, height)
+        fragmentShader: Qt.resolvedUrl("shaders/bigbang.frag.qsb")
     }
     ArrivalEffect {
         anchors.fill: parent
@@ -164,7 +211,7 @@ Item {
         id: sectors
         anchors.fill: parent
         hoverEnabled: true
-        enabled: root.arrival >= 1 && !root.busy
+        enabled: root.arrival >= 1 && !root.busy && !root.departing
         function indexAt(x, y) {
             const point = mapToItem(scene, x, y);
             return root.sectorAt(point.x, point.y);
@@ -188,8 +235,10 @@ Item {
         readonly property real reveal: Math.max(0, Math.min(1, (root.arrival - 0.72) / 0.28))
         // Expand concentrically from the core; keep every action at its final angle.
         readonly property real expansion: 1 - Math.pow(1 - reveal, 3)
-        scale: Math.min(1, (root.width - 24) / width, (root.height - 24) / height) * (0.015 + 0.985 * expansion)
-        opacity: Math.min(1, reveal * 8)
+        // The blast throws the menu outward with everything else. It goes with
+        // the leading edge, so it is gone before the front clears the corners.
+        scale: Math.min(1, (root.width - 24) / width, (root.height - 24) / height) * (0.015 + 0.985 * expansion) * (1 + 5.0 * Math.pow(root.departure, 0.7))
+        opacity: Math.min(1, reveal * 8) * (1 - Math.min(1, Math.pow(root.departure, 0.55) * 2.6))
         layer.enabled: root.arrival < 1
         layer.effect: ShaderEffect {
             property real progress: scene.reveal
@@ -387,10 +436,11 @@ Item {
                     }
                 }
                 activeFocusOnTab: true
-                enabled: !root.busy
+                enabled: !root.busy && !root.departing
                 Keys.onSpacePressed: root.keyboardChoose(modelData.name, planet.index)
                 Keys.onReturnPressed: root.keyboardChoose(modelData.name, planet.index)
             }
         }
     }
+
 }
