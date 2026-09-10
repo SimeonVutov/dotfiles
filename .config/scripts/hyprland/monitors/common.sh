@@ -44,7 +44,7 @@ load_monitors() {
         .[] | [
             .name, .description, .width, .height, .refreshRate,
             .scale, .mirrorOf, .disabled,
-            (.availableModes | join(""))
+            (.availableModes | join("\u001f"))
         ] | @tsv
     ')
 }
@@ -85,6 +85,34 @@ valid_custom_mode() {
     [[ "$1" =~ ^[0-9]+x[0-9]+@[0-9]+(\.[0-9]+)?$ ]]
 }
 
+# Common desktop resolutions offered alongside whatever the monitor itself
+# advertises, largest first — covers panels whose EDID under-reports what
+# they actually accept (the same reason Custom exists at all).
+COMMON_RESOLUTIONS=(3840x2160 3440x1440 2560x1440 2560x1080 1920x1200 1920x1080 1680x1050 1600x900 1366x768 1280x720)
+
+# Fallback refresh rates, used only when the chosen resolution isn't one of
+# the monitor's own advertised modes and so has no known rates to offer.
+COMMON_REFRESH_RATES=(240 165 144 120 90 75 60)
+
+# Unique WxH values out of a monitor's own advertised modes, largest first.
+resolutions_for() {
+    printf '%s\n' "${MON_MODES[$1]}" | sed -E 's/@.*$//' | sort -u | \
+        awk -F x '{ printf "%d\t%s\n", ($1 * $2), $0 }' | sort -t$'\t' -k1,1nr | cut -f2-
+}
+
+# Refresh rates the monitor advertises for one exact WxH, descending.
+refreshes_for() {
+    printf '%s\n' "${MON_MODES[$1]}" | grep -F "${2}@" | sed -E 's/^[0-9]+x[0-9]+@//; s/Hz$//' | sort -rn -u
+}
+
+valid_resolution() {
+    [[ "$1" =~ ^[0-9]+x[0-9]+$ ]]
+}
+
+valid_refresh() {
+    [[ "$1" =~ ^[0-9]+(\.[0-9]+)?$ ]]
+}
+
 # -----------------------------------------------------
 # Rofi
 # -----------------------------------------------------
@@ -96,22 +124,47 @@ rofi_menu() {
         -theme-str 'listview { columns: 1; lines: 8; } element { orientation: horizontal; } element-icon { size: 0px; }'
 }
 
-rofi_input() {
-    local prompt="$1"
-    printf '' | rofi -dmenu -p "$prompt" \
-        -theme "$ROFI_THEME" \
-        -theme-str 'listview { lines: 0; } element-icon { size: 0px; }'
-}
 
+# Two steps instead of one free-typed "WIDTHxHEIGHT@REFRESH" string: pick a
+# resolution from a list (the monitor's own modes plus common presets), then
+# pick a refresh rate for it (the monitor's own known rates for that exact
+# resolution, or a curated fallback). rofi's dmenu mode still accepts free
+# text typed over the list, so an unlisted resolution or rate still works —
+# it's just no longer the only way in.
 prompt_custom_mode() {
-    local name="$1" custom
-    custom="$(rofi_input "Custom mode for $name, e.g. 2560x1440@144")"
-    [[ -z "$custom" ]] && return 1
-    if ! valid_custom_mode "$custom"; then
-        notify "Invalid mode" "Expected WIDTHxHEIGHT@REFRESH, e.g. 2560x1440@144. Got: $custom"
+    local name="$1" res hz known offered=()
+    local -A seen=()
+
+    known="$(resolutions_for "$name")"
+    while IFS= read -r res; do
+        [[ -n "$res" ]] || continue
+        offered+=("$res")
+        seen[$res]=1
+    done <<< "$known"
+    for res in "${COMMON_RESOLUTIONS[@]}"; do
+        [[ -n "${seen[$res]:-}" ]] || offered+=("$res")
+    done
+
+    res="$(printf '%s
+' "${offered[@]}" | rofi_menu "Resolution for $name")"
+    [[ -z "$res" ]] && return 1
+    if ! valid_resolution "$res"; then
+        notify "Invalid resolution" "Expected WIDTHxHEIGHT, e.g. 2560x1440. Got: $res"
         return 1
     fi
-    printf '%s' "$custom"
+
+    known="$(refreshes_for "$name" "$res")"
+    [[ -n "$known" ]] || known="$(printf '%s
+' "${COMMON_REFRESH_RATES[@]}")"
+    hz="$(printf '%s
+' "$known" | rofi_menu "Refresh rate for $res")"
+    [[ -z "$hz" ]] && return 1
+    if ! valid_refresh "$hz"; then
+        notify "Invalid refresh rate" "Expected a number, e.g. 144. Got: $hz"
+        return 1
+    fi
+
+    printf '%s@%s' "$res" "$hz"
 }
 
 # -----------------------------------------------------
