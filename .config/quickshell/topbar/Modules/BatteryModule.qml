@@ -12,7 +12,8 @@ BarModule {
     readonly property var device: UPower.displayDevice
     readonly property bool present: !!device && device.ready && device.isPresent && device.isLaptopBattery
     readonly property int percent: device ? Math.round(device.percentage * 100) : 0
-    readonly property bool charging: !!device && (device.state === UPowerDeviceState.Charging || device.state === UPowerDeviceState.FullyCharged || device.state === UPowerDeviceState.PendingCharge)
+    readonly property bool fullyCharged: !!device && device.state === UPowerDeviceState.FullyCharged
+    readonly property bool charging: !!device && !fullyCharged && (device.state === UPowerDeviceState.Charging || device.state === UPowerDeviceState.PendingCharge)
 
     readonly property bool critical: present && !charging && percent <= Config.battery.criticalThreshold
     readonly property bool warning: present && !charging && !critical && percent <= Config.battery.warningThreshold
@@ -25,16 +26,29 @@ BarModule {
 
         background: root.critical ? Theme.criticalBackground : (root.warning ? Theme.warningBackground : Theme.pillBackground)
 
-        BarText {
-            text: {
-                if (!root.device)
-                    return "";
-                if (root.charging)
-                    return root.percent + "%  " + Icons.batteryCharging;
-                const index = Math.max(0, Math.min(Icons.batteryLevels.length - 1, Math.floor(root.percent / 100 * Icons.batteryLevels.length)));
-                return root.percent + "% " + Icons.batteryLevels[index];
+        Row {
+            spacing: 5
+
+            BarText {
+                text: root.device ? root.percent + "%" : ""
             }
-            color: root.critical ? Theme.criticalText : (root.warning ? Theme.warningText : Theme.text)
+
+            Item {
+                width: 22
+                height: parent.height
+
+                BarText {
+                    anchors.centerIn: parent
+                    text: {
+                        if (root.fullyCharged)
+                            return Icons.batteryLevels[Icons.batteryLevels.length - 1];
+                        if (root.charging)
+                            return Icons.batteryCharging;
+                        const index = Math.max(0, Math.min(Icons.batteryLevels.length - 1, Math.floor(root.percent / 100 * Icons.batteryLevels.length)));
+                        return Icons.batteryLevels[index];
+                    }
+                }
+            }
         }
     }
 
