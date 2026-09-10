@@ -149,7 +149,7 @@
     // Power Menu
     "custom/exit": {
         "format": "",
-        "on-click": "wlogout",
+        "on-click": "~/.config/scripts/session-menu.sh",
         "tooltip-format": "Power Menu"
     },
 

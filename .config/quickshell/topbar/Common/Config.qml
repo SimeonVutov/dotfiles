@@ -72,7 +72,7 @@ Singleton {
         })
 
     readonly property var power: ({
-            onClick: ["wlogout"]
+            onClick: [root.configDir + "/scripts/session-menu.sh"]
         })
 
     readonly property var workspaces: ({
