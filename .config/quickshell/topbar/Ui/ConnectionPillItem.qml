@@ -19,13 +19,7 @@ Rectangle {
     implicitWidth: Math.max(minimumWidth, 28 + labelWidth + (labelWidth > 0 ? 8 : 0))
     implicitHeight: 25
     radius: 8
-    color: mouse.containsMouse || mouse.pressed ? Theme.popupSurface : "transparent"
-
-    Behavior on color {
-        ColorAnimation {
-            duration: Theme.durationFast
-        }
-    }
+    color: "transparent"
     Behavior on width {
         NumberAnimation {
             duration: Theme.durationFast
