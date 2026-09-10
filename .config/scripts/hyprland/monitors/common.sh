@@ -124,15 +124,28 @@ rofi_menu() {
         -theme-str 'listview { columns: 1; lines: 8; } element { orientation: horizontal; } element-icon { size: 0px; }'
 }
 
+# A candidate-free prompt, for typing a value verbatim. rofi's dmenu mode
+# lets you type over a populated list too, but if what you type shares
+# characters with a real entry (near-guaranteed for "WIDTHxHEIGHT" strings),
+# rofi may highlight that entry and plain Enter accepts the highlight, not
+# your literal text. An empty list has nothing to highlight, so Enter always
+# returns exactly what was typed — the same guarantee the outer "Custom..."
+# option already relies on.
+rofi_input() {
+    local prompt="$1"
+    printf '' | rofi -dmenu -p "$prompt" \
+        -theme "$ROFI_THEME" \
+        -theme-str 'listview { lines: 0; } element-icon { size: 0px; }'
+}
 
 # Two steps instead of one free-typed "WIDTHxHEIGHT@REFRESH" string: pick a
 # resolution from a list (the monitor's own modes plus common presets), then
 # pick a refresh rate for it (the monitor's own known rates for that exact
-# resolution, or a curated fallback). rofi's dmenu mode still accepts free
-# text typed over the list, so an unlisted resolution or rate still works —
-# it's just no longer the only way in.
+# resolution, or a curated fallback). Each list carries its own "Custom..."
+# entry, which always drops to rofi_input for a guaranteed-literal typed
+# value — so 100, 165, or any other number not in the list still works.
 prompt_custom_mode() {
-    local name="$1" res hz known offered=()
+    local name="$1" res hz pick known offered=()
     local -A seen=()
 
     known="$(resolutions_for "$name")"
@@ -145,20 +158,29 @@ prompt_custom_mode() {
         [[ -n "${seen[$res]:-}" ]] || offered+=("$res")
     done
 
-    res="$(printf '%s
-' "${offered[@]}" | rofi_menu "Resolution for $name")"
-    [[ -z "$res" ]] && return 1
+    pick="$({ printf 'Custom...\n'; printf '%s\n' "${offered[@]}"; } | rofi_menu "Resolution for $name")"
+    [[ -z "$pick" ]] && return 1
+    if [[ "$pick" == "Custom..." ]]; then
+        res="$(rofi_input "Resolution for $name, e.g. 2560x1440")"
+        [[ -z "$res" ]] && return 1
+    else
+        res="$pick"
+    fi
     if ! valid_resolution "$res"; then
         notify "Invalid resolution" "Expected WIDTHxHEIGHT, e.g. 2560x1440. Got: $res"
         return 1
     fi
 
     known="$(refreshes_for "$name" "$res")"
-    [[ -n "$known" ]] || known="$(printf '%s
-' "${COMMON_REFRESH_RATES[@]}")"
-    hz="$(printf '%s
-' "$known" | rofi_menu "Refresh rate for $res")"
-    [[ -z "$hz" ]] && return 1
+    [[ -n "$known" ]] || known="$(printf '%s\n' "${COMMON_REFRESH_RATES[@]}")"
+    pick="$(printf 'Custom...\n%s\n' "$known" | rofi_menu "Refresh rate for $res")"
+    [[ -z "$pick" ]] && return 1
+    if [[ "$pick" == "Custom..." ]]; then
+        hz="$(rofi_input "Refresh rate for $res, e.g. 100")"
+        [[ -z "$hz" ]] && return 1
+    else
+        hz="$pick"
+    fi
     if ! valid_refresh "$hz"; then
         notify "Invalid refresh rate" "Expected a number, e.g. 144. Got: $hz"
         return 1
