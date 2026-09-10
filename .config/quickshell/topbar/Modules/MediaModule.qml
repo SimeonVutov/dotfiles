@@ -6,15 +6,17 @@ import qs.Popups
 
 BarModule {
     id: root
+
     Pill {
         id: pill
         paddingH: 12
         animateWidth: false
         Row {
-            spacing: 12
+            spacing: Players.hasPlayer ? 12 : 6
             Item {
-                width: Players.hasPlayer ? Config.media.textWidth : 100
+                width: Players.hasPlayer ? Config.media.textWidth : 0
                 height: 25
+                clip: true
                 anchors.verticalCenter: parent.verticalCenter
                 Behavior on width {
                     NumberAnimation {
@@ -27,6 +29,7 @@ BarModule {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     playing: Players.isPlaying && root.visible
+                    visible: Players.hasPlayer
                     stepDuration: Config.media.animationStepDuration
                 }
                 MarqueeText {
@@ -34,7 +37,8 @@ BarModule {
                     anchors.leftMargin: 10
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Players.label || Players.identity || "Media"
+                    text: Players.label || "Nothing playing"
+                    visible: Players.hasPlayer
                     restartKey: Players.trackKey
                     fontSize: Theme.fontSizeSmall
                     color: titleMouse.containsMouse || Players.isPlaying ? Theme.text : Theme.popupSubtleText
@@ -47,11 +51,12 @@ BarModule {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    enabled: Players.hasPlayer
                     onClicked: mediaPopup.toggle()
                 }
             }
             Rectangle {
-                width: 1
+                width: Players.hasPlayer ? 1 : 0
                 height: 14
                 anchors.verticalCenter: parent.verticalCenter
                 color: Theme.popupBorder
