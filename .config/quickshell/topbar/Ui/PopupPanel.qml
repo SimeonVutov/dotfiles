@@ -10,7 +10,8 @@ PopupWindow {
     property Item anchorItem: null
     property bool open: false
     property int panelWidth: 320
-    property int panelHeight: layout.implicitHeight + contentPadding * 2
+    property int minimumPanelHeight: 0
+    property int panelHeight: Math.max(minimumPanelHeight, layout.implicitHeight + contentPadding * 2)
     property bool animateHeight: false
     property bool smoothAnchorMovement: false
     property real anchorOffsetX: anchorItem ? Math.round((anchorItem.width - panelWidth) / 2) : 0

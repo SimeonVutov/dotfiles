@@ -1,13 +1,10 @@
 import QtQuick
-import Quickshell
 import Quickshell.Services.Pipewire
 import qs.Common
 import qs.Ui
+import qs.Popups
 
-// Output (and input) volume, live from PipeWire.
-//
-// Scrolling adjusts whichever half the pointer is over — the output reading or
-// the mic reading. Clicking either opens pulsemixer.
+// Scrolling adjusts the output or input under the pointer; clicking opens its panel.
 BarModule {
     id: root
 
@@ -56,15 +53,19 @@ BarModule {
     }
 
     Pill {
+        id: pill
+
         Row {
-            spacing: 0
+            spacing: 4
 
             BarText {
+                leftPadding: Theme.groupItemPaddingH
+                rightPadding: Theme.groupItemPaddingH
                 text: {
                     if (!root.sinkReady)
                         return "";
                     if (root.sinkMuted)
-                        return Icons.volumeMuted;
+                        return root.sinkVolume + "% " + Icons.volumeMuted;
                     const icon = root.sinkIsBluetooth ? root.volumeIcon + Icons.bluetooth : root.volumeIcon;
                     return root.sinkVolume + "% " + icon;
                 }
@@ -72,26 +73,40 @@ BarModule {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Quickshell.execDetached(Config.volume.onClick)
+                    onClicked: audioPopup.showTab("output")
                     onWheel: wheel => root.adjust(root.sink, root.notchesFrom(wheel))
                 }
             }
 
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 1
+                height: 16
+                color: Theme.popupBorder
+            }
+
             BarText {
+                leftPadding: Theme.groupItemPaddingH
+                rightPadding: Theme.groupItemPaddingH
                 font.pixelSize: Theme.fontSizeSmall
                 text: {
                     if (!root.sourceReady)
                         return "";
-                    return root.sourceMuted ? " " + Icons.microphoneMuted : " " + root.sourceVolume + "% " + Icons.microphone;
+                    return root.sourceVolume + "% " + (root.sourceMuted ? Icons.microphoneMuted : Icons.microphone);
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Quickshell.execDetached(Config.volume.onClick)
+                    onClicked: audioPopup.showTab("input")
                     onWheel: wheel => root.adjust(root.source, root.notchesFrom(wheel))
                 }
             }
         }
+    }
+
+    AudioPopup {
+        id: audioPopup
+        anchorItem: pill
     }
 }

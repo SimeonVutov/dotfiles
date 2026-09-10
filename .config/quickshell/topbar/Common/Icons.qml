@@ -52,6 +52,9 @@ Singleton {
     readonly property string car: cp(0xf1b9)
     readonly property string microphone: cp(0xf130)
     readonly property string microphoneMuted: cp(0xf131)
+    readonly property string audioOutput: cp(0xf028)
+    readonly property string audioInput: cp(0xf130)
+    readonly property string audioProfile: cp(0xf1de)
 
     // Media transport
     readonly property string mediaPrevious: cp(0xf04d5)

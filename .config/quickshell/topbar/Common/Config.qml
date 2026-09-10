@@ -60,7 +60,6 @@ Singleton {
         })
 
     readonly property var volume: ({
-            onClick: ["kitty", "--title", "pulsemixer", "-e", "pulsemixer"],
             // Scrolling over the output part changes the output, over the mic
             // part changes the mic. 1% per notch is what waybar defaulted to.
             scrollStep: 1,
