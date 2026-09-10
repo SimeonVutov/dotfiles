@@ -2,20 +2,23 @@ import QtQuick
 import qs.Common
 import qs.Services
 
-Rectangle {
+Item {
     id: root
+
     required property string metric
     required property string label
     required property string valueLabel
     required property color accent
+    property string icon: ""
     property real maximum: 100
     property bool consuming: false
     readonly property bool graphEnabled: !!Config.hardwareGraphs[metric]
     readonly property bool watching: consuming && graphEnabled
     property bool subscribed: false
-    implicitHeight: graphEnabled ? 92 : 44
-    radius: 12
-    color: Theme.popupSurface
+
+    implicitHeight: graphEnabled ? 78 : 30
+    clip: true
+
     Behavior on implicitHeight {
         NumberAnimation {
             duration: Theme.durationFast
@@ -29,38 +32,41 @@ Rectangle {
         SysMon.watchGraph(metric, watching);
         subscribed = watching;
     }
+
     onWatchingChanged: syncSubscription()
     Component.onCompleted: syncSubscription()
     Component.onDestruction: if (subscribed)
         SysMon.watchGraph(metric, false)
 
     Item {
-        x: 14
-        y: 12
-        width: parent.width - 28
-        height: 20
+        width: parent.width
+        height: 30
+
         Rectangle {
-            width: 5
-            height: 5
-            radius: 3
+            width: 4
+            height: 4
+            radius: 2
             anchors.verticalCenter: parent.verticalCenter
             color: root.graphEnabled ? root.accent : Theme.popupSubtleText
         }
+
         BarText {
-            x: 13
+            x: 12
             anchors.verticalCenter: parent.verticalCenter
-            text: root.label
+            text: root.icon ? root.icon + "  " + root.label : root.label
             color: root.graphEnabled ? Theme.popupText : Theme.popupSubtleText
             font.pixelSize: 13
         }
+
         BarText {
             anchors.right: toggle.left
-            anchors.rightMargin: 16
+            anchors.rightMargin: 14
             anchors.verticalCenter: parent.verticalCenter
             text: root.graphEnabled ? root.valueLabel : "Hidden"
             color: root.graphEnabled ? Theme.popupText : Theme.popupSubtleText
-            font.pixelSize: 14
+            font.pixelSize: 13
         }
+
         Rectangle {
             id: toggle
             anchors.right: parent.right
@@ -69,6 +75,7 @@ Rectangle {
             height: 16
             radius: 8
             color: root.graphEnabled ? Qt.alpha(root.accent, 0.25) : Theme.popupBorder
+
             Rectangle {
                 x: root.graphEnabled ? 14 : 3
                 y: 3
@@ -76,6 +83,7 @@ Rectangle {
                 height: 10
                 radius: 5
                 color: root.graphEnabled ? Theme.popupAccent : Theme.popupSubtleText
+
                 Behavior on x {
                     NumberAnimation {
                         duration: Theme.durationFast
@@ -83,22 +91,30 @@ Rectangle {
                 }
             }
         }
+
         MouseArea {
             anchors.fill: parent
-            anchors.margins: -6
             cursorShape: Qt.PointingHandCursor
             onClicked: Config.toggleHardwareGraph(root.metric)
         }
     }
-    StripChart {
-        x: 14
-        y: 40
-        width: parent.width - 28
-        height: Math.max(0, parent.height - y - 10)
+
+    Rectangle {
+        x: 0
+        y: 30
+        width: parent.width
+        height: 42
+        radius: 9
+        color: Theme.popupSurface
         visible: root.graphEnabled
-        active: root.watching
-        samples: SysMon.histories[root.metric]
-        accent: root.accent
-        maximum: root.maximum
+
+        StripChart {
+            anchors.fill: parent
+            anchors.margins: 8
+            active: root.watching
+            samples: SysMon.histories[root.metric]
+            accent: root.accent
+            maximum: root.maximum
+        }
     }
 }

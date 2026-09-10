@@ -28,7 +28,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: trigger.containsMouse || root.expanded ? Theme.popupSurface : "transparent"
+        color: trigger.containsMouse || root.expanded ? Theme.popupBorder : Theme.popupSurface
         opacity: root.interactive ? 1 : 0.5
         Behavior on color {
             ColorAnimation {
@@ -41,7 +41,7 @@ Item {
             width: 34
             height: 34
             radius: 17
-            color: Theme.popupSurface
+            color: Theme.popupBackground
             BarText {
                 anchors.centerIn: parent
                 text: root.currentIcon
