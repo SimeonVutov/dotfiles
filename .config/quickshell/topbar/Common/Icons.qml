@@ -15,7 +15,6 @@ Singleton {
     // Hardware
     readonly property string cpu: cp(0xf035b)
     readonly property string memory: cp(0xf0f85)
-    readonly property string memoryTooltip: cp(0xe266)
     readonly property string temperature: cp(0xf2c9)
 
     readonly property string gpu: cp(0xf0253)
@@ -47,9 +46,6 @@ Singleton {
     readonly property var volumeLevels: [cp(0xf026), cp(0xf027), cp(0xf028)]
     readonly property string volumeMuted: cp(0xf466)
     readonly property string headphone: cp(0xf025)
-    readonly property string handsFree: cp(0xf118f)
-    readonly property string phone: cp(0xf095)
-    readonly property string car: cp(0xf1b9)
     readonly property string microphone: cp(0xf130)
     readonly property string microphoneMuted: cp(0xf131)
     readonly property string audioOutput: cp(0xf028)
@@ -65,6 +61,4 @@ Singleton {
 
     // Misc
     readonly property string power: cp(0xf011)
-    readonly property string person: cp(0xf007)
-    readonly property string clock: cp(0xf017)
 }
