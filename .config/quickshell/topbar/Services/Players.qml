@@ -31,7 +31,6 @@ Singleton {
 
     readonly property string title: activePlayer ? (activePlayer.trackTitle || "") : ""
     readonly property string artist: activePlayer ? (activePlayer.trackArtist || "") : ""
-    readonly property string album: activePlayer ? (activePlayer.trackAlbum || "") : ""
     readonly property string artUrl: activePlayer ? (activePlayer.trackArtUrl || "") : ""
     readonly property string identity: activePlayer ? (activePlayer.identity || "") : ""
 

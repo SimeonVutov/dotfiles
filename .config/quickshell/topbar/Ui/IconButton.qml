@@ -12,6 +12,8 @@ Item {
     property color color: Theme.text
     property bool enabled: true
     property real disabledOpacity: 0.35
+    property real pressedScale: 0.88
+    property real hoverScale: 1.15
     property alias containsMouse: mouseArea.containsMouse
 
     signal clicked
@@ -41,7 +43,7 @@ Item {
         // glyph. QtRendering scales cleanly since it isn't hint-locked.
         renderType: Text.QtRendering
 
-        scale: mouseArea.pressed ? 0.88 : (mouseArea.containsMouse && root.enabled ? 1.15 : 1)
+        scale: mouseArea.pressed ? root.pressedScale : (mouseArea.containsMouse && root.enabled ? root.hoverScale : 1)
 
         Behavior on scale {
             NumberAnimation {

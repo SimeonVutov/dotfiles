@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Ui
 import QtQuick.Controls.Basic
 import qs.Common
 
@@ -29,7 +30,7 @@ Button {
             anchors.verticalCenter: parent.verticalCenter
             width: 30
             text: root.glyph
-            font.pixelSize: 20
+            font.pixelSize: Theme.fontSizeXLarge
             color: root.powered ? Theme.popupText : Theme.popupSubtleText
         }
         Column {
@@ -41,14 +42,14 @@ Button {
             spacing: 4
             BarText {
                 text: root.heading
-                font.pixelSize: 14
+                font.pixelSize: Theme.fontSizeSmall
                 font.bold: true
             }
             BarText {
                 width: parent.width
                 text: root.subtitle
                 color: Theme.popupSubtleText
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSizeTiny
                 elide: Text.ElideRight
             }
         }
@@ -59,34 +60,14 @@ Button {
             spacing: 8
             BarText {
                 text: root.powered ? "On" : "Off"
-                font.pixelSize: 12
+                font.pixelSize: Theme.fontSizeCaption
                 color: root.powered ? Theme.popupText : Theme.popupSubtleText
             }
-            Rectangle {
-                width: 30
-                height: 16
-                radius: 8
+            ToggleSwitch {
                 anchors.verticalCenter: parent.verticalCenter
-                color: root.powered ? Theme.popupAccent : Theme.popupBorder
-                Rectangle {
-                    x: root.powered ? 17 : 3
-                    y: 3
-                    width: 10
-                    height: 10
-                    radius: 5
-                    color: root.powered ? Theme.popupBackground : Theme.popupSubtleText
-                    Behavior on x {
-                        NumberAnimation {
-                            duration: Theme.durationFast
-                            easing.type: Theme.easingEmphasized
-                        }
-                    }
-                }
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Theme.durationFast
-                    }
-                }
+                on: root.powered
+                animateTrackColor: true
+                knobEasing: Theme.easingEmphasized
             }
         }
     }

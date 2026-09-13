@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import Quickshell
@@ -7,12 +9,17 @@ import Quickshell.Wayland
 PanelWindow {
     id: root
 
-    anchors { top: true; bottom: true; left: true; right: true }
+    anchors {
+        top: true
+        bottom: true
+        left: true
+        right: true
+    }
+
     exclusiveZone: -1
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
     WlrLayershell.namespace: "quickshell:wallpaper-picker"
-
     visible: false
     color: "transparent"
 
@@ -21,11 +28,39 @@ PanelWindow {
     readonly property string paletteScript: home + "/.config/scripts/wallpaper-palette.sh"
     readonly property string indexScript: home + "/.config/scripts/wallpaper-index-json.py"
 
-    readonly property int itemWidth: 400
-    readonly property int itemHeight: 420
-    readonly property int cardSpacing: 10
-    readonly property int borderWidth: 3
-    readonly property real skewFactor: -0.35
+    QtObject {
+        id: cardAppearance
+        readonly property int cardWidth: 400
+        readonly property int cardHeight: 420
+        readonly property real expandedCardWidth: cardWidth * 1.5
+        readonly property real collapsedCardWidth: cardWidth * 0.5
+        readonly property int expandedCardHeight: cardHeight + 30
+        readonly property int cardSpacing: 10
+        readonly property int borderWidth: 3
+        readonly property real skewFactor: -0.35
+        readonly property int cardTransitionDuration: 260
+        readonly property int cardFadeDuration: 220
+        readonly property int thumbnailMinWidth: 900
+        readonly property int thumbnailMinHeight: 540
+        readonly property real thumbnailResolutionScale: 1.35
+        readonly property int thumbnailOverscan: 80
+        readonly property color placeholderBackdrop: "#0d0d0d"
+        readonly property color badgeScrim: "#99000000"
+        readonly property color appliedBadgeInk: "#10131a"
+        readonly property color nameplateScrim: "#cc000000"
+    }
+
+    readonly property int controlTransitionDuration: 180
+    readonly property int swatchTransitionDuration: 140
+    readonly property int warningOnDuration: 120
+    readonly property int warningOffDuration: 180
+
+    readonly property string wallpaperFocus: "wallpapers"
+    readonly property string paletteFocus: "palette"
+
+    // Ad-hoc UI colors (badges, scrims, placeholders) not from the Catppuccin palette.
+    readonly property color swatchHighlight: "#ffffff"
+    readonly property color autoBadgeBackground: "#111111"
 
     property string currentWallpaper: ""
     property string currentFilter: "All"
@@ -35,68 +70,82 @@ PanelWindow {
     property string selectedColor: ""
     property real warningFlash: 0.0
 
-    property string focusZone: "wallpapers" // wallpapers | palette
-    property int paletteColorFocusIndex: -1 // only indexes inside paletteColors
+    property string focusArea: wallpaperFocus
+    property int paletteColorFocusIndex: -1
 
-    ListModel { id: proxyModel }
+    // Discards palette output that belongs to an earlier selection.
+    property int paletteGeneration: 0
+    property int runningPaletteGeneration: 0
+    property var queuedPaletteRequest: null
+    property string paletteProcessOutput: ""
+
+    ListModel {
+        id: proxyModel
+    }
 
     IpcHandler {
         target: "wallpaper"
+
         function toggle(): void {
-            if (root.visible) root.closePicker()
-            else root.openPicker()
+            if (root.visible)
+                root.closePicker();
+            else
+                root.openPicker();
         }
     }
 
-    MatugenColors { id: theme }
+    MatugenColors {
+        id: theme
+    }
 
     function openPicker() {
-        visible = true
-        initialFocusSet = false
-        selectedColor = ""
-        paletteColors = []
-        focusZone = "wallpapers"
-        paletteColorFocusIndex = -1
-        loadIndex()
+        visible = true;
+        initialFocusSet = false;
+        selectedColor = "";
+        paletteColors = [];
+        focusArea = wallpaperFocus;
+        paletteColorFocusIndex = -1;
+        loadIndex();
 
-        Qt.callLater(function() {
-            view.forceActiveFocus()
-            initialFocusSet = true
-        })
+        Qt.callLater(function () {
+            view.forceActiveFocus();
+            initialFocusSet = true;
+        });
     }
 
     function closePicker() {
-        visible = false
-        selectedColor = ""
-        paletteColors = []
-        paletteLoading = false
-        warningFlash = 0.0
-        focusZone = "wallpapers"
-        paletteColorFocusIndex = -1
-        Qt.callLater(function() {
-            Qt.quit()
-        })
+        visible = false;
+        selectedColor = "";
+        paletteColors = [];
+        paletteLoading = false;
+        paletteGeneration++;
+        queuedPaletteRequest = null;
+        warningFlash = 0.0;
+        focusArea = wallpaperFocus;
+        paletteColorFocusIndex = -1;
+        Qt.callLater(function () {
+            Qt.quit();
+        });
     }
 
     function loadIndex() {
-        indexProc.command = ["python3", indexScript]
-        indexProc.running = true
+        indexProc.command = ["python3", indexScript];
+        indexProc.running = true;
     }
 
     function parseIndexJson(raw) {
-        const text = String(raw || "").trim()
-        proxyModel.clear()
+        const text = String(raw || "").trim();
+        proxyModel.clear();
 
         if (text === "")
-            return
-
+            return;
         try {
-            const data = JSON.parse(text)
-            currentWallpaper = String(data.current || "")
+            const data = JSON.parse(text);
+            currentWallpaper = String(data.current || "");
 
-            const items = Array.isArray(data.items) ? data.items : []
+            const items = Array.isArray(data.items) ? data.items : [];
             for (let i = 0; i < items.length; ++i) {
-                const it = items[i]
+                const it = items[i];
                 proxyModel.append({
                     key: it.key || "",
                     src: it.src || "",
@@ -104,174 +153,207 @@ PanelWindow {
                     frame: it.frame || "",
                     type: String(it.type || "image").trim(),
                     name: it.name || ""
-                })
+                });
             }
 
-            applyFilters(true)
+            applyFilters(true);
         } catch (e) {
-            console.warn("[WallpaperPicker] index parse error:", e)
+            console.warn("[WallpaperPicker] index parse error:", e);
         }
     }
 
-    function checkItemMatchesFilter(item, filterName) {
-        if (!item) return false
-        if (filterName === "All") return true
-        if (filterName === "Video") return item.type === "video"
-        return true
+    function typeMatchesFilter(type, filterName) {
+        if (filterName === "All")
+            return true;
+        if (filterName === "Video")
+            return type === "video";
+        return true;
     }
 
     function findFirstMatchingIndex() {
         for (let i = 0; i < proxyModel.count; ++i) {
-            if (checkItemMatchesFilter(proxyModel.get(i), currentFilter))
-                return i
+            if (typeMatchesFilter(proxyModel.get(i).type, currentFilter))
+                return i;
         }
-        return -1
+        return -1;
     }
 
     function findNearestMatchingIndex(fromIdx) {
         if (proxyModel.count === 0)
-            return -1
+            return -1;
         if (fromIdx < 0)
-            return findFirstMatchingIndex()
+            return findFirstMatchingIndex();
 
-        let best = -1
-        let bestDist = 999999
+        let best = -1;
+        let bestDist = Number.POSITIVE_INFINITY;
         for (let i = 0; i < proxyModel.count; ++i) {
-            if (!checkItemMatchesFilter(proxyModel.get(i), currentFilter))
-                continue
-            const d = Math.abs(i - fromIdx)
+            if (!typeMatchesFilter(proxyModel.get(i).type, currentFilter))
+                continue;
+            const d = Math.abs(i - fromIdx);
             if (d < bestDist) {
-                bestDist = d
-                best = i
+                bestDist = d;
+                best = i;
             }
         }
-        return best
+        return best;
     }
 
     function applyFilters(resetIndex) {
         if (proxyModel.count === 0) {
-            view.currentIndex = -1
-            paletteColors = []
-            selectedColor = ""
-            return
+            view.currentIndex = -1;
+            paletteColors = [];
+            selectedColor = "";
+            return;
         }
 
-        let idx = resetIndex ? findFirstMatchingIndex() : findNearestMatchingIndex(view.currentIndex)
+        let idx = resetIndex ? findFirstMatchingIndex() : findNearestMatchingIndex(view.currentIndex);
         if (idx >= 0)
-            view.currentIndex = idx
+            view.currentIndex = idx;
         else
-            view.currentIndex = -1
+            view.currentIndex = -1;
 
-        requestPaletteForCurrent()
+        requestPaletteForCurrent();
     }
 
     function stepToNextValidIndex(direction) {
         if (proxyModel.count === 0)
-            return
-
-        let idx = view.currentIndex
+            return;
+        let idx = view.currentIndex;
         if (idx < 0)
-            idx = findFirstMatchingIndex()
+            idx = findFirstMatchingIndex();
 
         for (let step = 0; step < proxyModel.count; ++step) {
-            idx = (idx + direction + proxyModel.count) % proxyModel.count
-            if (checkItemMatchesFilter(proxyModel.get(idx), currentFilter)) {
-                view.currentIndex = idx
-                requestPaletteForCurrent()
-                return
+            idx = (idx + direction + proxyModel.count) % proxyModel.count;
+            if (typeMatchesFilter(proxyModel.get(idx).type, currentFilter)) {
+                view.currentIndex = idx;
+                requestPaletteForCurrent();
+                return;
             }
         }
     }
 
     function requestPaletteForCurrent() {
-        selectedColor = ""
-        paletteColors = []
-        paletteLoading = false
-        paletteColorFocusIndex = -1
+        paletteGeneration++;
+        selectedColor = "";
+        paletteColors = [];
+        paletteLoading = false;
+        paletteColorFocusIndex = -1;
+        queuedPaletteRequest = null;
 
         if (view.currentIndex < 0 || view.currentIndex >= proxyModel.count)
-            return
-
-        const item = proxyModel.get(view.currentIndex)
+            return;
+        const item = proxyModel.get(view.currentIndex);
         if (!item)
-            return
+            return;
+        queuedPaletteRequest = {
+            generation: paletteGeneration,
+            source: item.src,
+            type: item.type,
+            frame: item.frame
+        };
+        paletteLoading = true;
+        startQueuedPaletteRequest();
+    }
 
-        paletteProc.command = ["bash", paletteScript, item.src, item.type, item.frame]
-        paletteLoading = true
-        paletteProc.running = true
+    function startQueuedPaletteRequest() {
+        if (paletteProc.running || !queuedPaletteRequest)
+            return;
+        const request = queuedPaletteRequest;
+        queuedPaletteRequest = null;
+        runningPaletteGeneration = request.generation;
+        paletteProcessOutput = "";
+        paletteProc.command = ["bash", paletteScript, request.source, request.type, request.frame];
+        paletteProc.running = true;
+    }
+
+    function acceptPaletteResult(raw) {
+        if (runningPaletteGeneration !== paletteGeneration)
+            return;
+        const cleaned = String(raw || "").trim();
+        paletteLoading = false;
+
+        if (!cleaned) {
+            paletteColors = [];
+            return;
+        }
+
+        try {
+            const colors = JSON.parse(cleaned);
+            paletteColors = Array.isArray(colors) ? colors : [];
+            selectedColor = "";
+
+            if (focusArea === paletteFocus && paletteColorFocusIndex < 0 && paletteColors.length > 0)
+                paletteColorFocusIndex = 0;
+        } catch (error) {
+            console.warn("[WallpaperPicker] Failed to parse palette JSON:", error);
+            paletteColors = [];
+        }
     }
 
     function applyWallpaper(src, color) {
         if (!src)
-            return
-
+            return;
         if (color && String(color).trim() !== "")
-            Quickshell.execDetached(["bash", applyScript, src, color])
+            Quickshell.execDetached(["bash", applyScript, src, color]);
         else
-            Quickshell.execDetached(["bash", applyScript, src])
+            Quickshell.execDetached(["bash", applyScript, src]);
 
-        closePicker()
+        closePicker();
     }
 
     function activatePaletteFocus() {
-        focusZone = "palette"
+        focusArea = paletteFocus;
 
         if (paletteColors.length > 0)
-        paletteColorFocusIndex = 0
+            paletteColorFocusIndex = 0;
         else
-        paletteColorFocusIndex = -1
+            paletteColorFocusIndex = -1;
     }
 
     function returnToWallpapers() {
-        focusZone = "wallpapers"
-        paletteColorFocusIndex = -1
-        view.forceActiveFocus()
+        focusArea = wallpaperFocus;
+        paletteColorFocusIndex = -1;
+        view.forceActiveFocus();
     }
 
     function movePaletteFocus(direction) {
         if (paletteColors.length <= 0)
-            return
-
+            return;
         if (paletteColorFocusIndex < 0)
-            paletteColorFocusIndex = 0
+            paletteColorFocusIndex = 0;
         else
-            paletteColorFocusIndex = (paletteColorFocusIndex + direction + paletteColors.length) % paletteColors.length
+            paletteColorFocusIndex = (paletteColorFocusIndex + direction + paletteColors.length) % paletteColors.length;
     }
 
     function activatePaletteColor() {
         if (paletteColorFocusIndex < 0 || paletteColorFocusIndex >= paletteColors.length)
-            return
-
-        const chosen = paletteColors[paletteColorFocusIndex]
-        selectedColor = chosen
+            return;
+        const chosen = paletteColors[paletteColorFocusIndex];
+        selectedColor = chosen;
 
         if (view.currentIndex >= 0 && view.currentIndex < proxyModel.count) {
-            const item = proxyModel.get(view.currentIndex)
-            applyWallpaper(item.src, chosen)
+            const item = proxyModel.get(view.currentIndex);
+            applyWallpaper(item.src, chosen);
         }
     }
-    
+
     function applyCurrentSelectionOrWarn() {
         if (view.currentIndex < 0 || view.currentIndex >= proxyModel.count)
-        return
-
-        const item = proxyModel.get(view.currentIndex)
+            return;
+        const item = proxyModel.get(view.currentIndex);
         if (!item)
-        return
-
-        // FIRST ENTER → move to palette
-        if (focusZone !== "palette") {
-            activatePaletteFocus()
-            return
+            return;
+        if (focusArea !== paletteFocus) {
+            activatePaletteFocus();
+            return;
         }
 
-        // SECOND ENTER → apply
         if (!selectedColor) {
-            warnAnim.restart()
-            return
+            warnAnim.restart();
+            return;
         }
 
-        applyWallpaper(item.src, selectedColor)
+        applyWallpaper(item.src, selectedColor);
     }
 
     Process {
@@ -280,8 +362,8 @@ PanelWindow {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const raw = (typeof text === "function") ? text() : text
-                root.parseIndexJson(raw)
+                const raw = (typeof text === "function") ? text() : text;
+                root.parseIndexJson(raw);
             }
         }
     }
@@ -291,89 +373,102 @@ PanelWindow {
         running: false
 
         stdout: StdioCollector {
-            onStreamFinished: {
-                const raw = (typeof text === "function") ? text() : text
-                const cleaned = String(raw || "").trim()
-                root.paletteLoading = false
+            onStreamFinished: root.paletteProcessOutput = (typeof text === "function") ? text() : text
+        }
 
-                if (cleaned === "") {
-                    root.paletteColors = []
-                    return
-                }
-
-                try {
-                    const arr = JSON.parse(cleaned)
-                    root.paletteColors = Array.isArray(arr) ? arr : []
-                    
-                    root.selectedColor = ""
-
-                    if (root.focusZone === "palette" && root.paletteColorFocusIndex < 0 && root.paletteColors.length > 0) {
-                        const idx = root.paletteColors.indexOf(root.selectedColor)
-                        root.paletteColorFocusIndex = idx >= 0 ? idx : 0
-                    }
-                } catch (e) {
-                    console.warn("[WallpaperPicker] Failed to parse palette JSON:", e)
-                    root.paletteColors = []
+        onExited: (code, status) => {
+            if (root.runningPaletteGeneration === root.paletteGeneration) {
+                if (code === 0 && status === 0)
+                    root.acceptPaletteResult(root.paletteProcessOutput);
+                else {
+                    root.paletteLoading = false;
+                    root.paletteColors = [];
                 }
             }
+
+            Qt.callLater(root.startQueuedPaletteRequest);
         }
     }
 
     SequentialAnimation {
         id: warnAnim
-        NumberAnimation { target: root; property: "warningFlash"; from: 0.0; to: 1.0; duration: 120 }
-        NumberAnimation { target: root; property: "warningFlash"; from: 1.0; to: 0.0; duration: 180 }
-        NumberAnimation { target: root; property: "warningFlash"; from: 0.0; to: 1.0; duration: 120 }
-        NumberAnimation { target: root; property: "warningFlash"; from: 1.0; to: 0.0; duration: 180 }
+        NumberAnimation {
+            target: root
+            property: "warningFlash"
+            from: 0.0
+            to: 1.0
+            duration: root.warningOnDuration
+        }
+        NumberAnimation {
+            target: root
+            property: "warningFlash"
+            from: 1.0
+            to: 0.0
+            duration: root.warningOffDuration
+        }
+        NumberAnimation {
+            target: root
+            property: "warningFlash"
+            from: 0.0
+            to: 1.0
+            duration: root.warningOnDuration
+        }
+        NumberAnimation {
+            target: root
+            property: "warningFlash"
+            from: 1.0
+            to: 0.0
+            duration: root.warningOffDuration
+        }
     }
 
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (root.focusZone === "palette")
-                root.returnToWallpapers()
+            if (root.focusArea === root.paletteFocus)
+                root.returnToWallpapers();
             else
-                root.closePicker()
+                root.closePicker();
         }
     }
 
     Shortcut {
         sequence: "Left"
         onActivated: {
-            if (root.focusZone === "palette")
-                root.movePaletteFocus(-1)
+            if (root.focusArea === root.paletteFocus)
+                root.movePaletteFocus(-1);
             else
-                root.stepToNextValidIndex(-1)
+                root.stepToNextValidIndex(-1);
         }
     }
 
     Shortcut {
         sequence: "Right"
         onActivated: {
-            if (root.focusZone === "palette")
-                root.movePaletteFocus(1)
+            if (root.focusArea === root.paletteFocus)
+                root.movePaletteFocus(1);
             else
-                root.stepToNextValidIndex(1)
+                root.stepToNextValidIndex(1);
         }
     }
 
     Shortcut {
         sequence: "Return"
         onActivated: {
-            if (root.focusZone === "palette")
-                root.activatePaletteColor()
+            if (root.focusArea === root.paletteFocus)
+                root.activatePaletteColor();
             else
-                root.applyCurrentSelectionOrWarn()
+                root.applyCurrentSelectionOrWarn();
         }
     }
 
     Shortcut {
         sequence: "Enter"
         onActivated: {
-            if (root.focusZone === "palette")
-                root.activatePaletteColor()
+            if (root.focusArea === root.paletteFocus)
+                root.activatePaletteColor();
             else
-                root.applyCurrentSelectionOrWarn()
+                root.applyCurrentSelectionOrWarn();
         }
     }
 
@@ -396,216 +491,51 @@ PanelWindow {
             verticalCenter: parent.verticalCenter
         }
 
-        height: root.itemHeight + 80
+        height: cardAppearance.cardHeight + cardAppearance.thumbnailOverscan
         spacing: 0
         orientation: ListView.Horizontal
         interactive: false
         clip: false
-        focus: root.focusZone === "wallpapers"
+        focus: root.focusArea === root.wallpaperFocus
         model: proxyModel
 
         highlightRangeMode: ListView.StrictlyEnforceRange
-        preferredHighlightBegin: (width / 2) - ((root.itemWidth * 1.5 + root.cardSpacing) / 2)
-        preferredHighlightEnd: (width / 2) + ((root.itemWidth * 1.5 + root.cardSpacing) / 2)
-        highlightMoveDuration: root.initialFocusSet ? 260 : 0
+        preferredHighlightBegin: (width - cardAppearance.expandedCardWidth - cardAppearance.cardSpacing) / 2
+        preferredHighlightEnd: (width + cardAppearance.expandedCardWidth + cardAppearance.cardSpacing) / 2
+        highlightMoveDuration: root.initialFocusSet ? cardAppearance.cardTransitionDuration : 0
 
-        header: Item { width: Math.max(0, (view.width / 2) - (root.itemWidth * 0.75)) }
-        footer: Item { width: Math.max(0, (view.width / 2) - (root.itemWidth * 0.75)) }
+        header: Item {
+            width: Math.max(0, (view.width - cardAppearance.expandedCardWidth) / 2)
+        }
+        footer: Item {
+            width: Math.max(0, (view.width - cardAppearance.expandedCardWidth) / 2)
+        }
 
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.NoButton
-            onWheel: function(wheel) {
-                if (root.focusZone !== "wallpapers") {
-                    wheel.accepted = true
-                    return
+            onWheel: function (wheel) {
+                if (root.focusArea !== root.wallpaperFocus) {
+                    wheel.accepted = true;
+                    return;
                 }
-                let delta = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y)
-                    ? wheel.angleDelta.x
-                    : wheel.angleDelta.y
-                root.stepToNextValidIndex(delta > 0 ? -1 : 1)
-                wheel.accepted = true
+                let delta = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y) ? wheel.angleDelta.x : wheel.angleDelta.y;
+                root.stepToNextValidIndex(delta > 0 ? -1 : 1);
+                wheel.accepted = true;
             }
         }
 
-        delegate: Item {
-            id: card
+        delegate: WallpaperCard {
+            required property int index
 
-            readonly property bool matchesFilter: root.checkItemMatchesFilter(model, root.currentFilter)
-            readonly property bool currentItem: ListView.isCurrentItem
-            readonly property bool isVideo: type === "video"
-            readonly property bool isApplied: src === root.currentWallpaper
-            readonly property real targetW: currentItem ? (root.itemWidth * 1.5) : (root.itemWidth * 0.5)
-            readonly property real targetH: currentItem ? (root.itemHeight + 30) : root.itemHeight
-
-            width: matchesFilter ? (targetW + root.cardSpacing) : 0
-            height: matchesFilter ? targetH : 0
-            visible: width > 1 && height > 1
-            opacity: matchesFilter ? (currentItem ? 1.0 : 0.55) : 0.0
-            z: currentItem ? 10 : 1
-
-            anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-            anchors.verticalCenterOffset: 0
-
-            Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.InOutQuad } }
-            Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.InOutQuad } }
-            Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.InOutQuad } }
-
-            Item {
-                id: inner
-                anchors.centerIn: parent
-                anchors.horizontalCenterOffset: ((root.itemHeight - height) / 2) * root.skewFactor
-                width: parent.width > 0 ? parent.width * (card.targetW / (card.targetW + root.cardSpacing)) : 0
-                height: parent.height
-
-                transform: Matrix4x4 {
-                    property real s: root.skewFactor
-                    matrix: Qt.matrix4x4(1, s, 0, 0,
-                                         0, 1, 0, 0,
-                                         0, 0, 1, 0,
-                                         0, 0, 0, 1)
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: card.matchesFilter
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        view.currentIndex = index
-                        root.requestPaletteForCurrent()
-                        root.returnToWallpapers()
-                    }
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 0
-                    color: Qt.rgba(0, 0, 0, card.currentItem ? 0.28 : 0.18)
-                    scale: 1.02
-                }
-
-                Item {
-                    anchors.fill: parent
-                    anchors.margins: root.borderWidth
-                    clip: true
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "#0d0d0d"
-                    }
-
-                    Image {
-                        id: thumb
-                        anchors.centerIn: parent
-                        width: (root.itemWidth * 1.5) + ((root.itemHeight + 30) * Math.abs(root.skewFactor)) + 80
-                        height: root.itemHeight + 30
-                        fillMode: Image.PreserveAspectCrop
-                        source: preview ? ("file://" + preview) : ""
-                        sourceSize.width: Math.max(900, Math.round(width * 1.35))
-                        sourceSize.height: Math.max(540, Math.round(height * 1.35))
-                        asynchronous: true
-                        smooth: true
-                        mipmap: true
-
-                        transform: Matrix4x4 {
-                            property real s: -root.skewFactor
-                            matrix: Qt.matrix4x4(1, s, 0, 0,
-                                                 0, 1, 0, 0,
-                                                 0, 0, 1, 0,
-                                                 0, 0, 0, 1)
-                        }
-
-                        Rectangle {
-                            anchors.fill: parent
-                            visible: thumb.status !== Image.Ready
-                            color: Qt.rgba(theme.surface0.r, theme.surface0.g, theme.surface0.b, 0.65)
-                        }
-                    }
-
-                    Rectangle {
-                        visible: card.isVideo
-                        anchors { top: parent.top; right: parent.right; margins: 10 }
-                        width: 34
-                        height: 34
-                        radius: 8
-                        color: "#99000000"
-
-                        transform: Matrix4x4 {
-                            property real s: -root.skewFactor
-                            matrix: Qt.matrix4x4(1, s, 0, 0,
-                                                 0, 1, 0, 0,
-                                                 0, 0, 1, 0,
-                                                 0, 0, 0, 1)
-                        }
-
-                        Canvas {
-                            anchors.fill: parent
-                            anchors.margins: 9
-                            onPaint: {
-                                const ctx = getContext("2d")
-                                ctx.reset()
-                                ctx.fillStyle = "#EEFFFFFF"
-                                ctx.beginPath()
-                                ctx.moveTo(3, 0)
-                                ctx.lineTo(14, 7)
-                                ctx.lineTo(3, 14)
-                                ctx.closePath()
-                                ctx.fill()
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        visible: card.isApplied
-                        anchors { top: parent.top; left: parent.left; margins: 10 }
-                        width: 88
-                        height: 28
-                        radius: 8
-                        color: Qt.rgba(theme.green.r, theme.green.g, theme.green.b, 0.92)
-
-                        transform: Matrix4x4 {
-                            property real s: -root.skewFactor
-                            matrix: Qt.matrix4x4(1, s, 0, 0,
-                                                 0, 1, 0, 0,
-                                                 0, 0, 1, 0,
-                                                 0, 0, 0, 1)
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Current"
-                            color: "#10131a"
-                            font.pixelSize: 13
-                            font.bold: true
-                        }
-                    }
-
-                    Rectangle {
-                        visible: card.currentItem
-                        anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
-                        height: 38
-                        color: "#cc000000"
-
-                        transform: Matrix4x4 {
-                            property real s: -root.skewFactor
-                            matrix: Qt.matrix4x4(1, s, 0, 0,
-                                                 0, 1, 0, 0,
-                                                 0, 0, 1, 0,
-                                                 0, 0, 0, 1)
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            width: parent.width - 22
-                            text: name
-                            color: theme.text
-                            font.pixelSize: 16
-                            font.bold: true
-                            elide: Text.ElideMiddle
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                    }
-                }
+            appearance: cardAppearance
+            palette: theme
+            matchesFilter: root.typeMatchesFilter(type, root.currentFilter)
+            isApplied: src === root.currentWallpaper
+            onChosen: {
+                view.currentIndex = index;
+                root.requestPaletteForCurrent();
+                root.returnToWallpapers();
             }
         }
     }
@@ -625,9 +555,7 @@ PanelWindow {
         radius: 16
         color: Qt.rgba(theme.mantle.r, theme.mantle.g, theme.mantle.b, 0.94)
 
-        border.color: warningFlash > 0
-            ? Qt.rgba(1.0, 0.25, 0.25, 0.95)
-            : Qt.rgba(theme.surface2.r, theme.surface2.g, theme.surface2.b, 0.75)
+        border.color: warningFlash > 0 ? Qt.rgba(1.0, 0.25, 0.25, 0.95) : Qt.rgba(theme.surface2.r, theme.surface2.g, theme.surface2.b, 0.75)
         border.width: warningFlash > 0 ? 2 : 1
 
         Rectangle {
@@ -645,7 +573,11 @@ PanelWindow {
                 model: 2
 
                 delegate: Item {
-                    readonly property bool isAll: index === 0
+                    id: filterButton
+
+                    required property int index
+
+                    readonly property bool isAll: filterButton.index === 0
                     readonly property string filterName: isAll ? "All" : "Video"
                     readonly property bool activeFilter: root.currentFilter === filterName
 
@@ -655,58 +587,59 @@ PanelWindow {
                     Rectangle {
                         anchors.fill: parent
                         radius: 10
-                        color: activeFilter ? theme.surface1 : "transparent"
+                        color: filterButton.activeFilter ? theme.surface1 : "transparent"
 
-                        border.color: activeFilter
-                            ? theme.text
-                            : Qt.rgba(theme.surface2.r, theme.surface2.g, theme.surface2.b, 0.5)
-                        border.width: activeFilter ? 2 : 1
+                        border.color: filterButton.activeFilter ? theme.text : Qt.rgba(theme.surface2.r, theme.surface2.g, theme.surface2.b, 0.5)
+                        border.width: filterButton.activeFilter ? 2 : 1
 
-                        scale: activeFilter ? 1.08 : (btnArea.containsMouse ? 1.05 : 1.0)
+                        scale: filterButton.activeFilter ? 1.08 : (btnArea.containsMouse ? 1.05 : 1.0)
                         Behavior on scale {
-                            NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
-                        }
-
-                        Canvas {
-                            visible: isAll
-                            width: 14
-                            height: 14
-                            anchors.centerIn: parent
-
-                            property color iconColor: activeFilter ? theme.text : Qt.rgba(theme.text.r, theme.text.g, theme.text.b, 0.68)
-                            onIconColorChanged: requestPaint()
-
-                            onPaint: {
-                                const ctx = getContext("2d")
-                                ctx.reset()
-                                ctx.fillStyle = iconColor
-                                ctx.fillRect(0, 0, 6, 6)
-                                ctx.fillRect(8, 0, 6, 6)
-                                ctx.fillRect(0, 8, 6, 6)
-                                ctx.fillRect(8, 8, 6, 6)
+                            NumberAnimation {
+                                duration: root.controlTransitionDuration
+                                easing.type: Easing.OutQuad
                             }
                         }
 
                         Canvas {
-                            visible: !isAll
+                            visible: filterButton.isAll
+                            width: 14
+                            height: 14
+                            anchors.centerIn: parent
+
+                            property color iconColor: filterButton.activeFilter ? theme.text : Qt.rgba(theme.text.r, theme.text.g, theme.text.b, 0.68)
+                            onIconColorChanged: requestPaint()
+
+                            onPaint: {
+                                const ctx = getContext("2d");
+                                ctx.reset();
+                                ctx.fillStyle = iconColor;
+                                ctx.fillRect(0, 0, 6, 6);
+                                ctx.fillRect(8, 0, 6, 6);
+                                ctx.fillRect(0, 8, 6, 6);
+                                ctx.fillRect(8, 8, 6, 6);
+                            }
+                        }
+
+                        Canvas {
+                            visible: !filterButton.isAll
                             width: 14
                             height: 16
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: 2
 
-                            property color iconColor: activeFilter ? theme.text : Qt.rgba(theme.text.r, theme.text.g, theme.text.b, 0.68)
+                            property color iconColor: filterButton.activeFilter ? theme.text : Qt.rgba(theme.text.r, theme.text.g, theme.text.b, 0.68)
                             onIconColorChanged: requestPaint()
 
                             onPaint: {
-                                const ctx = getContext("2d")
-                                ctx.reset()
-                                ctx.fillStyle = iconColor
-                                ctx.beginPath()
-                                ctx.moveTo(0, 0)
-                                ctx.lineTo(14, 8)
-                                ctx.lineTo(0, 16)
-                                ctx.closePath()
-                                ctx.fill()
+                                const ctx = getContext("2d");
+                                ctx.reset();
+                                ctx.fillStyle = iconColor;
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                ctx.lineTo(14, 8);
+                                ctx.lineTo(0, 16);
+                                ctx.closePath();
+                                ctx.fill();
                             }
                         }
                     }
@@ -717,9 +650,9 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            root.currentFilter = filterName
-                            root.applyFilters(true)
-                            root.returnToWallpapers()
+                            root.currentFilter = filterButton.filterName;
+                            root.applyFilters(true);
+                            root.returnToWallpapers();
                         }
                     }
                 }
@@ -733,9 +666,7 @@ PanelWindow {
             Text {
                 visible: paletteLoading || paletteColors.length === 0 || selectedColor !== ""
                 anchors.verticalCenter: parent.verticalCenter
-                text: paletteLoading
-                    ? "Loading palette..."
-                    : (focusZone === "palette" ? "Choose color → Enter to apply" : "Press Enter")
+                text: paletteLoading ? "Loading palette..." : (focusArea === paletteFocus ? "Choose color → Enter to apply" : "Press Enter")
                 color: theme.text
                 font.pixelSize: 14
                 font.bold: true
@@ -745,9 +676,14 @@ PanelWindow {
                 model: paletteColors
 
                 delegate: Item {
-                    readonly property bool isFocused: root.focusZone === "palette" && root.paletteColorFocusIndex === index
-                    readonly property bool isSelected: root.selectedColor === modelData
-                    readonly property bool isAutoPrimary: index === 0 && root.selectedColor === modelData
+                    id: swatch
+
+                    required property int index
+                    required property var modelData
+
+                    readonly property bool isFocused: root.focusArea === root.paletteFocus && root.paletteColorFocusIndex === swatch.index
+                    readonly property bool isSelected: root.selectedColor === swatch.modelData
+                    readonly property bool isAutoPrimary: swatch.index === 0 && root.selectedColor === swatch.modelData
 
                     width: 34
                     height: 34
@@ -755,18 +691,21 @@ PanelWindow {
                     Rectangle {
                         anchors.fill: parent
                         radius: 10
-                        color: modelData
-                        border.color: isFocused || isSelected ? "#ffffff" : "#00000000"
-                        border.width: isFocused ? 3 : (isSelected ? 2 : 0)
-                        scale: isFocused ? 1.10 : (isSelected ? 1.06 : (swatchArea.containsMouse ? 1.04 : 1.0))
+                        color: swatch.modelData
+                        border.color: swatch.isFocused || swatch.isSelected ? root.swatchHighlight : "#00000000"
+                        border.width: swatch.isFocused ? 3 : (swatch.isSelected ? 2 : 0)
+                        scale: swatch.isFocused ? 1.10 : (swatch.isSelected ? 1.06 : (swatchArea.containsMouse ? 1.04 : 1.0))
 
                         Behavior on scale {
-                            NumberAnimation { duration: 140; easing.type: Easing.OutQuad }
+                            NumberAnimation {
+                                duration: root.swatchTransitionDuration
+                                easing.type: Easing.OutQuad
+                            }
                         }
                     }
 
                     Rectangle {
-                        visible: isAutoPrimary
+                        visible: swatch.isAutoPrimary
                         width: 14
                         height: 14
                         radius: 7
@@ -775,14 +714,14 @@ PanelWindow {
                             top: parent.top
                             margins: -2
                         }
-                        color: "#111111"
-                        border.color: "#ffffff"
+                        color: root.autoBadgeBackground
+                        border.color: root.swatchHighlight
                         border.width: 1
 
                         Text {
                             anchors.centerIn: parent
                             text: "A"
-                            color: "#ffffff"
+                            color: root.swatchHighlight
                             font.pixelSize: 9
                             font.bold: true
                         }
@@ -794,10 +733,10 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            root.selectedColor = modelData
+                            root.selectedColor = swatch.modelData;
                             if (view.currentIndex >= 0 && view.currentIndex < proxyModel.count) {
-                                const item = proxyModel.get(view.currentIndex)
-                                root.applyWallpaper(item.src, modelData)
+                                const item = proxyModel.get(view.currentIndex);
+                                root.applyWallpaper(item.src, swatch.modelData);
                             }
                         }
                     }

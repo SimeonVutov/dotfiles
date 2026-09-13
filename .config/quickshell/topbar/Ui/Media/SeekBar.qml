@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Ui
 import qs.Common
 import qs.Services
 
@@ -16,6 +17,9 @@ Item {
     readonly property real ratio: dragRatio >= 0 ? dragRatio : playbackRatio
 
     implicitHeight: 14
+
+    // Smooths the player's ~1Hz position reports without lagging a drag.
+    readonly property int progressDuration: 120
 
     Rectangle {
         id: track
@@ -37,7 +41,7 @@ Item {
         Behavior on width {
             enabled: root.dragRatio < 0
             NumberAnimation {
-                duration: 120
+                duration: root.progressDuration
                 easing.type: Easing.Linear
             }
         }
@@ -58,7 +62,7 @@ Item {
         Behavior on x {
             enabled: root.dragRatio < 0
             NumberAnimation {
-                duration: 120
+                duration: root.progressDuration
                 easing.type: Easing.Linear
             }
         }

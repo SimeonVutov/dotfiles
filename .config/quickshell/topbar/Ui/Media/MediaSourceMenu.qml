@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import qs.Ui
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import qs.Common
@@ -30,30 +31,12 @@ Item {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Choose media source"
-                font.pixelSize: 15
+                font.pixelSize: Theme.fontSize
                 font.bold: true
             }
-            Rectangle {
+            CloseButton {
                 anchors.right: parent.right
-                width: 28
-                height: 28
-                radius: 14
-                color: dismiss.containsMouse ? Theme.popupBorder : Theme.popupSurface
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Theme.durationFast
-                    }
-                }
-
-                IconButton {
-                    id: dismiss
-                    anchors.centerIn: parent
-                    width: parent.width
-                    height: parent.height
-                    size: 12
-                    icon: Icons.close
-                    onClicked: root.dismissed()
-                }
+                onClicked: root.dismissed()
             }
         }
 
@@ -66,21 +49,13 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             interactive: contentHeight > height
 
-            ScrollBar.vertical: ScrollBar {
+            ScrollBar.vertical: ThinScrollBar {
                 id: scrollIndicator
-                policy: ScrollBar.AsNeeded
-                width: 3
-                contentItem: Rectangle {
-                    radius: width / 2
-                    color: Theme.popupSubtleText
-                    opacity: scrollIndicator.active ? 0.8 : 0.35
-                }
-                background: Item {}
             }
 
             Column {
                 id: rows
-                width: sources.width - (sources.contentHeight > sources.height ? 9 : 0)
+                width: sources.width - (sources.contentHeight > sources.height ? scrollIndicator.gutter : 0)
                 spacing: 3
 
                 MediaSourceOption {

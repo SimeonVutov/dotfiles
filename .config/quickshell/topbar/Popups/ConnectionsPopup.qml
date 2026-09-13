@@ -6,12 +6,12 @@ import Quickshell.Networking
 import Quickshell.Bluetooth
 import qs.Common
 import qs.Ui
+import qs.Ui.Connectivity
 import qs.Services
 
 PopupPanel {
     id: root
 
-    property bool subscribed: false
     property string selectedTab: "wifi"
 
     panelWidth: 380
@@ -32,24 +32,31 @@ PopupPanel {
         open = !sameOpenTab;
     }
 
-    function syncSubscription() {
-        if (subscribed === open)
-            return;
-        subscribed = open;
-        Connectivity.subscribe(open);
-    }
-    onOpenChanged: syncSubscription()
     onOverlayDismissed: {
         Connectivity.passwordNetwork = null;
         if (Connectivity.bluetoothPrompt)
             Connectivity.cancelBluetooth();
     }
-    Component.onCompleted: syncSubscription()
-    Component.onDestruction: if (subscribed)
-        Connectivity.subscribe(false)
 
-    ConnectionTabs {
+    Subscriber {
+        active: root.open
+        onToggled: enabled => Connectivity.subscribe(enabled)
+    }
+
+    TabSwitcher {
         Layout.fillWidth: true
+        tabs: [
+            {
+                value: "wifi",
+                label: "Wi-Fi",
+                icon: Icons.wifi
+            },
+            {
+                value: "bluetooth",
+                label: "Bluetooth",
+                icon: Icons.bluetooth
+            }
+        ]
         currentTab: root.selectedTab
         onSelected: tab => root.selectedTab = tab
     }
@@ -119,15 +126,7 @@ PopupPanel {
         }
     }
 
-    BarText {
-        Layout.fillWidth: true
-        Layout.preferredHeight: text === "" ? 0 : 24
-        visible: Layout.preferredHeight > 0
+    PopupPanel.ErrorBanner {
         text: Connectivity.error
-        color: Theme.graphTemperature
-        font.pixelSize: 11
-        wrapMode: Text.WordWrap
-        maximumLineCount: 2
-        elide: Text.ElideRight
     }
 }

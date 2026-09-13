@@ -33,14 +33,8 @@ Singleton {
     function setPowerMode(name) {
         if (["ultimate", "balanced"].indexOf(name) < 0)
             return;
-        // name is one of the two literal strings checked above, and
-        // powerCommand is a fixed config path, so building this shell string
-        // is safe: nothing here is attacker- or user-typed input.
         const command = Config.hardware.powerCommand + " " + name;
-        // Printed before running, so the sudo prompt below it is never a
-        // surprise — you see exactly what's about to run as root. No --hold:
-        // the window waits for the command (including the password prompt)
-        // then closes itself, pausing briefly first so the result is readable.
+        // Show the command before its authorization prompt.
         const shown = "printf 'Running:\\n  %s\\n\\n' '" + command + "'; " + command + "; sleep 1.5";
         Quickshell.execDetached(["kitty", "--class", "wm-floating", "--title", "Power mode", "-e", "sh", "-c", shown]);
     }
@@ -74,10 +68,7 @@ Singleton {
                 root.error = "Thermal profile change failed. Check asusctl / asusd.";
                 return;
             }
-            // Not root.refresh(): its "!busy" guard can still see this very
-            // process as running at the instant its own onExited fires,
-            // silently skipping the read until something else (reopening the
-            // popup) called refresh() later.
+            // refresh() may still see this process as busy inside onExited.
             getProfile.running = true;
         }
     }

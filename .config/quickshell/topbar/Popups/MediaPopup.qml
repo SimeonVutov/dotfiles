@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.Common
 import qs.Ui
+import qs.Ui.Media
 import qs.Services
 
 // The expanded player: art, track, timeline, transport.
@@ -57,7 +58,7 @@ PopupPanel {
                 text: Players.title || "Nothing playing"
                 color: Theme.popupText
                 font.family: Theme.fontFamily
-                font.pixelSize: 15
+                font.pixelSize: Theme.fontSize
                 font.bold: true
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
@@ -68,7 +69,7 @@ PopupPanel {
                 text: Players.artist || Players.identity
                 color: Theme.popupSubtleText
                 font.family: Theme.fontFamily
-                font.pixelSize: 13
+                font.pixelSize: Theme.fontSizeLabel
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
                 visible: text !== ""
@@ -94,7 +95,7 @@ PopupPanel {
                     text: Players.formatTime(Players.position)
                     color: Theme.popupSubtleText
                     font.family: Theme.fontFamily
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.fontSizeTiny
                     textFormat: Text.PlainText
                 }
 
@@ -103,7 +104,7 @@ PopupPanel {
                     text: Players.formatTime(Players.length)
                     color: Theme.popupSubtleText
                     font.family: Theme.fontFamily
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.fontSizeTiny
                     textFormat: Text.PlainText
                 }
             }
@@ -126,21 +127,15 @@ PopupPanel {
                     onClicked: Players.previous()
                 }
 
-                Rectangle {
-                    width: 34
-                    height: 34
-                    radius: 17
-                    color: Theme.popupAccent
+                PlaybackButton {
                     anchors.verticalCenter: parent.verticalCenter
-
-                    IconButton {
-                        anchors.centerIn: parent
-                        icon: Players.isPlaying ? Icons.mediaPause : Icons.mediaPlay
-                        size: 18
-                        color: Theme.popupBackground
-                        enabled: !!Players.activePlayer && Players.activePlayer.canTogglePlaying
-                        onClicked: Players.togglePlaying()
-                    }
+                    diameter: 34
+                    idleColor: Theme.popupAccent
+                    iconColor: Theme.popupBackground
+                    iconSize: 18
+                    playing: Players.isPlaying
+                    enabled: !!Players.activePlayer && Players.activePlayer.canTogglePlaying
+                    onClicked: Players.togglePlaying()
                 }
 
                 IconButton {

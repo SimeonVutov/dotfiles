@@ -17,6 +17,19 @@ Item {
     signal selected(string value)
     implicitHeight: 58
 
+    QtObject {
+        id: layout
+
+        readonly property real inset: 4
+        readonly property real menuPadding: inset * 2
+        readonly property real iconSlot: 34
+        readonly property real iconRadius: iconSlot / 2
+        readonly property real triggerRadius: 10
+        readonly property real menuRadius: 12
+        readonly property real optionRadius: 8
+        readonly property real rowHeight: 40
+    }
+
     onExpandedChanged: {
         if (expanded) {
             const point = root.mapToItem(overlayParent, 0, height + 6);
@@ -27,7 +40,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 10
+        radius: layout.triggerRadius
         color: trigger.containsMouse || root.expanded ? Theme.popupBorder : Theme.popupSurface
         opacity: root.interactive ? 1 : 0.5
         Behavior on color {
@@ -36,11 +49,11 @@ Item {
             }
         }
         Rectangle {
-            x: 4
+            x: layout.inset
             anchors.verticalCenter: parent.verticalCenter
-            width: 34
-            height: 34
-            radius: 17
+            width: layout.iconSlot
+            height: layout.iconSlot
+            radius: layout.iconRadius
             color: Theme.popupBackground
             BarText {
                 anchors.centerIn: parent
@@ -56,12 +69,12 @@ Item {
             BarText {
                 text: root.title
                 color: Theme.popupSubtleText
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSizeTiny
             }
             BarText {
                 width: parent.width
                 text: root.currentLabel
-                font.pixelSize: 13
+                font.pixelSize: Theme.fontSizeLabel
                 elide: Text.ElideRight
             }
         }
@@ -70,7 +83,7 @@ Item {
             anchors.rightMargin: 6
             anchors.verticalCenter: parent.verticalCenter
             text: Icons.chevronDown
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSizeTiny
             rotation: root.expanded ? 180 : 0
             Behavior on rotation {
                 NumberAnimation {
@@ -94,8 +107,8 @@ Item {
         parent: root.overlayParent
         z: 1
         width: root.width
-        height: rows.implicitHeight + 8
-        radius: 12
+        height: rows.implicitHeight + layout.menuPadding
+        radius: layout.menuRadius
         color: Theme.popupBackground
         border.color: Theme.popupBorder
         visible: opacity > 0
@@ -116,9 +129,9 @@ Item {
         }
         Column {
             id: rows
-            x: 4
-            y: 4
-            width: parent.width - 8
+            x: layout.inset
+            y: layout.inset
+            width: parent.width - layout.menuPadding
             spacing: 2
             Repeater {
                 model: root.options
@@ -126,8 +139,8 @@ Item {
                     id: option
                     required property var modelData
                     width: rows.width
-                    height: 40
-                    radius: 8
+                    height: layout.rowHeight
+                    radius: layout.optionRadius
                     color: rowMouse.containsMouse || root.selectedValue === modelData.value ? Theme.popupSurface : "transparent"
                     Behavior on color {
                         ColorAnimation {
@@ -139,7 +152,7 @@ Item {
                         anchors.leftMargin: 10
                         anchors.rightMargin: 24
                         verticalAlignment: Text.AlignVCenter
-                        font.pixelSize: 13
+                        font.pixelSize: Theme.fontSizeLabel
                         text: option.modelData.icon + "   " + option.modelData.label
                         elide: Text.ElideRight
                     }
@@ -148,7 +161,7 @@ Item {
                         anchors.rightMargin: 8
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.selectedValue === option.modelData.value ? Icons.check : ""
-                        font.pixelSize: 11
+                        font.pixelSize: Theme.fontSizeTiny
                     }
                     MouseArea {
                         id: rowMouse
@@ -171,7 +184,7 @@ Item {
                 text: root.footerText
                 visible: text !== ""
                 wrapMode: Text.WordWrap
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSizeTiny
                 color: Theme.popupSubtleText
             }
         }

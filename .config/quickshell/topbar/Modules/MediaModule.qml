@@ -1,6 +1,7 @@
 import QtQuick
 import qs.Common
 import qs.Ui
+import qs.Ui.Media
 import qs.Services
 import qs.Popups
 
@@ -55,11 +56,10 @@ BarModule {
                     onClicked: mediaPopup.toggle()
                 }
             }
-            Rectangle {
+            Divider {
                 width: Players.hasPlayer ? 1 : 0
-                height: 14
+                length: 14
                 anchors.verticalCenter: parent.verticalCenter
-                color: Theme.popupBorder
             }
             IconButton {
                 anchors.verticalCenter: parent.verticalCenter
@@ -68,25 +68,14 @@ BarModule {
                 enabled: Players.canGoPrevious
                 onClicked: Players.previous()
             }
-            Rectangle {
-                width: 25
-                height: 25
-                radius: 13
+            PlaybackButton {
                 anchors.verticalCenter: parent.verticalCenter
-                color: Players.isPlaying ? Theme.popupAccent : Theme.popupSurface
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Theme.durationFast
-                    }
-                }
-                IconButton {
-                    anchors.centerIn: parent
-                    icon: Players.isPlaying ? Icons.mediaPause : Icons.mediaPlay
-                    size: 17
-                    color: Players.isPlaying ? Theme.popupBackground : Theme.text
-                    enabled: !!Players.activePlayer && Players.activePlayer.canTogglePlaying
-                    onClicked: Players.togglePlaying()
-                }
+                diameter: 25
+                iconSize: 17
+                iconColor: Players.isPlaying ? Theme.popupBackground : Theme.text
+                playing: Players.isPlaying
+                enabled: !!Players.activePlayer && Players.activePlayer.canTogglePlaying
+                onClicked: Players.togglePlaying()
             }
             IconButton {
                 anchors.verticalCenter: parent.verticalCenter

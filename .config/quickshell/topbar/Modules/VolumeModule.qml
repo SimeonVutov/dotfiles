@@ -78,11 +78,8 @@ BarModule {
                 }
             }
 
-            Rectangle {
+            Divider {
                 anchors.verticalCenter: parent.verticalCenter
-                width: 1
-                height: 16
-                color: Theme.popupBorder
             }
 
             BarText {

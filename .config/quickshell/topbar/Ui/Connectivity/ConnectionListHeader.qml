@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Ui
 import qs.Common
 
 Rectangle {
@@ -19,7 +20,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         text: root.scanning ? root.title + " · Scanning…" : root.title
         color: root.scanning ? Theme.popupText : Theme.popupSubtleText
-        font.pixelSize: 12
+        font.pixelSize: Theme.fontSizeCaption
     }
 
     ConnectionButton {

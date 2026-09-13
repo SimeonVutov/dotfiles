@@ -14,7 +14,6 @@ Item {
     property bool consuming: false
     readonly property bool graphEnabled: !!Config.hardwareGraphs[metric]
     readonly property bool watching: consuming && graphEnabled
-    property bool subscribed: false
 
     implicitHeight: graphEnabled ? 78 : 30
     clip: true
@@ -26,17 +25,10 @@ Item {
         }
     }
 
-    function syncSubscription() {
-        if (subscribed === watching)
-            return;
-        SysMon.watchGraph(metric, watching);
-        subscribed = watching;
+    Subscriber {
+        active: root.watching
+        onToggled: enabled => SysMon.watchGraph(root.metric, enabled)
     }
-
-    onWatchingChanged: syncSubscription()
-    Component.onCompleted: syncSubscription()
-    Component.onDestruction: if (subscribed)
-        SysMon.watchGraph(metric, false)
 
     Item {
         width: parent.width
@@ -55,7 +47,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon ? root.icon + "  " + root.label : root.label
             color: root.graphEnabled ? Theme.popupText : Theme.popupSubtleText
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSizeLabel
         }
 
         BarText {
@@ -64,32 +56,18 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.graphEnabled ? root.valueLabel : "Hidden"
             color: root.graphEnabled ? Theme.popupText : Theme.popupSubtleText
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSizeLabel
         }
 
-        Rectangle {
+        ToggleSwitch {
             id: toggle
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            width: 28
-            height: 16
-            radius: 8
-            color: root.graphEnabled ? Qt.alpha(root.accent, 0.25) : Theme.popupBorder
-
-            Rectangle {
-                x: root.graphEnabled ? 14 : 3
-                y: 3
-                width: 10
-                height: 10
-                radius: 5
-                color: root.graphEnabled ? Theme.popupAccent : Theme.popupSubtleText
-
-                Behavior on x {
-                    NumberAnimation {
-                        duration: Theme.durationFast
-                    }
-                }
-            }
+            trackWidth: 28
+            knobOnX: 14
+            on: root.graphEnabled
+            onColor: Qt.alpha(root.accent, 0.25)
+            knobOnColor: Theme.popupAccent
         }
 
         MouseArea {

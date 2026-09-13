@@ -28,6 +28,8 @@ Singleton {
         viewers = Math.max(0, viewers + (enabled ? 1 : -1));
         if (enabled && viewers === 1)
             refreshProfiles();
+        else if (viewers === 0)
+            profileRefreshDelay.stop();
     }
 
     function labelFor(node) {
@@ -114,10 +116,6 @@ Singleton {
         });
     }
 
-    function profilesFor(node) {
-        return profilesForCard(cardFor(node));
-    }
-
     function refreshProfiles() {
         if (!profileBusy) {
             error = "";
@@ -141,7 +139,8 @@ Singleton {
     Timer {
         id: profileRefreshDelay
         interval: 200
-        onTriggered: root.refreshProfiles()
+        onTriggered: if (root.viewers > 0)
+            root.refreshProfiles()
     }
 
     Process {
@@ -163,7 +162,8 @@ Singleton {
                 root.error = "The audio profile could not be changed.";
                 return;
             }
-            loadCards.running = true;
+            if (root.viewers > 0)
+                loadCards.running = true;
         }
     }
 }

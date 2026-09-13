@@ -2,8 +2,7 @@ import QtQuick
 import Quickshell
 import qs.Common
 
-// One bar window, on one monitor. Transparent background — the pills are the
-// only thing that paints, same as the old waybar setup.
+// One bar window per monitor.
 PanelWindow {
     id: root
 
@@ -21,14 +20,18 @@ PanelWindow {
     implicitHeight: Theme.barHeight
     exclusiveZone: Theme.barHeight
 
+    // Left/right clearance from the screen edge; the asymmetry predates this
+    // refactor and its original rationale is undocumented.
+    readonly property int edgeMarginLeft: 5
+    readonly property int edgeMarginRight: 20
+
     Section {
         id: leftSection
         anchors.left: parent.left
-        anchors.leftMargin: 5
+        anchors.leftMargin: root.edgeMarginLeft
         anchors.verticalCenter: parent.verticalCenter
         height: parent.height
         screen: root.screen
-        section: "left"
         moduleIds: Config.modulesLeft
     }
 
@@ -38,18 +41,16 @@ PanelWindow {
         anchors.verticalCenter: parent.verticalCenter
         height: parent.height
         screen: root.screen
-        section: "center"
         moduleIds: Config.modulesCenter
     }
 
     Section {
         id: rightSection
         anchors.right: parent.right
-        anchors.rightMargin: 20
+        anchors.rightMargin: root.edgeMarginRight
         anchors.verticalCenter: parent.verticalCenter
         height: parent.height
         screen: root.screen
-        section: "right"
         moduleIds: Config.modulesRight
     }
 }

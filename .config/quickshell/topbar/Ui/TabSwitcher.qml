@@ -50,7 +50,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: tabItem.modelData.icon + "   " + tabItem.modelData.label
                 color: root.currentTab === tabItem.modelData.value ? Theme.popupText : Theme.popupSubtleText
-                font.pixelSize: 13
+                font.pixelSize: Theme.fontSizeLabel
 
                 Behavior on color {
                     ColorAnimation {
