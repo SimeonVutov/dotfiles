@@ -4,12 +4,16 @@ import Quickshell.Services.UPower
 import qs.Common
 import qs.Ui
 
-// Battery, straight off UPower — no polling. Hides itself entirely on machines
-// without a battery, same as waybar did.
 BarModule {
     id: root
 
-    readonly property var device: UPower.displayDevice
+    // UPower's aggregate device may not identify itself as a laptop battery.
+    readonly property var device: {
+        const display = UPower.displayDevice;
+        if (display && display.ready && display.isPresent && display.isLaptopBattery)
+            return display;
+        return UPower.devices.values.find(device => device.ready && device.isPresent && device.isLaptopBattery) || null;
+    }
     readonly property bool present: !!device && device.ready && device.isPresent && device.isLaptopBattery
     readonly property int percent: device ? Math.round(device.percentage * 100) : 0
     readonly property bool fullyCharged: !!device && device.state === UPowerDeviceState.FullyCharged
@@ -21,8 +25,9 @@ BarModule {
     visible: present
     implicitWidth: present ? pill.implicitWidth : 0
 
-    // White text is unreadable on the warning pill's yellow.
     readonly property color textColor: critical ? Theme.criticalText : (warning ? Theme.warningText : Theme.text)
+
+    readonly property int iconSlotWidth: 22
 
     Pill {
         id: pill
@@ -39,7 +44,7 @@ BarModule {
             }
 
             Item {
-                width: 22
+                width: root.iconSlotWidth
                 height: parent.height
 
                 BarText {
@@ -58,9 +63,11 @@ BarModule {
         }
     }
 
-    // Waybar blinked the pill when the battery was critical and discharging.
-    // Animating pill.opacity directly would permanently break backgroundOpacity's binding above.
+    // Animate separately to preserve the backgroundOpacity binding.
     property real flashOpacity: Theme.pillOpacity
+
+    readonly property int flashHalfCycle: 500
+    readonly property real flashLowOpacity: 0.45
 
     SequentialAnimation {
         running: root.critical
@@ -70,15 +77,15 @@ BarModule {
         NumberAnimation {
             target: root
             property: "flashOpacity"
-            to: 0.45
-            duration: 500
+            to: root.flashLowOpacity
+            duration: root.flashHalfCycle
             easing.type: Easing.InOutQuad
         }
         NumberAnimation {
             target: root
             property: "flashOpacity"
             to: Theme.pillOpacity
-            duration: 500
+            duration: root.flashHalfCycle
             easing.type: Easing.InOutQuad
         }
     }
