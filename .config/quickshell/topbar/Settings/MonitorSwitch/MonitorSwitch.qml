@@ -159,36 +159,10 @@ ColumnLayout {
         ConnectionButton {
             Layout.alignment: Qt.AlignBottom
             implicitHeight: 38
-            text: root.controller.previewing ? "Keep · " + root.controller.secondsLeft : "Apply"
+            text: "Apply"
             checked: true
-            enabled: root.controller.previewing || (root.controller.dirty && !root.controller.busy && refresh.acceptableInput)
-            onClicked: root.controller.previewing ? root.controller.keep() : root.apply()
-        }
-
-        ConnectionButton {
-            Layout.alignment: Qt.AlignBottom
-            implicitHeight: 38
-            visible: root.controller.previewing
-            text: "Revert"
-            onClicked: root.controller.revert()
-        }
-    }
-
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 2
-        visible: root.controller.previewing
-        color: Theme.overlayBorder
-        Rectangle {
-            width: parent.width * root.controller.secondsLeft / 15
-            height: 2
-            color: Theme.overlayText
-            Behavior on width {
-                NumberAnimation {
-                    duration: 1000
-                    easing.type: Easing.Linear
-                }
-            }
+            enabled: root.controller.dirty && !root.controller.busy && refresh.acceptableInput
+            onClicked: root.apply()
         }
     }
 

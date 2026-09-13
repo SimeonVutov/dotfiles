@@ -15,6 +15,7 @@ Item {
     property bool dirty: false
     property bool previewing: false
     property int secondsLeft: 0
+    property int previewSeconds: 1
     property double deadline: 0
     property bool receivedResult: false
     readonly property bool busy: inspect.running || transaction.running
@@ -177,6 +178,7 @@ Item {
                     const message = JSON.parse(data);
                     if (message.event === "preview") {
                         root.deadline = Date.now() + message.seconds * 1000;
+                        root.previewSeconds = message.seconds;
                         root.secondsLeft = message.seconds;
                         root.previewing = true;
                     } else if (message.event === "error") {

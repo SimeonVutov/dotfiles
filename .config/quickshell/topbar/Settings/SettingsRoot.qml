@@ -107,7 +107,8 @@ Item {
             anchors.fill: parent
             title: "Monitor Switch"
             presenting: root.presenting
-            onCloseRequested: root.close()
+            onCloseRequested: if (!displays.previewing)
+                root.close()
             onClosed: {
                 root.opened = false;
                 OverlayController.release(root.overlayId);
@@ -118,6 +119,19 @@ Item {
                 controller: displays
                 active: root.presenting
             }
+        }
+
+        ConfirmDialog {
+            anchors.fill: parent
+            open: displays.previewing
+            title: "Keep this display arrangement?"
+            message: "The previous setup is restored on its own if you do nothing."
+            acceptText: "Keep"
+            rejectText: "Revert"
+            seconds: displays.secondsLeft
+            total: displays.previewSeconds
+            onAccepted: displays.keep()
+            onRejected: displays.revert()
         }
     }
 

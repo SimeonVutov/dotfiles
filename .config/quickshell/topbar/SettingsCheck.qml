@@ -69,6 +69,18 @@ ShellRoot {
             }
         }
 
+        ConfirmDialog {
+            id: confirm
+            anchors.fill: parent
+            title: "Keep this display arrangement?"
+            seconds: 9
+            total: 15
+            property int kept: 0
+            property int reverted: 0
+            onAccepted: kept++
+            onRejected: reverted++
+        }
+
         Timer {
             interval: 100
             running: true
@@ -106,6 +118,21 @@ ShellRoot {
                 controller.setMode("2560x1440", "100", "1");
                 if (controller.selectedMonitor.rate !== 100)
                     throw new Error("Custom refresh rate did not update");
+
+                const before = JSON.stringify(controller.monitors.map(m => [m.name, m.x, m.y]));
+                controller.monitors = controller.monitors.slice();
+                if (JSON.stringify(controller.monitors.map(m => [m.name, m.x, m.y])) !== before)
+                    throw new Error("A settled arrangement was rewritten");
+
+                const at = name => controller.monitors.find(m => m.name === name);
+                controller.move("DP-1", at("eDP-1").x - 2560, at("eDP-1").y + 24, 200);
+                if (at("DP-1").y !== at("eDP-1").y)
+                    throw new Error("Near-level displays did not snap flush");
+                controller.move("DP-1", at("eDP-1").x - 2560, at("eDP-1").y + 24, 0);
+                if (at("DP-1").y === at("eDP-1").y)
+                    throw new Error("Precise placement was overridden by snapping");
+
+                confirm.open = true;
                 panel.presenting = false;
             }
         }
@@ -116,7 +143,13 @@ ShellRoot {
             onTriggered: {
                 if (panel.reveal !== 0)
                     throw new Error("Panel exit did not settle");
-                console.log("PASS settings panel, display modes, custom toggle guard, layout movement and custom refresh");
+                if (confirm.opacity !== 1)
+                    throw new Error("Confirmation did not present");
+                confirm.accepted();
+                confirm.rejected();
+                if (confirm.kept !== 1 || confirm.reverted !== 1)
+                    throw new Error("Confirmation did not report both answers");
+                console.log("PASS settings panel, display modes, custom toggle guard, edge snapping, precise placement and confirmation");
                 Qt.quit();
             }
         }
