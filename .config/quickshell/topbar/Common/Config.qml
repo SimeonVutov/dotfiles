@@ -3,12 +3,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// The bar's layout and per-module settings.
-//
-// To add, remove or reorder a module, edit the three arrays below — nothing
-// else needs to change. Each string is a module id registered in Registry.qml.
-// These are plain (non-readonly) properties so a future drag-and-drop editor
-// can reassign them at runtime and the bar will rebuild itself.
 Singleton {
     id: root
 
@@ -18,6 +12,26 @@ Singleton {
     property var modulesLeft: ["clock", "media"]
     property var modulesCenter: ["workspaces"]
     property var modulesRight: ["hardware", "volume", "connections", "battery", "power"]
+
+    readonly property var moduleFiles: ({
+            clock: "ClockModule.qml",
+            media: "MediaModule.qml",
+            workspaces: "WorkspacesModule.qml",
+            hardware: "HardwareModule.qml",
+            volume: "VolumeModule.qml",
+            connections: "ConnectionsModule.qml",
+            battery: "BatteryModule.qml",
+            power: "PowerModule.qml"
+        })
+
+    function moduleUrlFor(id) {
+        const file = moduleFiles[id];
+        if (!file) {
+            console.warn("[topbar] unknown module id:", id);
+            return "";
+        }
+        return Qt.resolvedUrl("../Modules/" + file);
+    }
 
     // ── Module settings ────────────────────────────────────────
     readonly property var clock: ({
