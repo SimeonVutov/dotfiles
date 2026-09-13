@@ -1,9 +1,7 @@
 import QtQuick
 import qs.Common
 
-// The rounded capsule every module sits in. Reproduces the old waybar module
-// box model: black at 80%, 15px radius, 15px of horizontal padding, and a
-// fixed height so every pill lines up.
+// Shared bar-module capsule.
 Rectangle {
     id: root
 

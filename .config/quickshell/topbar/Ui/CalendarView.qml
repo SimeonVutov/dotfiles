@@ -11,6 +11,9 @@ Item {
     property int viewMonth: today.getMonth()
     property int direction: 1
 
+    readonly property int navButtonSize: 28
+    readonly property int navButtonCount: 4
+
     readonly property bool showingToday: viewYear === today.getFullYear() && viewMonth === today.getMonth()
     readonly property string monthLabel: Qt.formatDate(new Date(viewYear, viewMonth, 1), "MMMM yyyy")
     readonly property var calendarCells: {
@@ -49,8 +52,8 @@ Item {
         required property string label
         required property int months
 
-        implicitWidth: 28
-        implicitHeight: 28
+        implicitWidth: root.navButtonSize
+        implicitHeight: root.navButtonSize
         radius: 8
         color: mouse.containsMouse ? Theme.popupBorder : "transparent"
 
@@ -63,7 +66,7 @@ Item {
         BarText {
             anchors.centerIn: parent
             text: parent.label
-            font.pixelSize: 18
+            font.pixelSize: Theme.fontSizeLarge
         }
 
         MouseArea {
@@ -80,6 +83,7 @@ Item {
         spacing: 6
 
         Row {
+            id: navRow
             width: parent.width
             spacing: 4
 
@@ -93,10 +97,11 @@ Item {
             }
 
             BarText {
-                width: parent.width - 128
-                height: 28
+                // Fills the space left by the 4 nav buttons and the gaps around them.
+                width: parent.width - root.navButtonCount * (root.navButtonSize + navRow.spacing)
+                height: root.navButtonSize
                 text: root.monthLabel
-                font.pixelSize: 15
+                font.pixelSize: Theme.fontSize
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -132,7 +137,7 @@ Item {
                             height: 17
                             text: modelData
                             color: Theme.popupSubtleText
-                            font.pixelSize: 11
+                            font.pixelSize: Theme.fontSizeTiny
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -163,7 +168,7 @@ Item {
                                 text: parent.modelData.day
                                 color: parent.modelData.isToday ? Theme.popupBackground : (parent.modelData.inMonth ? Theme.popupText : Theme.popupSubtleText)
                                 opacity: parent.modelData.inMonth || parent.modelData.isToday ? 1 : 0.45
-                                font.pixelSize: 12
+                                font.pixelSize: Theme.fontSizeCaption
                                 font.bold: parent.modelData.isToday
                             }
                         }
@@ -194,7 +199,7 @@ Item {
             BarText {
                 anchors.centerIn: parent
                 text: "Today"
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSizeTiny
             }
 
             MouseArea {
