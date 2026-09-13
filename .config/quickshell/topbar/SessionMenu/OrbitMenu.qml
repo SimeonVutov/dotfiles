@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import qs.Common as Shared
 
 Item {
     id: root
@@ -8,25 +9,74 @@ Item {
     property string error: ""
     property bool busy: false
     property int highlighted: -1
-    // Keyboard safety net, for every action: a first press of the shortcut
-    // arms it (highlights only), a second press of the *same* key fires it.
-    // Any other key re-arms instead of firing, so there is no way to trigger
-    // an action by typing past it. The mouse never arms — clicking a sector
-    // always fires immediately, per root.choose().
+    // Keyboard actions require two presses; mouse clicks execute immediately.
     property string armedAction: ""
-    // What should actually look highlighted: an armed action stays pinned
-    // there even if the mouse then wanders elsewhere, since arming it is a
-    // keyboard commitment that a stray mouse move shouldn't visually undo.
+    // Mouse movement must not hide an armed keyboard action.
     readonly property int displayHighlighted: armedAction ? actions.findIndex(a => a.name === armedAction) : highlighted
     property string backdrop: ""
     property bool presenting: true
     property real arrival: 0
 
-    // Nothing is painted until there is something to distort. A mapped but
-    // empty surface is indistinguishable from having no overlay at all, so
-    // opening never flashes black while grim is still running, and the capture
-    // stays clean because the menu is not in it yet. The first painted frame
-    // is the undistorted snapshot, which matches what was already on screen.
+    readonly property color sectorFill: "#141414"
+    readonly property color orbitDotHalo: "#353535"
+
+    readonly property int departureDuration: 400
+    readonly property int arrivalDuration: 700
+
+    // The reveal only starts in the last stretch of the arrival animation,
+    // then the blast (departure) reverses scale and opacity on its own curve.
+    readonly property real revealStartFraction: 0.72
+    readonly property real revealWindowFraction: 1 - revealStartFraction
+    readonly property real revealOpacityRate: 8
+    readonly property real expansionEasePower: 3
+    readonly property real expansionScaleFloor: 0.015
+    readonly property real expansionScaleRange: 1 - expansionScaleFloor
+    readonly property real departureScaleBoost: 5.0
+    readonly property real departureScalePower: 0.7
+    readonly property real departureOpacityPower: 0.55
+    readonly property real departureOpacityRate: 2.6
+
+    readonly property real sceneWidth: 600
+    readonly property real sceneHeight: 630
+    readonly property real sceneScreenMargin: 24
+
+    // A sector spans one action's worth of angle (360 / action count); its arc
+    // is drawn a couple of degrees narrower to leave a hairline gap between
+    // neighbours. sectorAngleOffset must stay in sync with actions[0].angle.
+    readonly property real sectorAngleStep: 60
+    readonly property real sectorAngleOffset: -90
+    readonly property real sectorGapDegrees: 2
+    readonly property real sectorHalfSpanDegrees: sectorAngleStep / 2 - sectorGapDegrees / 2
+    readonly property real sectorHitAngleOffset: -sectorAngleOffset + sectorAngleStep / 2
+    readonly property real sectorInnerRadius: 122
+    readonly property real sectorOuterRadius: 282
+    readonly property real sectorStrokeWidth: 1
+    readonly property real sectorStrokeRadius: sectorOuterRadius - sectorStrokeWidth
+
+    readonly property real orbitRingDiameter: 406
+    readonly property real orbitDotHaloPadding: 6
+    readonly property real orbitDotHaloMinSize: 6
+
+    readonly property real hubDiameter: 230
+    readonly property real hubContentWidth: 190
+    readonly property real hubContentSpacing: 10
+
+    readonly property real planetBoxWidth: 104
+    readonly property real planetBoxHeight: 108
+    readonly property real planetButtonDiameter: 72
+    readonly property real planetOrbitRadius: orbitRingDiameter / 2
+    readonly property real planetVerticalAnchor: planetButtonDiameter / 2
+    readonly property real planetLabelGap: 10
+    readonly property real planetLabelY: planetButtonDiameter + planetLabelGap
+    readonly property real planetHoverScale: 1.09
+    readonly property real planetPressScale: 0.94
+
+    readonly property int promptFontSize: 20
+    readonly property int captionFontSize: 11
+    readonly property int planetGlyphFontSize: 24
+    readonly property int planetLabelFontSize: 12
+
+    // Map only after decoding the capture to avoid black flashes and self-capture.
     property bool armed: false
     visible: armed
 
@@ -49,18 +99,14 @@ Item {
         root.departure = 0;
     }
 
-    // Cancelling runs the collapse in reverse: a Big Bang blows the void open
-    // from the singularity and hands the desktop back. The window only goes
-    // away once this finishes, via dismissed().
+    // Keep the surface mapped until the departure animation finishes.
     property real departure: 0
     readonly property bool departing: departureAnimation.running
 
     function dismiss() {
         if (root.departing)
             return;
-        // Cancelling mid-open is an abort, not a set piece: the vortex is still
-        // drawing the desktop on top of the void, so a blast underneath it
-        // would be invisible until the vortex snapped away. Just close.
+        // During arrival the vortex covers the departure effect, so abort directly.
         if (root.arrival < 1) {
             root.dismissed();
             return;
@@ -74,19 +120,10 @@ Item {
         property: "departure"
         from: 0
         to: 1
-        duration: 400
-        // Linear on purpose: the shader's own curve front-loads the blast, and
-        // easing it again here finished the whole thing in the first ~20% and
-        // left the rest of the animation as dead time before the window went.
+        duration: root.departureDuration
+        // The shader owns the easing curve.
         easing.type: Easing.Linear
         onFinished: root.dismissed()
-    }
-    // No capture means nothing to swirl: fall back to the rings rather than
-    // holding an invisible window open forever.
-    Timer {
-        interval: 500
-        running: root.presenting && !root.armed
-        onTriggered: root.arm()
     }
     NumberAnimation {
         id: arrivalAnimation
@@ -94,7 +131,7 @@ Item {
         property: "arrival"
         from: 0
         to: 1
-        duration: 700
+        duration: root.arrivalDuration
         easing.type: Easing.Linear
         onFinished: root.backdrop = ""
     }
@@ -103,10 +140,10 @@ Item {
         const dx = x - scene.width / 2;
         const dy = y - scene.height / 2;
         const radius = Math.sqrt(dx * dx + dy * dy);
-        if (radius < 122)
+        if (radius < root.sectorInnerRadius)
             return -1;
         const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-        return Math.floor(((angle + 120 + 360) % 360) / 60);
+        return Math.floor(((angle + root.sectorHitAngleOffset + 360) % 360) / root.sectorAngleStep);
     }
     readonly property var actions: [
         {
@@ -171,6 +208,11 @@ Item {
     }
     focus: true
     Keys.onPressed: event => {
+        if (root.busy || root.departing) {
+            event.accepted = true;
+            return;
+        }
+
         if (event.key === Qt.Key_Escape) {
             if (root.armedAction)
                 root.armedAction = "";
@@ -187,7 +229,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.abyss
+        color: Shared.Theme.overlayAbyss
         // Handing over to the blast is seamless: at progress 0 the shader is
         // opaque black too. Keeping the shader mounted instead of swapping
         // costs a wasted full-screen pass under the vortex every frame, which
@@ -230,15 +272,15 @@ Item {
     Item {
         id: scene
         anchors.centerIn: parent
-        width: 600
-        height: 630
-        readonly property real reveal: Math.max(0, Math.min(1, (root.arrival - 0.72) / 0.28))
+        width: root.sceneWidth
+        height: root.sceneHeight
+        readonly property real reveal: Math.max(0, Math.min(1, (root.arrival - root.revealStartFraction) / root.revealWindowFraction))
         // Expand concentrically from the core; keep every action at its final angle.
-        readonly property real expansion: 1 - Math.pow(1 - reveal, 3)
+        readonly property real expansion: 1 - Math.pow(1 - reveal, root.expansionEasePower)
         // The blast throws the menu outward with everything else. It goes with
         // the leading edge, so it is gone before the front clears the corners.
-        scale: Math.min(1, (root.width - 24) / width, (root.height - 24) / height) * (0.015 + 0.985 * expansion) * (1 + 5.0 * Math.pow(root.departure, 0.7))
-        opacity: Math.min(1, reveal * 8) * (1 - Math.min(1, Math.pow(root.departure, 0.55) * 2.6))
+        scale: Math.min(1, (root.width - root.sceneScreenMargin) / width, (root.height - root.sceneScreenMargin) / height) * (root.expansionScaleFloor + root.expansionScaleRange * expansion) * (1 + root.departureScaleBoost * Math.pow(root.departure, root.departureScalePower))
+        opacity: Math.min(1, reveal * root.revealOpacityRate) * (1 - Math.min(1, Math.pow(root.departure, root.departureOpacityPower) * root.departureOpacityRate))
         layer.enabled: root.arrival < 1
         layer.effect: ShaderEffect {
             property real progress: scene.reveal
@@ -254,24 +296,24 @@ Item {
                 opacity: root.displayHighlighted === index ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Theme.motion
+                        duration: Shared.Theme.overlayMotion
                     }
                 }
                 onPaint: {
                     const ctx = getContext("2d");
                     ctx.reset();
-                    const start = (index * 60 - 119) * Math.PI / 180;
-                    const end = (index * 60 - 61) * Math.PI / 180;
+                    const start = (index * root.sectorAngleStep + root.sectorAngleOffset - root.sectorHalfSpanDegrees) * Math.PI / 180;
+                    const end = (index * root.sectorAngleStep + root.sectorAngleOffset + root.sectorHalfSpanDegrees) * Math.PI / 180;
                     ctx.beginPath();
-                    ctx.arc(width / 2, height / 2, 282, start, end);
-                    ctx.arc(width / 2, height / 2, 122, end, start, true);
+                    ctx.arc(width / 2, height / 2, root.sectorOuterRadius, start, end);
+                    ctx.arc(width / 2, height / 2, root.sectorInnerRadius, end, start, true);
                     ctx.closePath();
-                    ctx.fillStyle = "#141414";
+                    ctx.fillStyle = root.sectorFill;
                     ctx.fill();
                     ctx.beginPath();
-                    ctx.arc(width / 2, height / 2, 281, start, end);
-                    ctx.strokeStyle = Theme.muted;
-                    ctx.lineWidth = 1;
+                    ctx.arc(width / 2, height / 2, root.sectorStrokeRadius, start, end);
+                    ctx.strokeStyle = Shared.Theme.overlayMuted;
+                    ctx.lineWidth = root.sectorStrokeWidth;
                     ctx.stroke();
                 }
             }
@@ -279,11 +321,11 @@ Item {
 
         Rectangle {
             anchors.centerIn: parent
-            width: 406
+            width: root.orbitRingDiameter
             height: width
             radius: width / 2
             color: "transparent"
-            border.color: Theme.border
+            border.color: Shared.Theme.overlayBorder
         }
         Repeater {
             model: [
@@ -330,7 +372,7 @@ Item {
                     anchors.fill: parent
                     radius: width / 2
                     color: "transparent"
-                    border.color: "#232323"
+                    border.color: Shared.Theme.overlayOrbit
                 }
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -338,15 +380,15 @@ Item {
                     width: orbit.modelData.size
                     height: width
                     radius: width / 2
-                    color: Theme.muted
+                    color: Shared.Theme.overlayMuted
                     Rectangle {
                         anchors.centerIn: parent
-                        width: parent.width + 6
+                        width: parent.width + root.orbitDotHaloPadding
                         height: width
                         radius: width / 2
                         color: "transparent"
-                        border.color: "#353535"
-                        visible: orbit.modelData.size > 6
+                        border.color: root.orbitDotHalo
+                        visible: orbit.modelData.size > root.orbitDotHaloMinSize
                     }
                 }
             }
@@ -354,24 +396,24 @@ Item {
 
         Rectangle {
             anchors.centerIn: parent
-            width: 230
+            width: root.hubDiameter
             height: width
             radius: width / 2
-            color: Theme.background
-            border.color: Theme.border
+            color: Shared.Theme.overlayBackground
+            border.color: Shared.Theme.overlayBorder
             Column {
                 anchors.centerIn: parent
-                width: 190
-                spacing: 10
+                width: root.hubContentWidth
+                spacing: root.hubContentSpacing
                 Text {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     text: root.busy ? "Please wait" : root.armedAction ? root.actions.find(a => a.name === root.armedAction).label + "?" : root.highlighted >= 0 ? root.actions[root.highlighted].label : "Take a pause"
                     font {
-                        family: Theme.font
-                        pixelSize: 20
+                        family: Shared.Theme.fontFamily
+                        pixelSize: root.promptFontSize
                     }
-                    color: Theme.text
+                    color: Shared.Theme.overlayText
                 }
                 Text {
                     width: parent.width
@@ -379,10 +421,10 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     font {
-                        family: Theme.font
-                        pixelSize: 11
+                        family: Shared.Theme.fontFamily
+                        pixelSize: root.captionFontSize
                     }
-                    color: Theme.muted
+                    color: Shared.Theme.overlayMuted
                 }
             }
         }
@@ -393,46 +435,46 @@ Item {
                 id: planet
                 required property var modelData
                 required property int index
-                width: 104
-                height: 108
-                x: scene.width / 2 + Math.cos(modelData.angle * Math.PI / 180) * 203 - width / 2
-                y: scene.height / 2 + Math.sin(modelData.angle * Math.PI / 180) * 203 - 36
+                width: root.planetBoxWidth
+                height: root.planetBoxHeight
+                x: scene.width / 2 + Math.cos(modelData.angle * Math.PI / 180) * root.planetOrbitRadius - width / 2
+                y: scene.height / 2 + Math.sin(modelData.angle * Math.PI / 180) * root.planetOrbitRadius - root.planetVerticalAnchor
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: 72
+                    width: root.planetButtonDiameter
                     height: width
                     radius: width / 2
-                    color: root.displayHighlighted === planet.index || planet.activeFocus ? Theme.text : Theme.surface
-                    border.color: Theme.border
-                    scale: root.displayHighlighted === planet.index ? (sectors.pressed ? 0.94 : 1.09) : 1
+                    color: root.displayHighlighted === planet.index || planet.activeFocus ? Shared.Theme.overlayText : Shared.Theme.overlaySurface
+                    border.color: Shared.Theme.overlayBorder
+                    scale: root.displayHighlighted === planet.index ? (sectors.pressed ? root.planetPressScale : root.planetHoverScale) : 1
                     Behavior on color {
                         ColorAnimation {
-                            duration: Theme.motion
+                            duration: Shared.Theme.overlayMotion
                         }
                     }
                     Behavior on scale {
                         NumberAnimation {
-                            duration: Theme.motion
+                            duration: Shared.Theme.overlayMotion
                         }
                     }
                     Text {
                         anchors.centerIn: parent
                         text: planet.modelData.glyph
-                        color: root.displayHighlighted === planet.index || planet.activeFocus ? Theme.background : Theme.text
+                        color: root.displayHighlighted === planet.index || planet.activeFocus ? Shared.Theme.overlayBackground : Shared.Theme.overlayText
                         font {
-                            family: Theme.font
-                            pixelSize: 24
+                            family: Shared.Theme.fontFamily
+                            pixelSize: root.planetGlyphFontSize
                         }
                     }
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: 82
+                    y: root.planetLabelY
                     text: planet.modelData.label + "  ·  " + planet.modelData.key
-                    color: Theme.text
+                    color: Shared.Theme.overlayText
                     font {
-                        family: Theme.font
-                        pixelSize: 12
+                        family: Shared.Theme.fontFamily
+                        pixelSize: root.planetLabelFontSize
                     }
                 }
                 activeFocusOnTab: true
@@ -442,5 +484,4 @@ Item {
             }
         }
     }
-
 }
