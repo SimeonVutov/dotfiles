@@ -86,4 +86,17 @@ Singleton {
     readonly property int durationSlow: 450
     readonly property int easing: Easing.InOutQuad
     readonly property int easingEmphasized: Easing.OutCubic
+
+    // ── Overlay (Launcher / SessionMenu) ───────────────────────
+    readonly property color overlayAbyss: "#000000"
+    readonly property color overlayBackground: "#0A0A0A"
+    readonly property color overlaySurface: "#191919"
+    readonly property color overlaySurfaceHover: "#242424"
+    readonly property color overlayBorder: "#343434"
+    readonly property color overlayBorderBright: "#505050"
+    readonly property color overlayOrbit: "#232323"
+    readonly property color overlayText: "#EEEEEE"
+    readonly property color overlayMuted: "#939393"
+    readonly property color overlaySelection: "#555555"
+    readonly property int overlayMotion: 180
 }

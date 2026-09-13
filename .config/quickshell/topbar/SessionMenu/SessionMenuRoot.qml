@@ -3,117 +3,179 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import qs.Common
 
-// Lives inside the topbar process (see ../shell.qml) instead of running as
-// its own Quickshell instance, so opening the menu costs no process start,
-// no QML load and no shader compile — just an IPC call:
-//
-//   qs -c topbar ipc call menu toggle    # also: open, close
-//
-// This Item is never shown; it only groups the IPC handler, the capture
-// process and the menu's own PanelWindow under one root.
 Item {
-    id: app
+    id: root
 
+    readonly property string overlayId: "session-menu"
     property bool opened: false
-    property string snapshotPath: ""
-    readonly property string monitor: Hyprland.focusedMonitor?.name ?? ""
+    property bool pendingOpen: false
+    property string monitor: ""
 
-    function openMenu() {
-        if (app.opened)
+    function open() {
+        if (opened || pendingOpen)
             return;
+
+        pendingOpen = true;
+        if (OverlayController.request(overlayId))
+            beginOpen();
+    }
+
+    function beginOpen() {
+        if (opened)
+            return;
+
+        if (capture.busy) {
+            pendingOpen = true;
+            return;
+        }
+
+        pendingOpen = false;
+        monitor = Hyprland.focusedMonitor?.name || Quickshell.screens[0]?.name || "";
         menu.reset();
-        // Clearing the backdrop releases the previous capture; a fresh unique
-        // path then keeps Qt from ever handing back a cached older frame.
         menu.backdrop = "";
-        app.snapshotPath = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshell-session-menu-" + Date.now() + ".ppm";
-        app.opened = true;
-        capture.running = true;
+        opened = true;
+
+        if (!capture.start(monitor))
+            menu.arm();
     }
-    function closeMenu() {
-        app.opened = false;
-        capture.running = false;
-        menu.backdrop = "";
-    }
-    function releaseSnapshot() {
-        if (!app.snapshotPath)
+
+    function close() {
+        if (pendingOpen && !opened) {
+            pendingOpen = false;
+            OverlayController.cancel(overlayId);
+            OverlayController.release(overlayId);
             return;
-        Quickshell.execDetached(["rm", "-f", app.snapshotPath]);
-        app.snapshotPath = "";
+        }
+
+        if (!opened)
+            return;
+
+        if (menu.armed)
+            menu.dismiss();
+        else
+            finish();
+    }
+
+    function finish() {
+        pendingOpen = false;
+        opened = false;
+        menu.backdrop = "";
+        capture.cancel();
+        OverlayController.release(overlayId);
+    }
+
+    function toggle() {
+        if (opened || pendingOpen)
+            close();
+        else
+            open();
     }
 
     IpcHandler {
         target: "menu"
+
         function open(): void {
-            app.openMenu();
+            root.open();
         }
+
         function close(): void {
-            app.closeMenu();
+            root.close();
         }
+
         function toggle(): void {
-            if (app.opened)
-                app.closeMenu();
-            else
-                app.openMenu();
+            root.toggle();
         }
     }
 
-    Process {
-        id: capture
-        // Raw PPM straight into tmpfs: no PNG encode, no base64, no data URL.
-        // A 4K frame becomes a memcpy into RAM and a trivial decode, which is
-        // the difference between the reveal starting now and a second from now.
-        // The window is still unmapped while this runs, so it cannot photograph
-        // the menu, and there is no unpainted surface to flash black either.
-        command: ["sh", "-c", 'if [ -n "$1" ]; then grim -t ppm -o "$1" "$2"; else grim -t ppm "$2"; fi', "session-capture", app.monitor, app.snapshotPath]
-        onExited: (code, status) => {
-            // A capture that lands after the menu gave up would pop in mid
-            // reveal, so it is dropped rather than shown late.
-            if (app.opened && !menu.armed && code === 0 && status === 0)
-                menu.backdrop = "file://" + app.snapshotPath;
-            else
-                app.releaseSnapshot();
+    Connections {
+        target: OverlayController
+
+        function onCloseRequested(owner) {
+            if (owner === root.overlayId)
+                root.close();
+        }
+
+        function onGranted(owner) {
+            if (owner === root.overlayId)
+                root.beginOpen();
         }
     }
+
+    DesktopCapture {
+        id: capture
+
+        prefix: "session-menu"
+        onCompleted: source => {
+            if (root.opened && !menu.armed)
+                menu.backdrop = source;
+            else
+                capture.release();
+        }
+        onFailed: if (root.opened)
+            menu.arm()
+        onIdle: if (root.pendingOpen && OverlayController.owner === root.overlayId)
+            root.beginOpen()
+    }
+
     Connections {
         target: menu
-        // The reveal drops the backdrop when it ends; the file goes with it.
+
         function onBackdropChanged() {
-            if (menu.backdrop === "")
-                app.releaseSnapshot();
+            if (!menu.backdrop)
+                capture.release();
+        }
+    }
+
+    // Fall back without waiting indefinitely for the compositor's capture.
+    Timer {
+        interval: 500
+        running: root.opened && !menu.armed
+        onTriggered: menu.arm()
+    }
+
+    Process {
+        id: actionProcess
+
+        onExited: (code, status) => {
+            if (code === 0 && status === 0)
+                root.finish();
+            else
+                menu.error = "Action failed. Try again or press Escape.";
         }
     }
 
     PanelWindow {
-        id: window
-        // Mapped only once there is a frame to show. The first frame is the
-        // undistorted capture, identical to what is already on screen.
-        visible: app.opened && menu.armed
-        screen: Quickshell.screens.find(s => s.name === app.monitor) || Quickshell.screens[0]
+        visible: root.opened && menu.armed
+        screen: Quickshell.screens.find(screen => screen.name === root.monitor) || Quickshell.screens[0]
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "quickshell-session-menu"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+
         anchors {
             top: true
             bottom: true
             left: true
             right: true
         }
-        exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-session-menu"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        color: "transparent"
+
         OrbitMenu {
             id: menu
-            presenting: app.opened
+
             anchors.fill: parent
+            presenting: root.opened
             busy: actionProcess.running
-            onDismissed: app.closeMenu()
+            onDismissed: root.finish()
             onActionRequested: action => {
                 if (action === "lock") {
-                    // Drop the overlay before the locker takes the screen.
-                    app.closeMenu();
+                    root.finish();
                     Quickshell.execDetached(["hyprlock"]);
                     return;
                 }
+
                 const commands = {
                     exit: ["hyprctl", "dispatch", "exit"],
                     reboot: ["systemctl", "reboot"],
@@ -123,18 +185,15 @@ Item {
                 };
                 if (!commands[action])
                     return;
+
                 actionProcess.command = commands[action];
                 actionProcess.running = true;
             }
         }
-        Process {
-            id: actionProcess
-            onExited: (code, status) => {
-                if (code === 0 && status === 0)
-                    app.closeMenu();
-                else
-                    menu.error = "Action failed. Try again or press Escape.";
-            }
-        }
+    }
+
+    Component.onDestruction: {
+        capture.cancel();
+        OverlayController.release(overlayId);
     }
 }
