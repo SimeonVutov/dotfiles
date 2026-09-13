@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One Bluetooth action, with an application-local BlueZ pairing agent."""
+"""Application-local BlueZ pairing agent; ordinary actions stay in QML."""
 
 import json
 import os
@@ -30,10 +30,15 @@ def emit(**message):
 
 
 class Action:
-    def __init__(self, path, operation):
+    def __init__(self, path):
         self.path = path
-        self.operation = operation
         self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        self.bluez_owner = self.bus.call_sync(
+            "org.freedesktop.DBus", "/org/freedesktop/DBus",
+            "org.freedesktop.DBus", "GetNameOwner",
+            GLib.Variant("(s)", ("org.bluez",)), GLib.VariantType.new("(s)"),
+            Gio.DBusCallFlags.NONE, 5000, None,
+        ).unpack()[0]
         self.loop = GLib.MainLoop()
         self.pending = None
         self.pending_kind = ""
@@ -65,12 +70,13 @@ class Action:
         if self.pending:
             self.pending.return_dbus_error("org.bluez.Error.Canceled", "Canceled by user")
             self.pending = None
-        if self.operation == "pair":
-            self.call(self.path, "org.bluez.Device1", "CancelPairing", done=lambda: self.finish("Pairing canceled"))
-        else:
-            self.finish("Canceled")
+        self.call(self.path, "org.bluez.Device1", "CancelPairing", done=lambda: self.finish("Pairing canceled"))
 
     def agent(self, connection, sender, path, interface, method, parameters, invocation):
+        # Only the registered BlueZ daemon may request pairing secrets.
+        if sender != self.bluez_owner:
+            invocation.return_dbus_error("org.bluez.Error.Rejected", "Unauthorized caller")
+            return
         values = parameters.unpack()
         if method in ("Cancel", "Release"):
             if self.pending:
@@ -133,23 +139,25 @@ class Action:
                 self.cancel()
         return True
 
+    def pair(self):
+        self.call(self.path, "org.bluez.Device1", "Pair", done=self.trust_and_connect)
+
+    def trust_and_connect(self):
+        self.call(
+            self.path, "org.freedesktop.DBus.Properties", "Set",
+            GLib.Variant("(ssv)", ("org.bluez.Device1", "Trusted", GLib.Variant("b", True))),
+            done=lambda: self.call(self.path, "org.bluez.Device1", "Connect"),
+        )
+
     def start(self):
         GLib.io_add_watch(sys.stdin.fileno(), GLib.IO_IN | GLib.IO_HUP, self.read_input)
         GLib.timeout_add_seconds(100, lambda: self.finish("Bluetooth action timed out"))
-        if self.operation == "pair":
-            info = Gio.DBusNodeInfo.new_for_xml(AGENT_XML).interfaces[0]
-            self.bus.register_object("/topbar/agent", info, self.agent, None, None)
-            self.call("/org/bluez", "org.bluez.AgentManager1", "RegisterAgent",
-                      GLib.Variant("(os)", ("/topbar/agent", "KeyboardDisplay")),
-                      lambda: self.call(self.path, "org.bluez.Device1", "Pair",
-                                        done=lambda: self.call(self.path, "org.freedesktop.DBus.Properties", "Set",
-                                                               GLib.Variant("(ssv)", ("org.bluez.Device1", "Trusted", GLib.Variant("b", True))),
-                                                               done=lambda: self.call(self.path, "org.bluez.Device1", "Connect"))))
-        elif self.operation in ("trust", "untrust"):
-            self.call(self.path, "org.freedesktop.DBus.Properties", "Set",
-                      GLib.Variant("(ssv)", ("org.bluez.Device1", "Trusted", GLib.Variant("b", self.operation == "trust"))))
-        else:
-            self.call(self.path, "org.bluez.Device1", "Connect" if self.operation == "connect" else "Disconnect")
+        info = Gio.DBusNodeInfo.new_for_xml(AGENT_XML).interfaces[0]
+        self.bus.register_object("/topbar/agent", info, self.agent, None, None)
+        self.call(
+            "/org/bluez", "org.bluez.AgentManager1", "RegisterAgent",
+            GLib.Variant("(os)", ("/topbar/agent", "KeyboardDisplay")), done=self.pair,
+        )
         self.loop.run()
 
 
@@ -158,9 +166,9 @@ if __name__ == "__main__":
         device, operation = sys.argv[1:]
         if not re.fullmatch(r"/org/bluez/hci[0-9]+/dev_(?:[0-9A-Fa-f]{2}_){5}[0-9A-Fa-f]{2}", device):
             raise ValueError("Invalid Bluetooth device path")
-        if operation not in ("pair", "connect", "disconnect", "trust", "untrust"):
+        if operation != "pair":
             raise ValueError("Invalid Bluetooth action")
-        Action(device, operation).start()
+        Action(device).start()
     except Exception:
         emit(event="error", message="Bluetooth service unavailable or invalid action")
         sys.exit(1)
