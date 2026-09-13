@@ -5,18 +5,22 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.Common
 
+// Map only once the snapshot is ready, or the capture deadline expires.
 Item {
     id: root
 
-    readonly property string overlayId: "session-menu"
-    property bool opened: false
-    property bool pendingOpen: false
+    readonly property string overlayId: "launcher"
     property string monitor: ""
+
+    property bool pendingOpen: false
+    property bool opened: false
+    property bool armed: false
 
     function open() {
         if (opened || pendingOpen)
             return;
 
+        // A grant can arrive synchronously while the previous overlay closes.
         pendingOpen = true;
         if (OverlayController.request(overlayId))
             beginOpen();
@@ -33,12 +37,20 @@ Item {
 
         pendingOpen = false;
         monitor = Hyprland.focusedMonitor?.name || Quickshell.screens[0]?.name || "";
-        menu.reset();
-        menu.backdrop = "";
         opened = true;
 
         if (!capture.start(monitor))
-            menu.arm();
+            arm();
+    }
+
+    // Idempotent: whichever of snapshotReady, capture failure or the watchdog
+    // arrives first is the one that maps the window.
+    function arm() {
+        if (!opened || armed)
+            return;
+
+        armed = true;
+        Qt.callLater(menu.focusSearch);
     }
 
     function close() {
@@ -49,21 +61,8 @@ Item {
             return;
         }
 
-        if (!opened)
-            return;
-
-        if (menu.armed)
-            menu.dismiss();
-        else
-            finish();
-    }
-
-    function finish() {
-        pendingOpen = false;
-        opened = false;
-        menu.backdrop = "";
-        capture.cancel();
-        OverlayController.release(overlayId);
+        if (opened)
+            menu.cancel();
     }
 
     function toggle() {
@@ -73,8 +72,35 @@ Item {
             open();
     }
 
+    function finish() {
+        pendingOpen = false;
+        opened = false;
+        armed = false;
+        menu.snapshot = "";
+        capture.cancel();
+        OverlayController.release(overlayId);
+        Qt.callLater(menu.prepare);
+    }
+
+    function launch(entry) {
+        if (!entry) {
+            menu.launchFailed("No application to launch");
+            return;
+        }
+
+        try {
+            entry.execute();
+            finish();
+        } catch (error) {
+            const name = entry.name || "application";
+            const message = "Could not launch " + name;
+            menu.launchFailed(message);
+            console.warn(message, error);
+        }
+    }
+
     IpcHandler {
-        target: "menu"
+        target: "launcher"
 
         function open(): void {
             root.open();
@@ -106,53 +132,42 @@ Item {
     DesktopCapture {
         id: capture
 
-        prefix: "session-menu"
+        prefix: "launcher"
+
         onCompleted: source => {
-            if (root.opened && !menu.armed)
-                menu.backdrop = source;
+            // A capture that lands after arming has missed its slot; handing it
+            // over now would pop the desktop in mid-animation.
+            if (root.opened && !root.armed)
+                menu.snapshot = source;
             else
                 capture.release();
         }
-        onFailed: if (root.opened)
-            menu.arm()
-        onIdle: if (root.pendingOpen && OverlayController.owner === root.overlayId)
-            root.beginOpen()
-    }
 
-    Connections {
-        target: menu
+        onFailed: {
+            if (root.opened)
+                root.arm();
+        }
 
-        function onBackdropChanged() {
-            if (!menu.backdrop)
-                capture.release();
+        onIdle: {
+            if (root.pendingOpen && OverlayController.owner === root.overlayId)
+                root.beginOpen();
         }
     }
 
     // Fall back without waiting indefinitely for the compositor's capture.
     Timer {
-        interval: 500
-        running: root.opened && !menu.armed
-        onTriggered: menu.arm()
-    }
-
-    Process {
-        id: actionProcess
-
-        onExited: (code, status) => {
-            if (code === 0 && status === 0)
-                root.finish();
-            else
-                menu.error = "Action failed. Try again or press Escape.";
-        }
+        interval: 250
+        running: root.opened && !root.armed
+        onTriggered: root.arm()
     }
 
     PanelWindow {
-        visible: root.opened && menu.armed
+        visible: root.opened && root.armed
         screen: Quickshell.screens.find(screen => screen.name === root.monitor) || Quickshell.screens[0]
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-session-menu"
+        WlrLayershell.namespace: "quickshell-launcher"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
         anchors {
@@ -162,36 +177,18 @@ Item {
             right: true
         }
 
-        OrbitMenu {
+        Launcher {
             id: menu
 
             anchors.fill: parent
-            presenting: root.opened
-            busy: actionProcess.running
+            presenting: root.armed
+            onSnapshotReady: root.arm()
             onDismissed: root.finish()
-            onActionRequested: action => {
-                if (action === "lock") {
-                    root.finish();
-                    Quickshell.execDetached(["hyprlock"]);
-                    return;
-                }
-
-                const commands = {
-                    exit: ["hyprctl", "dispatch", "exit"],
-                    reboot: ["systemctl", "reboot"],
-                    shutdown: ["systemctl", "poweroff"],
-                    suspend: ["sh", "-c", "loginctl lock-session && systemctl suspend"],
-                    hibernate: ["sh", "-c", "loginctl lock-session && systemctl hibernate"]
-                };
-                if (!commands[action])
-                    return;
-
-                actionProcess.command = commands[action];
-                actionProcess.running = true;
-            }
+            onLaunchRequested: entry => root.launch(entry)
         }
     }
 
+    Component.onCompleted: menu.prepare()
     Component.onDestruction: {
         capture.cancel();
         OverlayController.release(overlayId);
