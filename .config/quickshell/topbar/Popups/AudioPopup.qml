@@ -4,12 +4,12 @@ import QtQuick
 import QtQuick.Layouts
 import qs.Common
 import qs.Ui
+import qs.Ui.Audio
 import qs.Services
 
 PopupPanel {
     id: root
 
-    property bool subscribed: false
     property string selectedTab: "output"
     property int profileCardId: -1
     property string profileDeviceName: ""
@@ -37,13 +37,6 @@ PopupPanel {
         open = !sameOpenTab;
     }
 
-    function syncSubscription() {
-        if (subscribed === open)
-            return;
-        subscribed = open;
-        AudioDevices.subscribe(open);
-    }
-
     function showProfiles(device) {
         const card = AudioDevices.cardFor(device);
         if (!card)
@@ -57,14 +50,13 @@ PopupPanel {
         profileDeviceName = "";
     }
 
-    onOpenChanged: {
-        syncSubscription();
-        if (!open)
-            closeProfiles();
+    onOpenChanged: if (!open)
+        closeProfiles()
+
+    Subscriber {
+        active: root.open
+        onToggled: enabled => AudioDevices.subscribe(enabled)
     }
-    Component.onCompleted: syncSubscription()
-    Component.onDestruction: if (subscribed)
-        AudioDevices.subscribe(false)
 
     TabSwitcher {
         Layout.fillWidth: true
@@ -92,7 +84,7 @@ PopupPanel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: root.selectedTab === "output" ? "Output devices" : "Input devices"
-            font.pixelSize: 14
+            font.pixelSize: Theme.fontSizeSmall
             font.bold: true
         }
         BarText {
@@ -103,7 +95,7 @@ PopupPanel {
                 return audio ? Math.round(audio.volume * 100) + "%" + (audio.muted ? " · Muted" : "") : "";
             }
             color: Theme.popupSubtleText
-            font.pixelSize: 12
+            font.pixelSize: Theme.fontSizeCaption
         }
     }
 
@@ -113,15 +105,7 @@ PopupPanel {
         onProfilesRequested: device => root.showProfiles(device)
     }
 
-    BarText {
-        Layout.fillWidth: true
-        Layout.preferredHeight: text === "" ? 0 : 24
-        visible: Layout.preferredHeight > 0
+    PopupPanel.ErrorBanner {
         text: AudioDevices.error
-        color: Theme.graphTemperature
-        font.pixelSize: 11
-        wrapMode: Text.WordWrap
-        maximumLineCount: 2
-        elide: Text.ElideRight
     }
 }

@@ -1,8 +1,10 @@
 import QtQuick
+import qs.Ui
 import qs.Common
 
 Rectangle {
     id: root
+
     property string title: ""
     property string subtitle: ""
     property string action: "Connect"
@@ -11,17 +13,21 @@ Rectangle {
     property bool busy: false
     signal activated
     signal secondaryActivated
+
     implicitHeight: 52
     radius: 9
     color: hover.hovered ? Theme.popupSurface : "transparent"
+
     HoverHandler {
         id: hover
     }
+
     Behavior on color {
         ColorAnimation {
             duration: Theme.durationFast
         }
     }
+
     MouseArea {
         id: mouse
         anchors.fill: parent
@@ -30,6 +36,7 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
     }
+
     Column {
         x: 12
         y: 6
@@ -38,17 +45,18 @@ Rectangle {
         BarText {
             width: parent.width
             text: root.title
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSizeLabel
             elide: Text.ElideRight
         }
         BarText {
             width: Math.max(0, parent.width - actions.width - 8)
             text: root.subtitle
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSizeTiny
             color: Theme.popupSubtleText
             elide: Text.ElideRight
         }
     }
+
     Row {
         id: actions
         anchors.right: parent.right

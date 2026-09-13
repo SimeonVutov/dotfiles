@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Ui
 import qs.Common
 
 Rectangle {
@@ -45,7 +46,7 @@ Rectangle {
             anchors.centerIn: parent
             text: root.icon
             color: Theme.popupSubtleText
-            font.pixelSize: 18
+            font.pixelSize: Theme.fontSizeLarge
             visible: root.artUrl === ""
         }
     }
@@ -61,42 +62,24 @@ Rectangle {
         BarText {
             width: parent.width
             text: root.title
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSizeLabel
             elide: Text.ElideRight
         }
         BarText {
             width: parent.width
             text: root.subtitle
             color: Theme.popupSubtleText
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSizeTiny
             elide: Text.ElideRight
         }
     }
 
-    Rectangle {
+    SelectionDot {
         id: radio
         anchors.right: parent.right
         anchors.rightMargin: 12
         anchors.verticalCenter: parent.verticalCenter
-        width: 16
-        height: 16
-        radius: 8
-        color: "transparent"
-        border.color: root.selected ? Theme.popupAccent : Theme.popupSubtleText
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 8
-            height: 8
-            radius: 4
-            color: Theme.popupAccent
-            opacity: root.selected ? 1 : 0
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Theme.durationFast
-                }
-            }
-        }
+        selected: root.selected
     }
 
     MouseArea {

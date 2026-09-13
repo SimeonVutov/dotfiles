@@ -107,16 +107,8 @@ PopupPanel {
         Layout.preferredHeight: 6
     }
 
-    BarText {
-        Layout.fillWidth: true
-        Layout.preferredHeight: visible ? implicitHeight : 0
-        visible: text !== ""
+    PopupPanel.ErrorBanner {
         text: HardwareControls.error
-        color: Theme.graphTemperature
-        font.pixelSize: 11
-        wrapMode: Text.WordWrap
-        maximumLineCount: 2
-        elide: Text.ElideRight
     }
 
     Column {

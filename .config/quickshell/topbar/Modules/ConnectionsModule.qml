@@ -1,6 +1,7 @@
 import QtQuick
 import qs.Common
 import qs.Ui
+import qs.Ui.Connectivity
 import qs.Services
 import qs.Popups
 
@@ -33,11 +34,8 @@ BarModule {
                 onClicked: connectionsPopup.showTab("wifi")
             }
 
-            Rectangle {
+            Divider {
                 anchors.verticalCenter: parent.verticalCenter
-                width: 1
-                height: 16
-                color: Theme.popupBorder
             }
 
             ConnectionPillItem {

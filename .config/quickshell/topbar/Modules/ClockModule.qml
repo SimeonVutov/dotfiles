@@ -4,8 +4,7 @@ import qs.Common
 import qs.Ui
 import qs.Popups
 
-// Date and time. Left click opens the dashboard, right click swaps to the long
-// date format (what waybar's format-alt did).
+// Left click opens the dashboard; right click toggles the date format.
 BarModule {
     id: root
 

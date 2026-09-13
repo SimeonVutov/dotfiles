@@ -22,13 +22,13 @@ PopupPanel {
 
         BarText {
             text: Qt.formatDateTime(clock.date, "HH:mm")
-            font.pixelSize: 40
+            font.pixelSize: Theme.fontSizeDisplay
         }
 
         BarText {
             text: Qt.formatDateTime(clock.date, "dddd, dd MMMM yyyy")
             color: Theme.popupSubtleText
-            font.pixelSize: 12
+            font.pixelSize: Theme.fontSizeCaption
         }
     }
 

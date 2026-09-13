@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Ui
 import qs.Common
 import qs.Services
 
@@ -25,7 +26,7 @@ Rectangle {
         x: 14
         anchors.verticalCenter: parent.verticalCenter
         text: Icons.music
-        font.pixelSize: 18
+        font.pixelSize: Theme.fontSizeLarge
         color: Theme.popupSubtleText
     }
     Column {
@@ -37,12 +38,12 @@ Rectangle {
         BarText {
             text: "Media source"
             color: Theme.popupSubtleText
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSizeTiny
         }
         BarText {
             width: parent.width
             text: root.hasSources ? ((Players.manualPlayerId ? "" : "Automatic · ") + (Players.identity || "Choose source")) : "No media sources"
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSizeLabel
             elide: Text.ElideRight
         }
     }
@@ -51,7 +52,7 @@ Rectangle {
         anchors.rightMargin: 14
         anchors.verticalCenter: parent.verticalCenter
         text: Icons.chevronDown
-        font.pixelSize: 11
+        font.pixelSize: Theme.fontSizeTiny
         visible: root.hasSources
     }
     MouseArea {

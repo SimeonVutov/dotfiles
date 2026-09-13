@@ -5,23 +5,15 @@ import qs.Ui
 import qs.Services
 import qs.Popups
 
-// CPU, memory and temperature in one pill. Right click opens btop, same as the
-// old waybar group binding.
+// CPU, memory and temperature share one sampler.
 BarModule {
     id: root
 
     // The sampler only runs while at least one of these is on screen.
-    property bool subscribed: false
-    function syncSubscription() {
-        if (subscribed === visible)
-            return;
-        SysMon.subscribe(visible);
-        subscribed = visible;
+    Subscriber {
+        active: root.visible
+        onToggled: enabled => SysMon.subscribe(enabled)
     }
-    onVisibleChanged: syncSubscription()
-    Component.onCompleted: syncSubscription()
-    Component.onDestruction: if (subscribed)
-        SysMon.subscribe(false)
 
     Pill {
         id: pill
