@@ -159,7 +159,7 @@ Item {
         readonly property real hullRadius: 18
         readonly property real hullOutlineInset: 4
         readonly property real iconSourceSize: 64
-        readonly property real arrayInsetX: 4
+        readonly property real wingHullGap: 12
         readonly property real arrayInsetY: 16
         readonly property real labelGap: 10
         readonly property bool highlighted: root.selected
@@ -186,12 +186,12 @@ Item {
             height: craft.hullSize
             rotation: root.bankAngle
 
-            SolarArray {
-                x: craft.arrayInsetX
+            SatelliteWing {
+                x: (body.width - craft.hullSize) / 2 - craft.wingHullGap - width
                 y: craft.arrayInsetY
             }
-            SolarArray {
-                x: body.width - craft.arrayInsetX - width
+            SatelliteWing {
+                x: (body.width + craft.hullSize) / 2 + craft.wingHullGap
                 y: craft.arrayInsetY
                 mirrored: true
             }

@@ -44,6 +44,6 @@ Singleton {
 
     // Slack beyond the drift box for the name label under the craft and the
     // hover scale-up, so neighbours never overlap.
-    readonly property real craftClearanceX: 15
+    readonly property real craftClearanceX: 47
     readonly property real craftClearanceY: 21
 }

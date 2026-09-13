@@ -12,7 +12,7 @@ Rectangle {
     readonly property int connectorHeight: 3
     readonly property int connectorY: 22
 
-    readonly property int cellColumns: 2
+    readonly property int cellColumns: 4
     readonly property int cellRows: 4
     readonly property int cellWidth: 12
     readonly property int cellHeight: 7
@@ -24,7 +24,7 @@ Rectangle {
     readonly property color cellColor: "#252525"
     readonly property color cellBorder: "#484848"
 
-    width: 39
+    width: 71
     height: 48
     radius: panelRadius
     color: Theme.surface
