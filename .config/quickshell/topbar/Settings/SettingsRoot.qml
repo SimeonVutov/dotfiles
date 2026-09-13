@@ -1,0 +1,128 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Wayland
+import Quickshell.Hyprland
+import qs.Common
+import qs.Ui
+import "MonitorSwitch" as Displays
+
+Item {
+    id: root
+
+    readonly property string overlayId: "settings"
+    property bool opened: false
+    property bool pendingOpen: false
+    property bool presenting: false
+    property string monitor: ""
+
+    function open() {
+        if (opened || pendingOpen)
+            return;
+        pendingOpen = true;
+        if (OverlayController.request(overlayId))
+            beginOpen();
+    }
+
+    function beginOpen() {
+        if (opened)
+            return;
+        pendingOpen = false;
+        monitor = Hyprland.focusedMonitor?.name || Quickshell.screens[0]?.name || "";
+        opened = true;
+        presenting = true;
+    }
+
+    function close() {
+        pendingOpen = false;
+        OverlayController.cancel(overlayId);
+        displays.revert();
+        presenting = false;
+        if (!opened)
+            OverlayController.release(overlayId);
+    }
+
+    IpcHandler {
+        target: "settings"
+        function open(menu: string): void {
+            if (menu === "monitors")
+                root.open();
+        }
+        function toggle(menu: string): void {
+            if (menu === "monitors") {
+                if (root.opened || root.pendingOpen)
+                    root.close();
+                else
+                    root.open();
+            }
+        }
+        function close(): void {
+            root.close();
+        }
+    }
+
+    Connections {
+        target: OverlayController
+        function onCloseRequested(owner) {
+            if (owner === root.overlayId)
+                root.close();
+        }
+        function onGranted(owner) {
+            if (owner === root.overlayId)
+                root.beginOpen();
+        }
+    }
+
+    Displays.MonitorService {
+        id: displays
+        active: root.presenting
+    }
+
+    PanelWindow {
+        visible: root.opened
+        screen: {
+            const screens = Quickshell.screens;
+            if (displays.applying) {
+                const active = displays.monitors.filter(m => m.enabled);
+                const targets = displays.mode === "duplicate" ? active.slice(0, 1) : active;
+                const destination = screens.find(s => targets.some(m => m.name === s.name));
+                if (destination)
+                    return destination;
+            }
+            return screens.find(s => s.name === root.monitor) || screens[0];
+        }
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "quickshell-settings"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
+        }
+
+        QuickSettingsPanel {
+            anchors.fill: parent
+            title: "Monitor Switch"
+            presenting: root.presenting
+            onCloseRequested: root.close()
+            onClosed: {
+                root.opened = false;
+                OverlayController.release(root.overlayId);
+            }
+
+            Displays.MonitorSwitch {
+                anchors.fill: parent
+                controller: displays
+                active: root.presenting
+            }
+        }
+    }
+
+    Component.onDestruction: {
+        OverlayController.cancel(overlayId);
+        OverlayController.release(overlayId);
+    }
+}
