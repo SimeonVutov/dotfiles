@@ -68,12 +68,20 @@ Singleton {
     property int subscribers: 0
 
     function subscribe(enabled) {
+        const wasInactive = subscribers === 0;
         subscribers = Math.max(0, subscribers + (enabled ? 1 : -1));
+        if ((enabled && wasInactive) || subscribers === 0) {
+            _subscriberPrimed = false;
+            _subscriberElapsed = 0;
+            _subscriberTick = 0;
+        }
     }
 
     property real _prevTotal: 0
     property real _prevIdle: 0
-    property int _elapsed: 0
+    property int _subscriberElapsed: 0
+    property int _subscriberTick: 0
+    property bool _subscriberPrimed: false
 
     FileView {
         id: statFile
@@ -161,19 +169,24 @@ Singleton {
         onRunningChanged: {
             if (!running) {
                 root._prevTotal = 0;
-                root._elapsed = 0;
+                root._subscriberElapsed = 0;
+                root._subscriberTick = 0;
+                root._subscriberPrimed = false;
             }
         }
         triggeredOnStart: true
         onTriggered: {
-            if (root.graphWatchers.cpu > 0 || (root.subscribers > 0 && root._elapsed % Config.hardware.tickInterval === 0))
+            const subscriberDue = root.subscribers > 0 && (!root._subscriberPrimed || root._subscriberElapsed + interval >= Config.hardware.tickInterval);
+
+            if (root.graphWatchers.cpu > 0 || subscriberDue)
                 root._sampleCpu();
-            if (root.graphWatchers.memory > 0 || (root.subscribers > 0 && root._elapsed % (Config.hardware.tickInterval * Config.hardware.memoryEveryNTicks) === 0))
+            if (root.graphWatchers.memory > 0 || (subscriberDue && root._subscriberTick % Config.hardware.memoryEveryNTicks === 0))
                 root._sampleMemory();
-            if (root.graphWatchers.temperature > 0 || (root.subscribers > 0 && root._elapsed % (Config.hardware.tickInterval * Config.hardware.temperatureEveryNTicks) === 0))
+            if (root.graphWatchers.temperature > 0 || (subscriberDue && root._subscriberTick % Config.hardware.temperatureEveryNTicks === 0))
                 root._sampleTemperature();
             if (root.graphWatchers.gpu > 0)
                 root._sampleGpu();
+
             const values = {
                 cpu: root.cpuUsage,
                 memory: root.memoryPercent,
@@ -184,7 +197,14 @@ Singleton {
                 if (root.graphWatchers[metric] > 0)
                     root.appendHistory(metric, values[metric]);
             }
-            root._elapsed += interval;
+
+            if (subscriberDue) {
+                root._subscriberPrimed = true;
+                root._subscriberElapsed = 0;
+                root._subscriberTick++;
+            } else if (root.subscribers > 0) {
+                root._subscriberElapsed += interval;
+            }
         }
     }
 }
