@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import qs.Common
@@ -6,6 +7,18 @@ import qs.Common
 // Shared chrome, content grid, and floating-menu layer for every panel.
 PopupWindow {
     id: root
+
+    // A footer error line, styled identically wherever a popup shows one.
+    component ErrorBanner: BarText {
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        visible: text !== ""
+        color: Theme.graphTemperature
+        font.pixelSize: Theme.fontSizeTiny
+        wrapMode: Text.WordWrap
+        maximumLineCount: 2
+        elide: Text.ElideRight
+    }
 
     property Item anchorItem: null
     property bool open: false
@@ -88,13 +101,18 @@ PopupWindow {
         y: root.open ? 0 : -10
         transformOrigin: Item.Top
 
-        PanelLayout {
+        GridLayout {
             id: layout
+
             x: root.contentPadding
             y: root.contentPadding
             width: parent.width - root.contentPadding * 2
+            columns: 1
+            columnSpacing: Theme.popupSpacing
+            rowSpacing: Theme.popupSectionSpacing
             enabled: !root.overlayPage || !root.overlayActive
             opacity: root.overlayPage && root.overlayActive ? 0 : 1
+
             Behavior on opacity {
                 NumberAnimation {
                     duration: Theme.durationFast
