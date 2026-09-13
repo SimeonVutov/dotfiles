@@ -11,17 +11,26 @@ Rectangle {
     property string dragging: ""
     property real dragX: 0
     property real dragY: 0
+    property bool precise: false
     property var dragViewport: null
     property real signalPhase: 0
     readonly property bool duplicate: controller.mode === "duplicate"
-    readonly property var rectangles: Layout.displayRects(controller.monitors, duplicate)
-    readonly property var extent: Layout.bounds(rectangles)
     readonly property real mapPadding: 48
+    // Screens latch onto a neighbour's edge from this far away on screen, which
+    // is what makes them line up by hand; holding Ctrl drops it to nothing.
+    readonly property real snapPixels: 16
+    readonly property real threshold: precise ? 0 : snapPixels / Math.max(zoom, .0001)
+
+    // Mid-drag the map shows where the release would actually land, arrangement
+    // and all, rather than the layout as it stands.
+    readonly property var staged: dragging ? Layout.draft(controller.monitors, dragging, (dragX - originX) / zoom, (dragY - originY) / zoom, threshold) : controller.monitors
+    readonly property var rectangles: Layout.displayRects(staged, duplicate)
+    readonly property var extent: Layout.bounds(Layout.displayRects(controller.monitors, duplicate))
     readonly property real fit: Math.min((width - mapPadding * 2) / extent.width, (height - mapPadding * 2) / extent.height)
     readonly property real zoom: dragViewport ? dragViewport.zoom : fit
     readonly property real originX: dragViewport ? dragViewport.x : (width - extent.width * fit) / 2 - extent.x * fit
     readonly property real originY: dragViewport ? dragViewport.y : (height - extent.height * fit) / 2 - extent.y * fit
-    readonly property var snapPreview: dragging ? Layout.move(controller.monitors, dragging, (dragX - originX) / zoom, (dragY - originY) / zoom).find(m => m.name === dragging) : null
+    readonly property var snapPreview: dragging ? rectangles.find(m => m.name === dragging) : null
 
     color: Theme.overlaySurfaceHover
     radius: 20
@@ -93,6 +102,24 @@ Rectangle {
                 duration: 100
                 easing.type: Easing.OutCubic
             }
+        }
+    }
+
+    // Guide rails wherever the landing spot lines up exactly with a neighbour,
+    // so a latched edge is visible rather than merely felt.
+    Repeater {
+        model: root.snapPreview ? Layout.guides(root.staged, root.dragging) : []
+
+        Rectangle {
+            required property var modelData
+            readonly property bool vertical: modelData.axis === "x"
+            x: vertical ? root.originX + modelData.at * root.zoom : root.originX + modelData.from * root.zoom
+            y: vertical ? root.originY + modelData.from * root.zoom : root.originY + modelData.at * root.zoom
+            width: vertical ? 1 : (modelData.to - modelData.from) * root.zoom
+            height: vertical ? (modelData.to - modelData.from) * root.zoom : 1
+            color: Theme.overlayText
+            opacity: .75
+            z: 4
         }
     }
 
@@ -282,21 +309,28 @@ Rectangle {
                         root.dragY = tileY;
                         root.dragging = tile.monitor.name;
                     }
-                    root.dragX = Math.max(0, Math.min(root.width - tile.width, tileX + point.x - pressX));
-                    root.dragY = Math.max(0, Math.min(root.height - tile.height, tileY + point.y - pressY));
+                    root.precise = (mouse.modifiers & Qt.ControlModifier) !== 0;
+                    // Half a screen may leave the map so a drag can reach past the
+                    // edge, but never so far that it is lost behind the clip.
+                    root.dragX = Math.max(-tile.width / 2, Math.min(root.width - tile.width / 2, tileX + point.x - pressX));
+                    root.dragY = Math.max(-tile.height / 2, Math.min(root.height - tile.height / 2, tileY + point.y - pressY));
                 }
                 onReleased: {
-                    if (!tile.moving)
+                    if (!tile.moving) {
+                        root.precise = false;
                         return;
+                    }
                     const x = (root.dragX - root.originX) / root.zoom;
                     const y = (root.dragY - root.originY) / root.zoom;
-                    root.controller.move(tile.monitor.name, x, y);
+                    root.controller.move(tile.monitor.name, x, y, root.threshold);
                     root.dragging = "";
                     root.dragViewport = null;
+                    root.precise = false;
                 }
                 onCanceled: {
                     root.dragging = "";
                     root.dragViewport = null;
+                    root.precise = false;
                 }
             }
         }

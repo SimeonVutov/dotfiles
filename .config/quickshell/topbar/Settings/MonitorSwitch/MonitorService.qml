@@ -37,10 +37,10 @@ Item {
         dirty = true;
     }
 
-    function move(name, x, y) {
+    function move(name, x, y, threshold) {
         if (busy || mode === "duplicate")
             return;
-        monitors = Layout.move(monitors, name, x, y);
+        monitors = Layout.move(monitors, name, x, y, threshold);
         dirty = true;
     }
 
