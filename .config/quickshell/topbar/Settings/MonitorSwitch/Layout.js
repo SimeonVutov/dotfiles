@@ -26,32 +26,94 @@ function attached(a, b) {
             && Math.min(a.x + as.width, b.x + bs.width) > Math.max(a.x, b.x));
 }
 
-function snap(monitor, placed, desiredX, desiredY) {
-    if (!placed.length)
-        return Object.assign({}, monitor, {x: 0, y: 0});
+// Enough shared edge left over that the pointer can still cross between screens.
+var EDGE_CONTACT = 100;
 
-    const own = size(monitor), candidates = [];
-    for (const neighbour of placed) {
-        const other = size(neighbour);
-        const overlapX = Math.min(80, own.width / 2, other.width / 2);
-        const overlapY = Math.min(80, own.height / 2, other.height / 2);
-        const clampedX = Math.round(Math.max(neighbour.x - own.width + overlapX,
-                                            Math.min(neighbour.x + other.width - overlapX, desiredX)));
-        const clampedY = Math.round(Math.max(neighbour.y - own.height + overlapY,
-                                            Math.min(neighbour.y + other.height - overlapY, desiredY)));
-        for (const y of [clampedY, neighbour.y, neighbour.y + other.height - own.height]) {
-            candidates.push({x: neighbour.x - own.width, y: y});
-            candidates.push({x: neighbour.x + other.width, y: y});
+function alignments(ownLength, otherPos, otherLength) {
+    return [otherPos, otherPos + otherLength - ownLength, otherPos + (otherLength - ownLength) / 2];
+}
+
+// Positions flush against one neighbour's four sides. The coordinate running
+// along the touching edge keeps whatever the drag asked for, so a screen slides
+// freely instead of jumping between a handful of fixed slots; within `threshold`
+// of a shared edge or centre it latches onto that alignment exactly.
+function sides(monitor, neighbour, desired, threshold) {
+    const own = size(monitor), other = size(neighbour), result = [];
+
+    function slide(wanted, ownLength, otherPos, otherLength) {
+        for (const option of alignments(ownLength, otherPos, otherLength)) {
+            if (Math.abs(wanted - option) <= threshold)
+                return Math.round(option);
         }
-        for (const x of [clampedX, neighbour.x, neighbour.x + other.width - own.width]) {
-            candidates.push({x: x, y: neighbour.y - own.height});
-            candidates.push({x: x, y: neighbour.y + other.height});
+        const contact = Math.min(EDGE_CONTACT, ownLength, otherLength);
+        return Math.round(Math.max(otherPos - ownLength + contact, Math.min(otherPos + otherLength - contact, wanted)));
+    }
+
+    const y = slide(desired.y, own.height, neighbour.y, other.height);
+    result.push({x: neighbour.x + other.width, y: y});
+    result.push({x: neighbour.x - own.width, y: y});
+
+    const x = slide(desired.x, own.width, neighbour.x, other.width);
+    result.push({x: x, y: neighbour.y + other.height});
+    result.push({x: x, y: neighbour.y - own.height});
+    return result;
+}
+
+// Pulls a near-miss onto the exact shared edge, centre line or flush contact of
+// whichever neighbour it is closest to, so screens can actually be lined up by
+// hand. A zero threshold (the precise modifier) leaves the position untouched.
+function magnetize(monitor, others, desired, threshold) {
+    if (!threshold)
+        return desired;
+
+    const own = size(monitor);
+    let x = desired.x, y = desired.y;
+    let nearestX = threshold + 1, nearestY = threshold + 1;
+    for (const neighbour of others) {
+        const other = size(neighbour);
+        for (const option of alignments(own.height, neighbour.y, other.height).concat([neighbour.y - own.height, neighbour.y + other.height])) {
+            const gap = Math.abs(desired.y - option);
+            if (gap <= threshold && gap < nearestY) {
+                nearestY = gap;
+                y = Math.round(option);
+            }
+        }
+        for (const option of alignments(own.width, neighbour.x, other.width).concat([neighbour.x - own.width, neighbour.x + other.width])) {
+            const gap = Math.abs(desired.x - option);
+            if (gap <= threshold && gap < nearestX) {
+                nearestX = gap;
+                x = Math.round(option);
+            }
         }
     }
-    const available = candidates.map(p => Object.assign({}, monitor, p))
-        .filter(candidate => !placed.some(other => intersects(candidate, other)));
-    available.sort((a, b) => Math.hypot(a.x - desiredX, a.y - desiredY) - Math.hypot(b.x - desiredX, b.y - desiredY));
-    return available[0];
+    return {x: x, y: y};
+}
+
+// Where a screen ends up for a requested position: its own spot when that is
+// already touching something and clear of everything, otherwise the nearest
+// flush position. Nothing can be left floating apart from the rest.
+function place(monitors, name, desiredX, desiredY, threshold) {
+    const moving = monitors.find(m => m.name === name);
+    const others = monitors.filter(m => m.name !== name && m.enabled);
+    if (!others.length)
+        return Object.assign({}, moving, {x: 0, y: 0});
+
+    const desired = magnetize(moving, others, {x: Math.round(desiredX), y: Math.round(desiredY)}, threshold || 0);
+    const candidates = [];
+    const free = Object.assign({}, moving, desired);
+    if (others.some(other => attached(free, other)) && !others.some(other => intersects(free, other)))
+        candidates.push(desired);
+    for (const neighbour of others) {
+        for (const spot of sides(moving, neighbour, desired, threshold || 0)) {
+            if (!others.some(other => intersects(Object.assign({}, moving, spot), other)))
+                candidates.push(spot);
+        }
+    }
+    if (!candidates.length)
+        return Object.assign({}, moving);
+
+    candidates.sort((a, b) => Math.hypot(a.x - desired.x, a.y - desired.y) - Math.hypot(b.x - desired.x, b.y - desired.y));
+    return Object.assign({}, moving, candidates[0]);
 }
 
 function normalize(monitors) {
@@ -63,23 +125,87 @@ function normalize(monitors) {
     return monitors.map(m => m.enabled ? Object.assign({}, m, {x: m.x - left, y: m.y - top}) : m);
 }
 
-function pack(monitors) {
-    const result = copy(monitors), placed = [];
-    for (const monitor of result.filter(m => m.enabled)) {
-        const canStay = placed.length && placed.some(other => attached(monitor, other))
-            && !placed.some(other => intersects(monitor, other));
-        if (!canStay)
-            Object.assign(monitor, snap(monitor, placed, monitor.x, monitor.y));
-        placed.push(monitor);
+function connected(monitors) {
+    const active = monitors.filter(m => m.enabled);
+    if (active.length < 2)
+        return true;
+    for (let i = 0; i < active.length; i++) {
+        for (let j = i + 1; j < active.length; j++) {
+            if (intersects(active[i], active[j]))
+                return false;
+        }
     }
-    return normalize(result);
+    const reached = [active[0]];
+    for (let pass = 0; pass < active.length; pass++) {
+        for (const monitor of active) {
+            if (reached.indexOf(monitor) < 0 && reached.some(other => attached(monitor, other)))
+                reached.push(monitor);
+        }
+    }
+    return reached.length === active.length;
 }
 
-function move(monitors, name, x, y) {
-    const others = pack(monitors.filter(m => m.name !== name));
+// Reattaches only what is actually adrift. An arrangement that already holds
+// together keeps its exact coordinates, or reopening the panel — or refreshing
+// after an apply — would silently rewrite the placement the user just chose.
+function repair(monitors) {
+    const result = copy(monitors);
+    if (connected(result))
+        return result;
+
+    const placed = [];
+    for (const monitor of result.filter(m => m.enabled)) {
+        if (placed.length && !connected(placed.concat([monitor])))
+            Object.assign(monitor, place(placed.concat([monitor]), monitor.name, monitor.x, monitor.y, 0));
+        placed.push(monitor);
+    }
+    return result;
+}
+
+function pack(monitors) {
+    return normalize(repair(monitors));
+}
+
+// Moving a screen out of the middle of a row leaves the ones it used to bridge
+// adrift, so the remainder is closed up before the dragged screen lands. Left
+// un-recentred, which is what a live drag preview needs to stay put in the
+// viewport the drag started in.
+function draft(monitors, name, x, y, threshold) {
+    const rest = repair(monitors.filter(m => m.name !== name));
+    const staged = monitors.map(m => m.name === name ? Object.assign({}, m) : rest.find(n => n.name === m.name));
+    const destination = place(staged, name, x, y, threshold);
+    return staged.map(m => m.name === name ? destination : m);
+}
+
+function move(monitors, name, x, y, threshold) {
+    return normalize(draft(monitors, name, x, y, threshold));
+}
+
+// Rails to draw for every edge of the moving screen that lines up exactly with
+// a neighbour, spanning both so the alignment reads at a glance.
+function guides(monitors, name) {
     const moving = monitors.find(m => m.name === name);
-    const destination = snap(moving, others.filter(m => m.enabled), x, y);
-    return normalize(monitors.map(m => m.name === name ? destination : others.find(n => n.name === m.name)));
+    if (!moving)
+        return [];
+
+    const own = size(moving), result = [];
+    for (const neighbour of monitors.filter(m => m.name !== name && m.enabled)) {
+        const other = size(neighbour);
+        const edges = [
+            {axis: "y", own: [moving.y, moving.y + own.height], other: [neighbour.y, neighbour.y + other.height], span: [moving.x, moving.x + own.width, neighbour.x, neighbour.x + other.width]},
+            {axis: "x", own: [moving.x, moving.x + own.width], other: [neighbour.x, neighbour.x + other.width], span: [moving.y, moving.y + own.height, neighbour.y, neighbour.y + other.height]}
+        ];
+        for (const edge of edges) {
+            for (const mine of edge.own) {
+                for (const theirs of edge.other) {
+                    if (mine !== theirs)
+                        continue;
+                    result.push({axis: edge.axis, at: mine, from: Math.min.apply(null, edge.span), to: Math.max.apply(null, edge.span)});
+                }
+            }
+        }
+    }
+    return result;
 }
 
 function mode(monitors, selectedMode) {

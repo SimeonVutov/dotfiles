@@ -35,6 +35,19 @@ for (let step = 0; step < 300; step++) {
     valid(draft);
 }
 valid(layout.pack([monitor("eDP-1", 0, 3840, 2160, 2), monitor("DP-1", 6000), monitor("DP-2", -4000)]));
+
+const stacked = [monitor("eDP-1", 0), Object.assign(monitor("DP-1", 0, 2560, 1440), {y: -1440})];
+const kept = layout.pack(stacked);
+assert.equal(kept.find(m => m.name === "DP-1").y, 0, "A valid arrangement was rewritten");
+assert.equal(kept.find(m => m.name === "eDP-1").y, 1440, "A valid arrangement was rewritten");
+
+const pair = [monitor("eDP-1", 0), monitor("DP-1", 1920, 2560, 1440)];
+const nudged = layout.move(pair, "DP-1", 1904, 37, 120);
+assert.deepEqual([nudged[1].x, nudged[1].y], [1920, 0], "Near-level edges did not snap flush");
+const precise = layout.move(pair, "DP-1", 1920, 37, 0);
+assert.equal(precise.find(m => m.name === "DP-1").y, 37, "Precise placement was overridden by snapping");
+valid(precise);
+valid(layout.move(pair, "DP-1", 40000, -40000, 120));
 const rotated = monitor("DP-1", 0, 1920, 1080);
 rotated.transform = 1;
 assert.equal(layout.size(rotated).width, 1080);
