@@ -7,7 +7,12 @@ log() {
 }
 
 toggle_existing() {
-    qs ipc -c wallpaper call wallpaper toggle >/dev/null 2>&1
+    # -n/--newest: without it, "ipc call" targets the OLDEST instance for this
+    # config. Quickshell never reaps dead instance records on its own, so a
+    # previously killed picker leaves one behind forever — the very next
+    # toggle would silently hit that stale husk instead of a live process,
+    # fail, and race a second instance into existence from the fallback below.
+    qs ipc -n -c wallpaper call wallpaper toggle >/dev/null 2>&1
 }
 
 if toggle_existing; then
