@@ -23,10 +23,11 @@ Item {
     readonly property var selectedMonitor: monitors.find(m => m.name === selected) || null
     readonly property string helper: Qt.resolvedUrl("monitor_control.py").toString().replace(/^file:\/\//, "")
 
-    function refresh() {
+    function refresh(preserveError) {
         if (busy)
             return;
-        error = "";
+        if (!preserveError)
+            error = "";
         inspect.running = true;
     }
 
@@ -197,8 +198,10 @@ Item {
             root.previewing = false;
             if (!root.receivedResult)
                 root.error = "The display controller stopped unexpectedly.";
-            if (root.active && code === 0)
-                Qt.callLater(root.refresh);
+            // Re-read even after a failure: the layout was rolled back, so the
+            // map would otherwise keep showing the arrangement that was tried.
+            if (root.active)
+                Qt.callLater(() => root.refresh(true));
         }
     }
 
