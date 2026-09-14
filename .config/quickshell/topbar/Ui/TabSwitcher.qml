@@ -48,7 +48,7 @@ Rectangle {
 
             BarText {
                 anchors.centerIn: parent
-                text: tabItem.modelData.icon + "   " + tabItem.modelData.label
+                text: tabItem.modelData.icon ? tabItem.modelData.icon + "   " + tabItem.modelData.label : tabItem.modelData.label
                 color: root.currentTab === tabItem.modelData.value ? Theme.popupText : Theme.popupSubtleText
                 font.pixelSize: Theme.fontSizeLabel
 
