@@ -1,13 +1,12 @@
 import QtQuick
 import qs.Common
 
-// A hold-everything confirmation for changes that undo themselves if ignored.
-// The countdown owns the middle of the panel rather than a corner, because the
-// only thing that matters while it runs is answering it.
+// A generic two-choice confirmation, with an optional self-reverting countdown.
 FocusScope {
     id: root
 
     property bool open: false
+    property bool showCountdown: true
     property string title: ""
     property string message: ""
     property string acceptText: "Keep"
@@ -83,6 +82,7 @@ FocusScope {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 96
                 height: 96
+                visible: root.showCountdown
 
                 Canvas {
                     id: ring
@@ -133,6 +133,7 @@ FocusScope {
             BarText {
                 width: parent.width
                 text: root.message
+                visible: root.message.length > 0
                 color: Theme.popupSubtleText
                 font.pixelSize: Theme.fontSizeCaption
                 horizontalAlignment: Text.AlignHCenter
