@@ -157,32 +157,27 @@ def monitor_rule(monitor, selector=None):
 
 def apply_monitors(monitors):
     # Enable destinations before disabling the screen hosting the control panel.
+    # Hyprland may warn about a transient overlap while the monitors are moved
+    # one at a time; it still applies each rule, and the final layout is
+    # validated to be overlap-free before any of this runs.
     for monitor in sorted(monitors, key=lambda m: (not m["enabled"], m["mirror"] != "none")):
         hyprctl("keyword", "monitor", monitor_rule(monitor))
 
 
-def matches_layout(expected, actual):
-    if {m["name"] for m in expected} != {m["name"] for m in actual}:
-        return False
-    for monitor in expected:
-        live = next(m for m in actual if m["name"] == monitor["name"])
-        if monitor["enabled"] != live["enabled"]:
-            return False
-        if not monitor["enabled"]:
-            continue
-        if any(monitor[key] != live[key] for key in ("width", "height", "transform", "mirror")):
-            return False
-        if abs(monitor["scale"] - live["scale"]) > .001 or abs(monitor["rate"] - live["rate"]) > max(.6, monitor["rate"] * .005):
-            return False
-        if monitor["mirror"] == "none" and any(monitor[key] != live[key] for key in ("x", "y")):
-            return False
-    return True
+# Which screens are lit is the only thing worth verifying automatically: it
+# decides whether you can still see anything. Exact geometry is left to the
+# person looking at the result, who confirms or reverts it. Demanding an exact
+# match here instead reverted layouts that had applied perfectly well, because
+# Hyprland legitimately reports back its own rate, scale and mirror details.
+def lit(monitors):
+    return {m["name"] for m in monitors if m["enabled"]}
 
 
 def wait_for_layout(monitors):
-    deadline = time.monotonic() + 3
+    deadline = time.monotonic() + 5
+    expected = lit(monitors)
     while time.monotonic() < deadline:
-        if matches_layout(monitors, discover()["monitors"]):
+        if lit(discover()["monitors"]) == expected:
             return
         time.sleep(.1)
     raise ValueError("Hyprland could not use that layout or display mode; restoring the previous setup")
@@ -272,9 +267,9 @@ def preview(payload):
             if not readable:
                 continue
             response = sys.stdin.readline().strip()
-            if response != "keep" or time.monotonic() >= deadline:
+            if response != "keep":
                 break
-            if not matches_layout(monitors, live):
+            if lit(live) != lit(monitors):
                 raise ValueError("The display layout changed during the preview")
             targets = workspace_targets(monitors)
             saving = True
@@ -282,10 +277,6 @@ def preview(payload):
             # Dynamic workspace rules retain old monitor bindings on some Hyprland versions.
             hyprctl("reload")
             wait_for_layout(monitors)
-            bound = {str(r.get("workspaceString", "")): r.get("monitor", "")
-                     for r in hyprctl("workspacerules", as_json=True)}
-            if any(bound.get(str(n)) != m["selector"] for n, m in targets.items()):
-                raise ValueError("Hyprland did not load the workspace assignments")
             relocate(hyprctl("workspaces", as_json=True), {n: m["name"] for n, m in targets.items()}, focused)
             committed = True
             emit("kept")

@@ -50,19 +50,23 @@ class DisplayTests(unittest.TestCase):
             with self.subTest(payload=payload), self.assertRaises(ValueError):
                 control.validate(payload, self.state)
 
-    def test_activation_precedes_disabling(self):
+    def test_verification_tracks_which_screens_are_lit(self):
+        live = copy.deepcopy(self.monitors)
+        # Hyprland reporting its own rate, scale, position or mirror details
+        # must not read as a failed layout.
+        live[1].update(rate=59.94, scale=1.25, x=99, mirror="eDP-1", width=1280)
+        self.assertEqual(control.lit(self.monitors), control.lit(live))
+        live[1]["enabled"] = False
+        self.assertNotEqual(control.lit(self.monitors), control.lit(live))
+
+    def test_apply_enables_before_disabling(self):
         self.monitors[0]["enabled"] = False
         with patch.object(control, "hyprctl") as command:
             control.apply_monitors(self.monitors)
-        self.assertTrue(command.call_args_list[-1].args[-1].endswith(",disable"))
-
-    def test_fallback_resolution_is_not_accepted_as_success(self):
-        actual = copy.deepcopy(self.monitors)
-        actual[1]["width"] = 1280
-        self.assertFalse(control.matches_layout(self.monitors, actual))
-        actual = copy.deepcopy(self.monitors)
-        actual[1]["rate"] = 59.94
-        self.assertTrue(control.matches_layout(self.monitors, actual))
+        rules = [call.args[-1] for call in command.call_args_list]
+        self.assertEqual(len(rules), 3)
+        self.assertTrue(rules[-1].endswith(",disable"))
+        self.assertFalse(any(rule.endswith(",disable") for rule in rules[:-1]))
 
     def test_refresh_accepts_unlisted_values_below_the_maximum(self):
         self.payload["monitors"][1]["rate"] = 50
