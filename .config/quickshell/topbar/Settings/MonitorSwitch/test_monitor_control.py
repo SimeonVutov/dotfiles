@@ -68,6 +68,24 @@ class DisplayTests(unittest.TestCase):
         self.assertTrue(rules[-1].endswith(",disable"))
         self.assertFalse(any(rule.endswith(",disable") for rule in rules[:-1]))
 
+    def test_preview_binds_workspaces_so_no_screen_is_left_without_one(self):
+        laptop_only = [dict(m, enabled=m["name"] == "eDP-1") for m in self.monitors]
+        with patch.object(control, "hyprctl") as command:
+            control.bind_workspaces(control.workspace_targets(laptop_only))
+        bound = [call.args[-1] for call in command.call_args_list]
+        self.assertEqual(len(bound), 10)
+        self.assertTrue(all(rule.endswith("monitor:eDP-1") for rule in bound))
+
+    def test_revert_restores_the_previous_workspace_rules(self):
+        with patch.object(control, "hyprctl") as command:
+            control.rebind_workspaces([
+                {"workspaceString": "1", "monitor": "desc:Some Screen"},
+                {"workspaceString": "special:magic", "monitor": "eDP-1"},
+                {"workspaceString": "2", "monitor": ""},
+            ])
+        restored = [call.args[-1] for call in command.call_args_list]
+        self.assertEqual(restored, ["1, monitor:desc:Some Screen"])
+
     def test_refresh_accepts_unlisted_values_below_the_maximum(self):
         self.payload["monitors"][1]["rate"] = 50
         self.assertEqual(control.validate(self.payload, self.state)[1]["rate"], 50)

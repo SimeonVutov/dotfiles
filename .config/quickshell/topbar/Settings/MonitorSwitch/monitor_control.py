@@ -198,6 +198,22 @@ def relocate(workspaces, targets, focused):
         hyprctl("dispatch", "workspace", str(focused))
 
 
+# Without this the preview shows the new monitors while the workspace rules
+# still bind every workspace to the old ones, leaving a freshly enabled screen
+# with none it is allowed to own - so Hyprland invents an extra one past the
+# end of the range.
+def bind_workspaces(targets):
+    for number, monitor in targets.items():
+        hyprctl("keyword", "workspace", f'{number}, monitor:{monitor["selector"]}')
+
+
+def rebind_workspaces(rules):
+    for rule in rules:
+        number, monitor = str(rule.get("workspaceString", "")), rule.get("monitor", "")
+        if number.isdigit() and monitor:
+            hyprctl("keyword", "workspace", f"{number}, monitor:{monitor}")
+
+
 def atomic_write(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=".monitor-switch-", dir=path.parent)
@@ -248,6 +264,7 @@ def preview(payload):
     original = state["monitors"]
     workspaces = hyprctl("workspaces", as_json=True)
     focused = hyprctl("activeworkspace", as_json=True).get("id", 0)
+    prior_rules = hyprctl("workspacerules", as_json=True)
     committed = False
     config = Path.home() / ".config/hypr/conf"
     paths = [config / "monitors/current.conf", config / "workspaces/current.conf"]
@@ -256,6 +273,9 @@ def preview(payload):
     try:
         apply_monitors(monitors)
         wait_for_layout(monitors)
+        targets = workspace_targets(monitors)
+        bind_workspaces(targets)
+        relocate(hyprctl("workspaces", as_json=True), {n: m["name"] for n, m in targets.items()}, focused)
         deadline = time.monotonic() + PREVIEW_SECONDS
         emit("preview", seconds=PREVIEW_SECONDS)
         connected = {m["name"] for m in original}
@@ -271,7 +291,6 @@ def preview(payload):
                 break
             if lit(live) != lit(monitors):
                 raise ValueError("The display layout changed during the preview")
-            targets = workspace_targets(monitors)
             saving = True
             backups = persist(monitors, targets, paths)
             # Dynamic workspace rules retain old monitor bindings on some Hyprland versions.
@@ -304,6 +323,7 @@ def preview(payload):
                 if m["mirror"] not in available:
                     m["mirror"] = "none"
             apply_monitors(restore)
+            rebind_workspaces(prior_rules)
             relocate(hyprctl("workspaces", as_json=True), {w["id"]: w["monitor"] for w in workspaces if w["monitor"] in available}, focused)
             emit("reverted")
 
