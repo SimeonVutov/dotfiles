@@ -3,6 +3,7 @@ import Quickshell
 import qs.Bar
 import qs.SessionMenu
 import qs.Launcher
+import qs.Settings
 
 ShellRoot {
     Variants {
@@ -12,4 +13,5 @@ ShellRoot {
     }
     SessionMenuRoot {}
     LauncherRoot {}
+    SettingsRoot {}
 }

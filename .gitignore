@@ -31,7 +31,6 @@ spotify
 # For now there is nothing special to sync
 .config/vesktop
 
-# Hyprland monitor-switcher: rewritten by scripts/hyprland/monitors/*.sh
-# every time you switch layouts, so it's machine/session state, not config.
+# Machine-specific state saved by Quickshell Monitor Switch.
 .config/hypr/conf/monitors/current.conf
 .config/hypr/conf/workspaces/current.conf
