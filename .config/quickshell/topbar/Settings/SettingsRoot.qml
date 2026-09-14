@@ -80,16 +80,18 @@ Item {
 
     PanelWindow {
         visible: root.opened
+        // Stay on the screen the panel was opened on. It only moves when that
+        // screen is the one being switched off, or the confirmation would
+        // appear on a display the user is not looking at.
         screen: {
             const screens = Quickshell.screens;
-            if (displays.applying) {
-                const active = displays.monitors.filter(m => m.enabled);
-                const targets = displays.mode === "duplicate" ? active.slice(0, 1) : active;
-                const destination = screens.find(s => targets.some(m => m.name === s.name));
-                if (destination)
-                    return destination;
-            }
-            return screens.find(s => s.name === root.monitor) || screens[0];
+            const current = screens.find(s => s.name === root.monitor);
+            const losingCurrent = displays.applying && displays.monitors.some(m => m.name === root.monitor && !m.enabled);
+            if (current && !losingCurrent)
+                return current;
+            const active = displays.monitors.filter(m => m.enabled);
+            const targets = displays.mode === "duplicate" ? active.slice(0, 1) : active;
+            return screens.find(s => targets.some(m => m.name === s.name)) || current || screens[0];
         }
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
