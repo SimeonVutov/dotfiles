@@ -32,9 +32,9 @@ Rectangle {
     readonly property real originY: dragViewport ? dragViewport.y : (height - extent.height * fit) / 2 - extent.y * fit
     readonly property var snapPreview: dragging ? rectangles.find(m => m.name === dragging) : null
 
-    color: Theme.overlaySurfaceHover
-    radius: 20
-    border.color: Theme.overlayBorderBright
+    color: Theme.popupSurface
+    radius: Theme.popupRadius
+    border.color: Theme.popupBorder
     clip: true
 
     function nudge(dx, dy) {
@@ -49,28 +49,6 @@ Rectangle {
     Keys.onRightPressed: nudge(1, 0)
     Keys.onUpPressed: nudge(0, -1)
     Keys.onDownPressed: nudge(0, 1)
-
-    Repeater {
-        model: 2
-        Rectangle {
-            required property int index
-            anchors.centerIn: parent
-            width: Math.min(root.width, root.height) * (.72 + index * .36)
-            height: width
-            radius: width / 2
-            color: "transparent"
-            border.color: Theme.overlayBorder
-            opacity: .45
-        }
-    }
-
-    Rectangle {
-        anchors.centerIn: parent
-        width: parent.width - 40
-        height: 1
-        color: Theme.overlayBorder
-        opacity: .45
-    }
 
     NumberAnimation on signalPhase {
         from: 0
@@ -87,9 +65,9 @@ Rectangle {
         width: root.snapPreview ? Layout.size(root.snapPreview).width * root.zoom : 0
         height: root.snapPreview ? Layout.size(root.snapPreview).height * root.zoom : 0
         radius: 7
-        color: Theme.overlayBorderBright
+        color: Theme.popupBorder
         opacity: .5
-        border.color: Theme.overlayText
+        border.color: Theme.popupText
         border.width: 2
         Behavior on x {
             NumberAnimation {
@@ -117,7 +95,7 @@ Rectangle {
             y: vertical ? root.originY + modelData.from * root.zoom : root.originY + modelData.at * root.zoom
             width: vertical ? 1 : (modelData.to - modelData.from) * root.zoom
             height: vertical ? (modelData.to - modelData.from) * root.zoom : 1
-            color: Theme.overlayText
+            color: Theme.popupText
             opacity: .75
             z: 4
         }
@@ -130,6 +108,8 @@ Rectangle {
             id: tile
             required property int index
             readonly property var monitor: root.rectangles[index]
+            // The plot works in logical pixels; the label wants the real mode.
+            readonly property var source: root.staged.find(m => m.name === tile.monitor.name)
             readonly property bool selected: monitor.name === root.controller.selected
             readonly property bool moving: root.dragging === monitor.name
             readonly property real scenePhase: root.duplicate ? root.signalPhase : index * .17
@@ -140,9 +120,9 @@ Rectangle {
             height: monitor.height * root.zoom
             z: moving ? 3 : selected ? 2 : 1
             radius: 10
-            color: selected ? Theme.overlayBorder : Theme.overlaySurface
+            color: selected ? Theme.popupSurface : Theme.popupBackground
             border.width: selected ? 2 : 1
-            border.color: selected ? Theme.overlayText : Theme.overlayBorderBright
+            border.color: selected ? Theme.popupAccent : Theme.popupBorder
             opacity: monitor.enabled ? 1 : .3
             clip: true
             scale: moving ? 1.025 : 1
@@ -205,14 +185,14 @@ Rectangle {
                     height: width
                     radius: width / 2
                     color: "transparent"
-                    border.color: Theme.overlayText
+                    border.color: Theme.popupText
                     Rectangle {
                         x: parent.width / 2 + Math.cos(tile.scenePhase * Math.PI * 2) * parent.width / 2 - 3
                         y: parent.height / 2 + Math.sin(tile.scenePhase * Math.PI * 2) * parent.height / 2 - 3
                         width: 6
                         height: 6
                         radius: 3
-                        color: Theme.overlayText
+                        color: Theme.popupText
                     }
                 }
                 Rectangle {
@@ -221,21 +201,21 @@ Rectangle {
                     height: width
                     rotation: 45
                     color: "transparent"
-                    border.color: Theme.overlayText
+                    border.color: Theme.popupText
                 }
                 Rectangle {
                     width: parent.width * .2
                     height: 2
                     x: parent.width * .1
                     y: parent.height * .8
-                    color: Theme.overlayText
+                    color: Theme.popupText
                 }
             }
 
             Column {
                 anchors.centerIn: parent
-                width: parent.width - 12
-                spacing: 3
+                width: parent.width - 24
+                spacing: 2
                 BarText {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.duplicate && tile.monitor.enabled ? "◎" : String(tile.index + 1)
@@ -246,31 +226,21 @@ Rectangle {
                     width: parent.width
                     text: tile.monitor.internal ? "LAPTOP" : "EXTERNAL"
                     horizontalAlignment: Text.AlignHCenter
+                    color: Theme.popupText
                     font.pixelSize: Theme.fontSizeTiny
+                    font.letterSpacing: 1.5
                     elide: Text.ElideRight
                     visible: tile.height > 68
                 }
                 BarText {
                     width: parent.width
-                    text: tile.monitor.name
+                    text: tile.source ? tile.source.width + "×" + tile.source.height : ""
                     horizontalAlignment: Text.AlignHCenter
-                    color: Theme.overlayMuted
+                    color: Theme.popupSubtleText
                     font.pixelSize: Theme.fontSizeTiny
                     elide: Text.ElideRight
                     visible: tile.height > 95
                 }
-            }
-
-            Rectangle {
-                anchors {
-                    top: parent.top
-                    right: parent.right
-                    margins: 9
-                }
-                width: 5
-                height: 5
-                radius: 3
-                color: tile.monitor.enabled ? Theme.overlayText : Theme.overlayMuted
             }
 
             MouseArea {
@@ -340,6 +310,6 @@ Rectangle {
         anchors.centerIn: parent
         visible: !root.rectangles.length
         text: root.controller.busy ? "Acquiring displays…" : "No displays available"
-        color: Theme.overlayMuted
+        color: Theme.popupSubtleText
     }
 }
