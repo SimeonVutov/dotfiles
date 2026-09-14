@@ -61,13 +61,13 @@ FocusScope {
         width: Math.min(parent.width - 64, 420)
         height: column.implicitHeight + 56
         radius: Theme.popupRadius
-        color: Theme.overlayBackground
-        border.color: Theme.overlayBorderBright
+        color: Theme.popupBackground
+        border.color: Theme.popupBorder
         scale: root.open ? 1 : .93
 
         Behavior on scale {
             NumberAnimation {
-                duration: Theme.overlayMotion
+                duration: Theme.durationNormal
                 easing.type: Easing.OutBack
             }
         }
@@ -103,11 +103,11 @@ FocusScope {
                         const radius = width / 2 - 5;
                         ctx.clearRect(0, 0, width, height);
                         ctx.lineWidth = 3;
-                        ctx.strokeStyle = Theme.overlayBorder;
+                        ctx.strokeStyle = Theme.popupBorder;
                         ctx.beginPath();
                         ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
                         ctx.stroke();
-                        ctx.strokeStyle = Theme.overlayText;
+                        ctx.strokeStyle = Theme.popupText;
                         ctx.beginPath();
                         ctx.arc(width / 2, height / 2, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
                         ctx.stroke();
@@ -117,7 +117,7 @@ FocusScope {
                 BarText {
                     anchors.centerIn: parent
                     text: root.seconds
-                    color: Theme.overlayText
+                    color: Theme.popupText
                     font.pixelSize: Theme.fontSizeDisplay
                 }
             }
@@ -125,7 +125,7 @@ FocusScope {
             BarText {
                 width: parent.width
                 text: root.title
-                color: Theme.overlayText
+                color: Theme.popupText
                 font.pixelSize: Theme.fontSizeLarge
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -133,7 +133,7 @@ FocusScope {
             BarText {
                 width: parent.width
                 text: root.message
-                color: Theme.overlayMuted
+                color: Theme.popupSubtleText
                 font.pixelSize: Theme.fontSizeCaption
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap

@@ -14,7 +14,7 @@ ColumnLayout {
 
     BarText {
         text: root.label
-        color: Theme.overlayMuted
+        color: Theme.popupSubtleText
         font.pixelSize: Theme.fontSizeCaption
     }
 
@@ -24,18 +24,18 @@ ColumnLayout {
         implicitHeight: 38
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fontSizeSmall
-        palette.text: Theme.overlayText
-        palette.buttonText: Theme.overlayText
-        palette.base: Theme.overlaySurface
-        palette.window: Theme.overlaySurface
-        palette.button: Theme.overlaySurface
-        palette.highlight: Theme.overlayBorderBright
-        palette.highlightedText: Theme.overlayText
+        palette.text: Theme.popupText
+        palette.buttonText: Theme.popupText
+        palette.base: Theme.popupSurface
+        palette.window: Theme.popupSurface
+        palette.button: Theme.popupSurface
+        palette.highlight: Theme.popupBorder
+        palette.highlightedText: Theme.popupText
         onActivated: index => root.chosen(index)
         background: Rectangle {
             radius: 9
-            color: Theme.overlaySurface
-            border.color: choice.activeFocus ? Theme.overlayText : Theme.overlayBorder
+            color: Theme.popupSurface
+            border.color: choice.activeFocus ? Theme.popupText : Theme.popupBorder
         }
     }
 }
