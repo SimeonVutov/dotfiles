@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell.Services.Pipewire
 import qs.Common
@@ -102,8 +104,12 @@ BarModule {
         }
     }
 
-    AudioPopup {
+    PopupHost {
         id: audioPopup
-        anchorItem: pill
+        popup: Component {
+            AudioPopup {
+                anchorItem: pill
+            }
+        }
     }
 }

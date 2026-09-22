@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell
 import qs.Common
@@ -46,9 +48,13 @@ BarModule {
         }
     }
 
-    HardwarePopup {
+    PopupHost {
         id: hardwarePopup
-        anchorItem: pill
+        popup: Component {
+            HardwarePopup {
+                anchorItem: pill
+            }
+        }
     }
 
     MouseArea {

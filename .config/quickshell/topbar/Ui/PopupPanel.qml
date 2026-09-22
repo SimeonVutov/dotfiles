@@ -135,7 +135,7 @@ PopupWindow {
                 anchors.fill: parent
                 anchors.margins: root.contentPadding
                 sourceComponent: root.overlayPage
-                active: root.overlayPage !== null
+                active: root.visible && root.overlayPage !== null && (root.overlayActive || opacity > 0)
                 enabled: root.overlayActive
                 visible: opacity > 0
                 opacity: root.overlayActive ? 1 : 0

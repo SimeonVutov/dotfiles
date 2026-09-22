@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell
 import qs.Common
@@ -42,8 +44,12 @@ BarModule {
         }
     }
 
-    Dashboard {
+    PopupHost {
         id: dashboard
-        anchorItem: pill
+        popup: Component {
+            Dashboard {
+                anchorItem: pill
+            }
+        }
     }
 }

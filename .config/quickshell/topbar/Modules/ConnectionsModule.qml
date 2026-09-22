@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import qs.Common
 import qs.Ui
@@ -48,8 +50,12 @@ BarModule {
         }
     }
 
-    ConnectionsPopup {
+    PopupHost {
         id: connectionsPopup
-        anchorItem: pill
+        popup: Component {
+            ConnectionsPopup {
+                anchorItem: pill
+            }
+        }
     }
 }
