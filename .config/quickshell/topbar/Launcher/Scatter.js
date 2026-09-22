@@ -75,12 +75,11 @@ function scatter(count, field, options) {
     // be compared against the nine buckets surrounding it.
     const buckets = {};
     const candidateLimit = count * options.candidatesPerItem;
+    const point = { x: 0, y: 0 };
 
     for (let candidate = 0; candidate < candidateLimit && points.length < count; candidate++) {
-        const point = {
-            x: (Math.random() * 2 - 1) * field.rangeX,
-            y: (Math.random() * 2 - 1) * field.rangeY
-        };
+        point.x = (Math.random() * 2 - 1) * field.rangeX;
+        point.y = (Math.random() * 2 - 1) * field.rangeY;
 
         if (overlapsCenter(point, field, options.centerRadius))
             continue;
@@ -91,8 +90,9 @@ function scatter(count, field, options) {
         if (overlapsNeighbour(point, bucketX, bucketY, field, buckets))
             continue;
 
-        points.push(point);
-        addToBucket(buckets, bucketX, bucketY, point);
+        const accepted = { x: point.x, y: point.y };
+        points.push(accepted);
+        addToBucket(buckets, bucketX, bucketY, accepted);
     }
 
     return points;
@@ -107,10 +107,15 @@ function overlapsCenter(point, field, centerRadius) {
 function overlapsNeighbour(point, bucketX, bucketY, field, buckets) {
     for (let offsetX = -1; offsetX <= 1; offsetX++) {
         for (let offsetY = -1; offsetY <= 1; offsetY++) {
-            const nearby = buckets[bucketKey(bucketX + offsetX, bucketY + offsetY)] || [];
+            const nearby = buckets[bucketKey(bucketX + offsetX, bucketY + offsetY)];
+            if (!nearby)
+                continue;
 
-            if (nearby.some(other => Math.abs(other.x - point.x) < field.spacingX && Math.abs(other.y - point.y) < field.spacingY))
-                return true;
+            for (let i = 0; i < nearby.length; i++) {
+                const other = nearby[i];
+                if (Math.abs(other.x - point.x) < field.spacingX && Math.abs(other.y - point.y) < field.spacingY)
+                    return true;
+            }
         }
     }
 
