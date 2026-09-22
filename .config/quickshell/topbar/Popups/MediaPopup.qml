@@ -43,7 +43,7 @@ PopupPanel {
             height: 112
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            source: Players.artUrl
+            source: root.visible ? Players.artUrl : ""
         }
 
         Column {

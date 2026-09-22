@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import qs.Common
 import qs.Ui
@@ -86,8 +88,12 @@ BarModule {
             }
         }
     }
-    MediaPopup {
+    PopupHost {
         id: mediaPopup
-        anchorItem: pill
+        popup: Component {
+            MediaPopup {
+                anchorItem: pill
+            }
+        }
     }
 }
