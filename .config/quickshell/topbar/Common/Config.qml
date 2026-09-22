@@ -82,6 +82,8 @@ Singleton {
         })
 
     readonly property var battery: ({
+            paths: ["/sys/class/power_supply/BAT0", "/sys/class/power_supply/BAT1"],
+            refreshInterval: 5000,
             warningThreshold: 30,
             criticalThreshold: 15
         })
