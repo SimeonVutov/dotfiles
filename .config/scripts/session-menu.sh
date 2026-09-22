@@ -12,7 +12,7 @@
 # below, which means --no-duplicate there.
 qs ipc -n -c topbar call menu toggle >/dev/null 2>&1 && exit 0
 
-qs -n -d -c topbar || exit 1
+sh "$(dirname "$0")/quickshell-start.sh" topbar -n -d || exit 1
 
 i=0
 while [ "$i" -lt 60 ]; do
