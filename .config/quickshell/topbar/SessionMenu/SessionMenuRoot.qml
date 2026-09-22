@@ -1,7 +1,8 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.Common
 
@@ -33,12 +34,12 @@ Item {
 
         pendingOpen = false;
         monitor = Hyprland.focusedMonitor?.name || Quickshell.screens[0]?.name || "";
-        menu.reset();
-        menu.backdrop = "";
         opened = true;
+        menuLoader.item.reset();
+        menuLoader.item.backdrop = "";
 
         if (!capture.start(monitor))
-            menu.arm();
+            menuLoader.item.arm();
     }
 
     function close() {
@@ -52,16 +53,17 @@ Item {
         if (!opened)
             return;
 
-        if (menu.armed)
-            menu.dismiss();
+        if (menuLoader.item && menuLoader.item.armed)
+            menuLoader.item.dismiss();
         else
             finish();
     }
 
     function finish() {
         pendingOpen = false;
+        if (menuLoader.item)
+            menuLoader.item.backdrop = "";
         opened = false;
-        menu.backdrop = "";
         capture.cancel();
         OverlayController.release(overlayId);
     }
@@ -108,22 +110,22 @@ Item {
 
         prefix: "session-menu"
         onCompleted: source => {
-            if (root.opened && !menu.armed)
-                menu.backdrop = source;
+            if (root.opened && menuLoader.item && !menuLoader.item.armed)
+                menuLoader.item.backdrop = source;
             else
                 capture.release();
         }
         onFailed: if (root.opened)
-            menu.arm()
+            menuLoader.item.arm()
         onIdle: if (root.pendingOpen && OverlayController.owner === root.overlayId)
             root.beginOpen()
     }
 
     Connections {
-        target: menu
+        target: menuLoader.item
 
         function onBackdropChanged() {
-            if (!menu.backdrop)
+            if (!target.backdrop)
                 capture.release();
         }
     }
@@ -131,8 +133,8 @@ Item {
     // Fall back without waiting indefinitely for the compositor's capture.
     Timer {
         interval: 500
-        running: root.opened && !menu.armed
-        onTriggered: menu.arm()
+        running: root.opened && menuLoader.item && !menuLoader.item.armed
+        onTriggered: menuLoader.item.arm()
     }
 
     Process {
@@ -142,30 +144,16 @@ Item {
             if (code === 0 && status === 0)
                 root.finish();
             else
-                menu.error = "Action failed. Try again or press Escape.";
+                menuLoader.item.showError("Action failed. Try again or press Escape.");
         }
     }
 
-    PanelWindow {
-        visible: root.opened && menu.armed
-        screen: Quickshell.screens.find(screen => screen.name === root.monitor) || Quickshell.screens[0]
-        color: "transparent"
-        exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-session-menu"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    LazyLoader {
+        id: menuLoader
+        active: root.opened
 
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
-
-        OrbitMenu {
-            id: menu
-
-            anchors.fill: parent
+        SessionMenuView {
+            monitor: root.monitor
             presenting: root.opened
             busy: actionProcess.running
             onDismissed: root.finish()

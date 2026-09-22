@@ -188,7 +188,6 @@ Item {
         }
     }
 
-    Component.onCompleted: menu.prepare()
     Component.onDestruction: {
         capture.cancel();
         OverlayController.release(overlayId);

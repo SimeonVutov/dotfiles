@@ -187,15 +187,19 @@ Singleton {
             if (root.graphWatchers.gpu > 0)
                 root._sampleGpu();
 
-            const values = {
-                cpu: root.cpuUsage,
-                memory: root.memoryPercent,
-                temperature: root.temperature,
-                gpu: root.gpuUsage
-            };
-            for (const metric of Object.keys(values)) {
-                if (root.graphWatchers[metric] > 0)
-                    root.appendHistory(metric, values[metric]);
+            if (root.hasGraphs) {
+                const values = {
+                    cpu: root.cpuUsage,
+                    memory: root.memoryPercent,
+                    temperature: root.temperature,
+                    gpu: root.gpuUsage
+                };
+                const histories = Object.assign({}, root.histories);
+                for (const metric of Object.keys(values)) {
+                    if (root.graphWatchers[metric] > 0)
+                        histories[metric] = histories[metric].concat([values[metric]]).slice(-Config.hardware.historySamples);
+                }
+                root.histories = histories;
             }
 
             if (subscriberDue) {

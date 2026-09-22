@@ -281,7 +281,7 @@ Item {
         // the leading edge, so it is gone before the front clears the corners.
         scale: Math.min(1, (root.width - root.sceneScreenMargin) / width, (root.height - root.sceneScreenMargin) / height) * (root.expansionScaleFloor + root.expansionScaleRange * expansion) * (1 + root.departureScaleBoost * Math.pow(root.departure, root.departureScalePower))
         opacity: Math.min(1, reveal * root.revealOpacityRate) * (1 - Math.min(1, Math.pow(root.departure, root.departureOpacityPower) * root.departureOpacityRate))
-        layer.enabled: root.arrival < 1
+        layer.enabled: root.presenting && root.arrival < 1
         layer.effect: ShaderEffect {
             property real progress: scene.reveal
             fragmentShader: Qt.resolvedUrl("shaders/ejection.frag.qsb")
@@ -365,7 +365,7 @@ Item {
                     to: orbit.modelData.phase + 360
                     duration: orbit.modelData.period
                     loops: Animation.Infinite
-                    running: root.visible
+                    running: root.presenting && root.armed && root.visible
                     paused: root.busy
                 }
                 Rectangle {

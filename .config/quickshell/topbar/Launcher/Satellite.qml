@@ -39,18 +39,24 @@ Item {
     readonly property real bankPerDrift: .15
     readonly property real bankAngle: drift / Math.max(bankScaleFloor, visualScale) * bankPerDrift
 
-    function iconPosition() {
+    readonly property point iconCenter: {
         const offsetX = hull.x + hull.width / 2 - craft.width / 2;
         const offsetY = hull.y + hull.height / 2 - craft.height / 2;
         return Qt.point(craft.x + craft.width / 2 + offsetX * craft.scale, craft.y + craft.height / 2 + offsetY * craft.scale);
     }
-
-    function beamOrigin() {
-        const icon = iconPosition();
-        const toIconX = icon.x - width / 2;
-        const toIconY = icon.y - height / 2;
+    readonly property point beamStart: {
+        const toIconX = iconCenter.x - width / 2;
+        const toIconY = iconCenter.y - height / 2;
         const length = Math.max(1, Math.hypot(toIconX, toIconY));
         return Qt.point(width / 2 + toIconX / length * globeRadius, height / 2 + toIconY / length * globeRadius);
+    }
+
+    function iconPosition() {
+        return iconCenter;
+    }
+
+    function beamOrigin() {
+        return beamStart;
     }
 
     // The two fades hand off mid-flight: whichever starts stops the other, and a
@@ -143,10 +149,11 @@ Item {
     }
 
     Beam {
-        startX: root.beamOrigin().x
-        startY: root.beamOrigin().y
-        endX: root.iconPosition().x
-        endY: root.iconPosition().y
+        visible: root.arrival > 0
+        startX: root.beamStart.x
+        startY: root.beamStart.y
+        endX: root.iconCenter.x
+        endY: root.iconCenter.y
         connected: root.beaming
     }
 

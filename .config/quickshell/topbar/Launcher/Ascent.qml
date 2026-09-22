@@ -10,6 +10,9 @@ Item {
     readonly property bool captureReady: capture.status === Image.Ready
     readonly property real groundFade: Math.min(1, progress * 3)
     readonly property real starFade: Math.min(1, progress * 2)
+    readonly property real starTravel: Math.pow(Math.sin(progress * Math.PI), 3)
+    // Matches the point where ascent.frag becomes fully transparent.
+    readonly property real desktopFadeEnd: .88
 
     QtObject {
         id: stars
@@ -57,14 +60,13 @@ Item {
             readonly property real seedX: ((index * 197 + 61) % 997) / 997
             readonly property real seedY: ((index * 109 + 37) % 991) / 991
 
-            readonly property real travel: Math.pow(Math.sin(root.progress * Math.PI), 3)
             readonly property real rise: stars.rise + index % stars.riseVariants * stars.riseStep
             readonly property real streak: stars.streak + index % stars.streakVariants * stars.streakStep
 
             x: seedX * root.width
-            y: (seedY * root.height + travel * rise) % Math.max(1, root.height)
+            y: (seedY * root.height + root.starTravel * rise) % Math.max(1, root.height)
             width: index % stars.brightEvery === 0 ? 2 : 1
-            height: width + travel * streak
+            height: width + root.starTravel * streak
             radius: width / 2
             color: Theme.text
             opacity: (stars.dimmest + index % stars.brightVariants * stars.brightStep) * root.starFade
@@ -73,6 +75,7 @@ Item {
 
     ShaderEffect {
         anchors.fill: parent
+        visible: root.captureReady && root.progress < root.desktopFadeEnd
         property variant source: capture
         property real progress: root.progress
         property real hasCapture: root.captureReady ? 1 : 0
