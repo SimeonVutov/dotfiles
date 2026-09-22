@@ -6,7 +6,7 @@ case "$menu" in
 esac
 
 qs ipc -n -c topbar call settings toggle "$menu" >/dev/null 2>&1 && exit 0
-qs -n -d -c topbar || exit 1
+sh "$(dirname "$0")/quickshell-start.sh" topbar -n -d || exit 1
 attempt=0
 while [ "$attempt" -lt 60 ]; do
     qs ipc -n -c topbar call settings open "$menu" >/dev/null 2>&1 && exit 0

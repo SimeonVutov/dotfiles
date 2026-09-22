@@ -21,7 +21,7 @@ if toggle_existing; then
 fi
 
 log "Quickshell wallpaper config not running; starting it"
-qs -c wallpaper >/dev/null 2>&1 &
+sh "$(dirname "$0")/quickshell-start.sh" wallpaper >/dev/null 2>&1 &
 
 for _ in $(seq 1 30); do
     if toggle_existing; then
