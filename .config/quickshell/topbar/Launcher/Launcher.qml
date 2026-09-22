@@ -11,6 +11,8 @@ FocusScope {
     signal snapshotReady
 
     property var applications: DesktopEntries.applications.values
+    property var settledApplications: []
+    readonly property int catalogFallbackDelay: 250
     property string snapshot: ""
     property bool presenting: true
     property real progress: 0
@@ -27,7 +29,7 @@ FocusScope {
     readonly property real reveal: Math.max(0, Math.min(1, (progress - revealFrom) / (1 - revealFrom)))
     readonly property real settled: 1 - Math.pow(1 - reveal, 3)
 
-    readonly property var catalog: applications.filter(a => !a.noDisplay).slice().sort((a, b) => a.name.localeCompare(b.name))
+    readonly property var catalog: settledApplications.filter(a => !a.noDisplay).slice().sort((a, b) => a.name.localeCompare(b.name))
     readonly property var results: Search.rank(catalog, query)
     // Tested per satellite on every pointer move, so keep membership O(1).
     readonly property var resultSet: new Set(results)
@@ -219,6 +221,7 @@ FocusScope {
         selectedIndex = 0;
         launchError = "";
     }
+    onApplicationsChanged: catalogRefresh.restart()
     onCatalogChanged: scheduleLayout()
     onWidthChanged: scheduleLayout()
     onHeightChanged: scheduleLayout()
@@ -227,10 +230,29 @@ FocusScope {
         Qt.callLater(focusSearch);
     }
     Component.onCompleted: {
-        regenerateLayout();
+        catalogRefresh.restart();
+        scheduleLayout();
         if (presenting)
             ascent.start();
         Qt.callLater(focusSearch);
+    }
+
+    // DesktopEntries signals once after its per-entry model updates.
+    Connections {
+        target: DesktopEntries
+
+        function onApplicationsChanged() {
+            catalogRefresh.stop();
+            root.settledApplications = root.applications.slice();
+        }
+    }
+
+    // Also handles application lists supplied by previews and tests.
+    Timer {
+        id: catalogRefresh
+
+        interval: root.catalogFallbackDelay
+        onTriggered: root.settledApplications = root.applications.slice()
     }
 
     Shortcut {
