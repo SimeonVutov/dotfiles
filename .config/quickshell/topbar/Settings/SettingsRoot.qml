@@ -78,62 +78,66 @@ Item {
         active: root.presenting
     }
 
-    PanelWindow {
-        visible: root.opened
-        // Stay on the screen the panel was opened on. It only moves when that
-        // screen is the one being switched off, or the confirmation would
-        // appear on a display the user is not looking at.
-        screen: {
-            const screens = Quickshell.screens;
-            const current = screens.find(s => s.name === root.monitor);
-            const losingCurrent = displays.applying && displays.monitors.some(m => m.name === root.monitor && !m.enabled);
-            if (current && !losingCurrent)
-                return current;
-            const active = displays.monitors.filter(m => m.enabled);
-            const targets = displays.mode === "duplicate" ? active.slice(0, 1) : active;
-            return screens.find(s => targets.some(m => m.name === s.name)) || current || screens[0];
-        }
-        color: "transparent"
-        exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-settings"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
+    LazyLoader {
+        active: root.opened
 
-        QuickSettingsPanel {
-            anchors.fill: parent
-            title: "Monitor Switch"
-            presenting: root.presenting
-            onCloseRequested: if (!displays.previewing)
-                root.close()
-            onClosed: {
-                root.opened = false;
-                OverlayController.release(root.overlayId);
+        PanelWindow {
+            visible: true
+            // Stay on the screen the panel was opened on. It only moves when that
+            // screen is the one being switched off, or the confirmation would
+            // appear on a display the user is not looking at.
+            screen: {
+                const screens = Quickshell.screens;
+                const current = screens.find(s => s.name === root.monitor);
+                const losingCurrent = displays.applying && displays.monitors.some(m => m.name === root.monitor && !m.enabled);
+                if (current && !losingCurrent)
+                    return current;
+                const active = displays.monitors.filter(m => m.enabled);
+                const targets = displays.mode === "duplicate" ? active.slice(0, 1) : active;
+                return screens.find(s => targets.some(m => m.name === s.name)) || current || screens[0];
+            }
+            color: "transparent"
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.namespace: "quickshell-settings"
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            Displays.MonitorSwitch {
+            QuickSettingsPanel {
                 anchors.fill: parent
-                controller: displays
-                active: root.presenting
-            }
-        }
+                title: "Monitor Switch"
+                presenting: root.presenting
+                onCloseRequested: if (!displays.previewing)
+                    root.close()
+                onClosed: {
+                    root.opened = false;
+                    OverlayController.release(root.overlayId);
+                }
 
-        ConfirmDialog {
-            anchors.fill: parent
-            open: displays.previewing
-            title: "Keep this display arrangement?"
-            message: "The previous setup is restored on its own if you do nothing."
-            acceptText: "Keep"
-            rejectText: "Revert"
-            seconds: displays.secondsLeft
-            total: displays.previewSeconds
-            onAccepted: displays.keep()
-            onRejected: displays.revert()
+                Displays.MonitorSwitch {
+                    anchors.fill: parent
+                    controller: displays
+                    active: root.presenting
+                }
+            }
+
+            ConfirmDialog {
+                anchors.fill: parent
+                open: displays.previewing
+                title: "Keep this display arrangement?"
+                message: "The previous setup is restored on its own if you do nothing."
+                acceptText: "Keep"
+                rejectText: "Revert"
+                seconds: displays.secondsLeft
+                total: displays.previewSeconds
+                onAccepted: displays.keep()
+                onRejected: displays.revert()
+            }
         }
     }
 
