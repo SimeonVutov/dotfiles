@@ -10,15 +10,28 @@ import qs.Popups
 BarModule {
     id: root
 
+    moduleViewId: "connections"
+    readonly property bool wifiSelected: ModuleViewState.enabled("connections", "wifi")
+    readonly property bool bluetoothSelected: ModuleViewState.enabled("connections", "bluetooth")
+    readonly property bool showWifi: wifiSelected && !autoHiddenItems.includes("wifi")
+    readonly property bool showBluetooth: bluetoothSelected && !autoHiddenItems.includes("bluetooth")
+    preferredWidth: pill.paddingH * 2 + (wifiSelected ? wifiSection.expandedWidth : 0) + (bluetoothSelected ? bluetoothSection.expandedWidth : 0) + (wifiSelected && bluetoothSelected ? 9 : 0)
+
+    function widthForCompression(state) {
+        const wifi = wifiSelected && !state.hide.includes("wifi");
+        const bluetooth = bluetoothSelected && !state.hide.includes("bluetooth");
+        if (!wifi && !bluetooth)
+            return preferredWidth;
+        const iconOnly = state.view === "icons";
+        return pill.paddingH * 2 + (wifi ? (iconOnly ? 28 : wifiSection.expandedWidth) : 0) + (bluetooth ? (iconOnly ? 28 : bluetoothSection.expandedWidth) : 0) + (wifi && bluetooth ? 9 : 0);
+    }
+
     function bluetoothLabel(device) {
         const name = device.name || device.deviceName || device.address;
         return device.batteryAvailable ? name + "  " + Icons.bluetoothBattery + " " + Math.round(device.battery * 100) + "%" : name;
     }
 
-    readonly property var bluetoothLabels: Connectivity.connectedBluetoothDevices.map(device => bluetoothLabel(device))
-    readonly property bool wifiHasLabel: Connectivity.wiredConnected || !!Connectivity.currentWifi
-    readonly property bool bluetoothHasLabel: bluetoothLabels.length > 0
-    readonly property int sectionWidth: Math.max(wifiSection.implicitWidth, bluetoothSection.implicitWidth)
+    readonly property var bluetoothLabels: bluetoothSelected ? Connectivity.connectedBluetoothDevices.map(device => bluetoothLabel(device)) : []
 
     Pill {
         id: pill
@@ -26,11 +39,13 @@ BarModule {
         animateWidth: false
 
         Row {
-            spacing: 4
+            spacing: root.showWifi && root.showBluetooth ? 4 : 0
 
             ConnectionPillItem {
                 id: wifiSection
-                width: root.wifiHasLabel && root.bluetoothHasLabel ? root.sectionWidth : implicitWidth
+                width: root.showWifi ? implicitWidth : 0
+                visible: width > 0
+                compact: root.autoView === "icons"
                 icon: Connectivity.wiredConnected ? Icons.ethernet : Connectivity.wifiOn ? Icons.wifi : Icons.wifiDisabled
                 label: Connectivity.wiredConnected ? "Ethernet" : Connectivity.currentWifi ? Connectivity.currentWifi.name : ""
                 onClicked: connectionsPopup.showTab("wifi")
@@ -38,11 +53,15 @@ BarModule {
 
             Divider {
                 anchors.verticalCenter: parent.verticalCenter
+                width: root.showWifi && root.showBluetooth ? 1 : 0
+                visible: width > 0
             }
 
             ConnectionPillItem {
                 id: bluetoothSection
-                width: root.wifiHasLabel && root.bluetoothHasLabel ? root.sectionWidth : implicitWidth
+                width: root.showBluetooth ? implicitWidth : 0
+                visible: width > 0
+                compact: root.autoView === "icons"
                 icon: !Connectivity.bluetoothOn ? Icons.bluetoothDisabled : Connectivity.connectedCount > 0 ? Icons.bluetoothConnected : Icons.bluetooth
                 rotatingLabels: root.bluetoothLabels
                 onClicked: connectionsPopup.showTab("bluetooth")

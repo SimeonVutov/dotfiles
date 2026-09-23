@@ -29,6 +29,8 @@ Singleton {
             gpu: 0
         })
     readonly property bool hasGraphs: Object.values(graphWatchers).some(n => n > 0)
+    property int subscribers: 0
+    property var subscriberMetricCounts: ({ cpu: 0, memory: 0, temperature: 0 })
 
     // Each visible graph owns a subscription. Multiple monitors share reads.
     function watchGraph(metric, enabled) {
@@ -65,11 +67,15 @@ Singleton {
         histories = next;
     }
 
-    property int subscribers: 0
-
-    function subscribe(enabled) {
+    function subscribe(enabled, metrics) {
         const wasInactive = subscribers === 0;
         subscribers = Math.max(0, subscribers + (enabled ? 1 : -1));
+        const counts = Object.assign({}, subscriberMetricCounts);
+        for (const metric of metrics || []) {
+            if (Object.prototype.hasOwnProperty.call(counts, metric))
+                counts[metric] = Math.max(0, counts[metric] + (enabled ? 1 : -1));
+        }
+        subscriberMetricCounts = counts;
         if ((enabled && wasInactive) || subscribers === 0) {
             _subscriberPrimed = false;
             _subscriberElapsed = 0;
@@ -178,11 +184,11 @@ Singleton {
         onTriggered: {
             const subscriberDue = root.subscribers > 0 && (!root._subscriberPrimed || root._subscriberElapsed + interval >= Config.hardware.tickInterval);
 
-            if (root.graphWatchers.cpu > 0 || subscriberDue)
+            if (root.graphWatchers.cpu > 0 || (subscriberDue && root.subscriberMetricCounts.cpu > 0))
                 root._sampleCpu();
-            if (root.graphWatchers.memory > 0 || (subscriberDue && root._subscriberTick % Config.hardware.memoryEveryNTicks === 0))
+            if (root.graphWatchers.memory > 0 || (subscriberDue && root.subscriberMetricCounts.memory > 0 && root._subscriberTick % Config.hardware.memoryEveryNTicks === 0))
                 root._sampleMemory();
-            if (root.graphWatchers.temperature > 0 || (subscriberDue && root._subscriberTick % Config.hardware.temperatureEveryNTicks === 0))
+            if (root.graphWatchers.temperature > 0 || (subscriberDue && root.subscriberMetricCounts.temperature > 0 && root._subscriberTick % Config.hardware.temperatureEveryNTicks === 0))
                 root._sampleTemperature();
             if (root.graphWatchers.gpu > 0)
                 root._sampleGpu();
