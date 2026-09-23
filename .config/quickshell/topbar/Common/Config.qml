@@ -77,10 +77,13 @@ Singleton {
             // Scrolling over the output part changes the output, over the mic
             // part changes the mic. 1% per notch is what waybar defaulted to.
             scrollStep: 1,
-            maxVolume: 100
+            maxOutputVolume: 400,
+            maxInputVolume: 100
         })
 
     readonly property var battery: ({
+            paths: ["/sys/class/power_supply/BAT0", "/sys/class/power_supply/BAT1"],
+            refreshInterval: 5000,
             warningThreshold: 30,
             criticalThreshold: 15
         })

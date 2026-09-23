@@ -1,23 +1,15 @@
 import QtQuick
-import Quickshell
-import Quickshell.Services.UPower
 import qs.Common
 import qs.Ui
+import qs.Services
 
 BarModule {
     id: root
 
-    // UPower's aggregate device may not identify itself as a laptop battery.
-    readonly property var device: {
-        const display = UPower.displayDevice;
-        if (display && display.ready && display.isPresent && display.isLaptopBattery)
-            return display;
-        return UPower.devices.values.find(device => device.ready && device.isPresent && device.isLaptopBattery) || null;
-    }
-    readonly property bool present: !!device && device.ready && device.isPresent && device.isLaptopBattery
-    readonly property int percent: device ? Math.round(device.percentage * 100) : 0
-    readonly property bool fullyCharged: !!device && device.state === UPowerDeviceState.FullyCharged
-    readonly property bool charging: !!device && !fullyCharged && (device.state === UPowerDeviceState.Charging || device.state === UPowerDeviceState.PendingCharge)
+    readonly property bool present: Battery.present
+    readonly property int percent: Battery.percent
+    readonly property bool fullyCharged: Battery.fullyCharged
+    readonly property bool charging: Battery.charging
 
     readonly property bool critical: present && !charging && percent <= Config.battery.criticalThreshold
     readonly property bool warning: present && !charging && !critical && percent <= Config.battery.warningThreshold
@@ -39,7 +31,7 @@ BarModule {
             spacing: 5
 
             BarText {
-                text: root.device ? root.percent + "%" : ""
+                text: root.present ? root.percent + "%" : ""
                 color: root.textColor
             }
 

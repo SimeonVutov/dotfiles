@@ -35,12 +35,12 @@ BarModule {
         return levels[index];
     }
 
-    function adjust(node, notches) {
+    function adjust(node, notches, maximum) {
         if (!node || !node.audio || notches === 0)
             return;
         const current = Math.round(node.audio.volume * 100);
         const next = current + notches * Config.volume.scrollStep;
-        node.audio.volume = Math.max(0, Math.min(Config.volume.maxVolume, next)) / 100;
+        node.audio.volume = Math.max(0, Math.min(maximum, next)) / 100;
     }
 
     // Mouse wheels report in 120ths of a notch; touchpads send much smaller
@@ -76,7 +76,7 @@ BarModule {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: audioPopup.showTab("output")
-                    onWheel: wheel => root.adjust(root.sink, root.notchesFrom(wheel))
+                    onWheel: wheel => root.adjust(root.sink, root.notchesFrom(wheel), Config.volume.maxOutputVolume)
                 }
             }
 
@@ -98,7 +98,7 @@ BarModule {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: audioPopup.showTab("input")
-                    onWheel: wheel => root.adjust(root.source, root.notchesFrom(wheel))
+                    onWheel: wheel => root.adjust(root.source, root.notchesFrom(wheel), Config.volume.maxInputVolume)
                 }
             }
         }
