@@ -40,6 +40,63 @@ Singleton {
             openDashboardOnClick: true
         })
 
+    readonly property var moduleViews: ({
+            hardware: {
+                multiple: true,
+                items: [
+                    { value: "usage", label: "Usage", icon: Icons.cpu },
+                    { value: "memory", label: "Memory", icon: Icons.memory },
+                    { value: "temperature", label: "Temperature", icon: Icons.temperature }
+                ],
+                defaults: ["usage", "memory", "temperature"]
+            },
+            volume: {
+                multiple: true,
+                required: ["output"],
+                items: [
+                    { value: "output", label: "Output", icon: Icons.audioOutput },
+                    { value: "input", label: "Input", icon: Icons.microphone }
+                ],
+                defaults: ["output", "input"]
+            },
+            connections: {
+                multiple: true,
+                required: ["wifi"],
+                items: [
+                    { value: "wifi", label: "Wi-Fi", icon: Icons.wifi },
+                    { value: "bluetooth", label: "Bluetooth", icon: Icons.bluetooth }
+                ],
+                defaults: ["wifi", "bluetooth"]
+            },
+            media: {
+                multiple: false,
+                items: [
+                    { value: "full", label: "Full", description: "Title, animation and controls" },
+                    { value: "noName", label: "No title", description: "Animation and controls" },
+                    { value: "controls", label: "Controls only", description: "Transport buttons" }
+                ],
+                defaults: "full"
+            },
+            battery: {
+                multiple: false,
+                items: [
+                    { value: "full", label: "Percentage and icon", icon: Icons.batteryLevels[3] },
+                    { value: "icon", label: "Icon only", icon: Icons.batteryLevels[3] }
+                ],
+                defaults: "full"
+            },
+            clock: {
+                multiple: false,
+                items: [
+                    { value: "dateTime", label: "Date and time", icon: Icons.clock },
+                    { value: "time", label: "Time only", icon: Icons.clock },
+                    { value: "date", label: "Date only", icon: Icons.calendar },
+                    { value: "longDate", label: "Long date", icon: Icons.calendar }
+                ],
+                defaults: "dateTime"
+            }
+        })
+
     // Session preferences shared by every monitor's hardware popup.
     property var hardwareGraphs: ({
             cpu: true,
@@ -100,11 +157,15 @@ Singleton {
         })
 
     readonly property var media: ({
-            textWidth: 250,
+            textWidth: 200,
             animationStepDuration: 420,
             scrollPixelsPerSecond: 32,
             scrollStartPause: 1100,
             scrollEndPause: 700,
             separator: " - "
+        })
+
+    readonly property var connections: ({
+            maximumLabelWidth: 112
         })
 }

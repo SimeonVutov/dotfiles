@@ -10,21 +10,40 @@ import qs.Popups
 BarModule {
     id: root
 
+    moduleViewId: "volume"
+    readonly property var selectedViews: ModuleViewState.selection("volume")
+    readonly property bool outputSelected: selectedViews.includes("output")
+    readonly property bool inputSelected: ModuleViewState.enabled("volume", "input")
+    readonly property bool showOutput: outputSelected && !autoHiddenItems.includes("output")
+    readonly property bool showInput: inputSelected && !autoHiddenItems.includes("input")
+    preferredWidth: pill.paddingH * 2 + (outputSelected ? outputSection.implicitWidth : 0) + (inputSelected ? inputSection.implicitWidth : 0) + (outputSelected && inputSelected ? 9 : 0)
+
+    function widthForCompression(state) {
+        const output = outputSelected && !state.hide.includes("output");
+        const input = inputSelected && !state.hide.includes("input");
+        if (!output && !input)
+            return preferredWidth;
+        return pill.paddingH * 2 + (output ? outputSection.implicitWidth : 0) + (input ? inputSection.implicitWidth : 0) + (output && input ? 9 : 0);
+    }
+
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
 
-    readonly property bool sinkReady: !!sink && !!sink.audio
+    readonly property bool sinkReady: outputSelected && !!sink && !!sink.audio
     readonly property int sinkVolume: sinkReady ? Math.round(sink.audio.volume * 100) : 0
     readonly property bool sinkMuted: sinkReady && sink.audio.muted
     readonly property bool sinkIsBluetooth: !!sink && (sink.name || "").indexOf("bluez") !== -1
 
-    readonly property bool sourceReady: !!source && !!source.audio
+    readonly property bool sourceReady: inputSelected && !!source && !!source.audio
     readonly property int sourceVolume: sourceReady ? Math.round(source.audio.volume * 100) : 0
     readonly property bool sourceMuted: sourceReady && source.audio.muted
 
     // Binding these keeps their `audio` interfaces populated.
     PwObjectTracker {
-        objects: [root.sink, root.source]
+        objects: [
+            ...(root.outputSelected || audioPopup.loaded ? [root.sink] : []),
+            ...(root.inputSelected || audioPopup.loaded ? [root.source] : [])
+        ]
     }
 
     readonly property string volumeIcon: {
@@ -56,13 +75,18 @@ BarModule {
 
     Pill {
         id: pill
+        animateWidth: false
 
         Row {
-            spacing: 4
+            spacing: root.showOutput && root.showInput ? 4 : 0
 
             BarText {
+                id: outputSection
                 leftPadding: Theme.groupItemPaddingH
                 rightPadding: Theme.groupItemPaddingH
+                clip: true
+                width: root.showOutput ? implicitWidth : 0
+                visible: width > 0
                 text: {
                     if (!root.sinkReady)
                         return "";
@@ -70,6 +94,13 @@ BarModule {
                         return root.sinkVolume + "% " + Icons.volumeMuted;
                     const icon = root.sinkIsBluetooth ? root.volumeIcon + Icons.bluetooth : root.volumeIcon;
                     return root.sinkVolume + "% " + icon;
+                }
+
+                Behavior on width {
+                    NumberAnimation {
+                        duration: Theme.durationNormal
+                        easing.type: Theme.easingEmphasized
+                    }
                 }
 
                 MouseArea {
@@ -82,12 +113,18 @@ BarModule {
 
             Divider {
                 anchors.verticalCenter: parent.verticalCenter
+                width: root.showOutput && root.showInput ? 1 : 0
+                visible: width > 0
             }
 
             BarText {
+                id: inputSection
                 leftPadding: Theme.groupItemPaddingH
                 rightPadding: Theme.groupItemPaddingH
                 font.pixelSize: Theme.fontSizeSmall
+                clip: true
+                width: root.showInput ? implicitWidth : 0
+                visible: width > 0
                 text: {
                     if (!root.sourceReady)
                         return "";
@@ -99,6 +136,13 @@ BarModule {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: audioPopup.showTab("input")
                     onWheel: wheel => root.adjust(root.source, root.notchesFrom(wheel), Config.volume.maxInputVolume)
+                }
+
+                Behavior on width {
+                    NumberAnimation {
+                        duration: Theme.durationNormal
+                        easing.type: Theme.easingEmphasized
+                    }
                 }
             }
         }

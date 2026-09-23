@@ -8,22 +8,26 @@ Rectangle {
     property string icon: ""
     property string label: ""
     property var rotatingLabels: []
+    property bool compact: false
     property int minimumWidth: 72
-    property int maximumLabelWidth: 140
     signal clicked
 
     readonly property bool rotates: rotatingLabels.length > 1
-    readonly property string displayedLabel: rotatingLabels.length === 1 ? rotatingLabels[0] : label
-    readonly property int labelWidth: rotates ? maximumLabelWidth : displayedLabel === "" ? 0 : Math.min(Math.ceil(measure.implicitWidth), maximumLabelWidth)
-    readonly property int textWidth: labelWidth > 0 ? Math.max(labelWidth, width - 36) : 0
+    readonly property string displayedLabel: rotates ? rotatingLabels[rotatingText.currentIndex] || "" : rotatingLabels.length === 1 ? rotatingLabels[0] : label
+    readonly property string longestLabel: rotatingLabels.length > 0 ? rotatingLabels.reduce((longest, value) => value.length > longest.length ? value : longest, "") : label
+    readonly property int fullLabelWidth: Math.min(Math.ceil(measure.implicitWidth), Config.connections.maximumLabelWidth)
+    readonly property int labelWidth: compact ? 0 : fullLabelWidth
+    readonly property int textWidth: labelWidth > 0 ? Math.max(0, width - 36) : 0
+    readonly property int expandedWidth: Math.max(minimumWidth, 28 + fullLabelWidth + (fullLabelWidth > 0 ? 8 : 0))
 
-    implicitWidth: Math.max(minimumWidth, 28 + labelWidth + (labelWidth > 0 ? 8 : 0))
+    implicitWidth: compact ? 28 : expandedWidth
     implicitHeight: 25
     radius: 8
     color: "transparent"
+    clip: true
     Behavior on width {
         NumberAnimation {
-            duration: Theme.durationFast
+            duration: Theme.durationNormal
             easing.type: Theme.easingEmphasized
         }
     }
@@ -37,7 +41,7 @@ Rectangle {
 
         Behavior on x {
             NumberAnimation {
-                duration: Theme.durationFast
+                duration: Theme.durationNormal
                 easing.type: Theme.easingEmphasized
             }
         }
@@ -49,7 +53,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         width: root.textWidth
         visible: root.labelWidth > 0 && !root.rotates
-        text: root.displayedLabel
+        text: root.longestLabel
         restartKey: root.displayedLabel
         fontSize: Theme.fontSizeSmall
         pixelsPerSecond: Config.media.scrollPixelsPerSecond
@@ -58,11 +62,12 @@ Rectangle {
     }
 
     RotatingMarqueeText {
+        id: rotatingText
         anchors.left: glyph.right
         anchors.leftMargin: 8
         anchors.verticalCenter: parent.verticalCenter
         width: root.textWidth
-        visible: root.rotates
+        visible: root.rotates && !root.compact
         texts: root.rotatingLabels
         fontSize: Theme.fontSizeSmall
         endPause: 0
@@ -71,7 +76,7 @@ Rectangle {
     BarText {
         id: measure
         visible: false
-        text: root.displayedLabel
+        text: root.longestLabel
         font.pixelSize: Theme.fontSizeSmall
     }
 
