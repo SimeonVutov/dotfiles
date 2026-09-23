@@ -33,6 +33,7 @@ PanelWindow {
         height: parent.height
         screen: root.screen
         moduleIds: Config.modulesLeft
+        availableWidth: Math.max(0, centerSection.x - root.edgeMarginLeft - Theme.pillSpacing)
     }
 
     Section {
@@ -52,5 +53,6 @@ PanelWindow {
         height: parent.height
         screen: root.screen
         moduleIds: Config.modulesRight
+        availableWidth: Math.max(0, root.width - root.edgeMarginRight - centerSection.x - centerSection.width - Theme.pillSpacing)
     }
 }

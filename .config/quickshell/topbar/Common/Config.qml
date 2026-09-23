@@ -24,6 +24,18 @@ Singleton {
             power: "PowerModule.qml"
         })
 
+    readonly property var compressionSteps: [
+        { module: "hardware", remove: "temperature" },
+        { module: "hardware", remove: "usage" },
+        { module: "volume", remove: "input" },
+        { module: "connections", remove: "bluetooth" },
+        { module: "media", view: "noName" },
+        { module: "media", view: "controls" },
+        { module: "connections", view: "icons" },
+        { module: "clock", view: "time" },
+        { module: "power", hidden: true }
+    ]
+
     function moduleUrlFor(id) {
         const file = moduleFiles[id];
         if (!file) {
