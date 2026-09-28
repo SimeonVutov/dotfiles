@@ -16,6 +16,8 @@ Singleton {
     readonly property string cpu: cp(0xf035b)
     readonly property string memory: cp(0xf0f85)
     readonly property string temperature: cp(0xf2c9)
+    readonly property string clock: cp(0xf017)
+    readonly property string calendar: cp(0xf073)
 
     readonly property string gpu: cp(0xf0253)
     readonly property string rocket: cp(0xf135)

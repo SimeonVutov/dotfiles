@@ -27,6 +27,7 @@ PopupWindow {
     property int panelHeight: Math.max(minimumPanelHeight, layout.implicitHeight + contentPadding * 2)
     property bool animateHeight: false
     property bool smoothAnchorMovement: false
+    property bool plainReveal: false
     property real anchorOffsetX: anchorItem ? Math.round((anchorItem.width - panelWidth) / 2) : 0
     property int contentPadding: Theme.popupPadding
     property alias columns: layout.columns
@@ -97,8 +98,8 @@ PopupWindow {
         clip: root.animateHeight
 
         opacity: root.open ? Theme.popupOpacity : 0
-        scale: root.open ? 1 : 0.96
-        y: root.open ? 0 : -10
+        scale: root.plainReveal ? 1 : root.open ? 1 : 0.96
+        y: root.plainReveal ? 0 : root.open ? 0 : -10
         transformOrigin: Item.Top
 
         GridLayout {
@@ -166,6 +167,7 @@ PopupWindow {
         }
 
         Behavior on scale {
+            enabled: !root.plainReveal
             NumberAnimation {
                 duration: Theme.durationNormal
                 easing.type: Theme.easingEmphasized
@@ -173,6 +175,7 @@ PopupWindow {
         }
 
         Behavior on y {
+            enabled: !root.plainReveal
             NumberAnimation {
                 duration: Theme.durationNormal
                 easing.type: Theme.easingEmphasized

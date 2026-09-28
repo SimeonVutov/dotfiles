@@ -6,6 +6,7 @@ Item {
 
     property Component popup
     property var pendingAction: null
+    readonly property bool loaded: loader.active
 
     function use(action) {
         if (loader.item) {
@@ -44,7 +45,7 @@ Item {
         target: loader.item
         ignoreUnknownSignals: true
         function onVisibleChanged() {
-            if (!target.visible && !root.pendingAction)
+            if (target && !target.visible && !root.pendingAction)
                 loader.active = false;
         }
     }

@@ -6,6 +6,10 @@ import qs.Services
 BarModule {
     id: root
 
+    moduleViewId: "battery"
+    readonly property string selectedView: ModuleViewState.selection("battery")
+    preferredWidth: present ? pill.paddingH * 2 + iconSlotWidth + (selectedView === "full" ? percentText.implicitWidth : 0) : 0
+
     readonly property bool present: Battery.present
     readonly property int percent: Battery.percent
     readonly property bool fullyCharged: Battery.fullyCharged
@@ -23,16 +27,29 @@ BarModule {
 
     Pill {
         id: pill
+        animateWidth: false
 
         background: root.critical ? Theme.criticalBackground : (root.warning ? Theme.warningBackground : Theme.pillBackground)
         backgroundOpacity: root.critical ? root.flashOpacity : Theme.pillOpacity
 
         Row {
-            spacing: 5
+            spacing: 0
 
             BarText {
+                id: percentText
+                rightPadding: 5
                 text: root.present ? root.percent + "%" : ""
                 color: root.textColor
+                clip: true
+                width: root.selectedView === "icon" ? 0 : implicitWidth
+                visible: width > 0
+
+                Behavior on width {
+                    NumberAnimation {
+                        duration: Theme.durationNormal
+                        easing.type: Theme.easingEmphasized
+                    }
+                }
             }
 
             Item {
