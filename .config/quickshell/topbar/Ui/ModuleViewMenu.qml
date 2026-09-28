@@ -55,6 +55,7 @@ PopupPanel {
                     ? Array.isArray(root.selection) && root.selection.includes(modelData.value)
                     : root.selection === modelData.value
                 readonly property bool requiredChoice: root.definition.required?.includes(modelData.value) || false
+                readonly property bool lastSelectedChoice: root.definition.multiple && selected && root.selection.length === 1
 
                 BarText {
                     anchors.left: parent.left
@@ -96,9 +97,9 @@ PopupPanel {
                 MouseArea {
                     id: optionMouse
                     anchors.fill: parent
-                    enabled: !option.requiredChoice
+                    enabled: !option.requiredChoice && !option.lastSelectedChoice
                     hoverEnabled: true
-                    cursorShape: option.requiredChoice ? Qt.ArrowCursor : Qt.PointingHandCursor
+                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: {
                         if (root.definition.multiple)
                             ModuleViewState.toggleItem(root.moduleId, option.modelData.value);

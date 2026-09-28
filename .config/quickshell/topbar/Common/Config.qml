@@ -64,7 +64,6 @@ Singleton {
             },
             volume: {
                 multiple: true,
-                required: ["output"],
                 items: [
                     { value: "output", label: "Output", icon: Icons.audioOutput },
                     { value: "input", label: "Input", icon: Icons.microphone }
