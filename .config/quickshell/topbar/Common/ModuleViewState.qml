@@ -17,7 +17,7 @@ Singleton {
         const stored = file.adapter.selections?.[moduleId];
         if (!view.multiple)
             return view.items.some(item => item.value === stored) ? stored : view.defaults;
-        const source = Array.isArray(stored) ? stored : view.defaults;
+        const source = stored && typeof stored !== "string" && typeof stored.length === "number" ? Array.from(stored) : view.defaults;
         const selected = view.items.filter(item => source.includes(item.value) || view.required?.includes(item.value)).map(item => item.value);
         return selected.length > 0 ? selected : view.defaults.slice();
     }
