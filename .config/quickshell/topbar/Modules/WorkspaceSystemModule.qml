@@ -13,23 +13,24 @@ BarModule {
         const values = Hyprland.workspaces.values.filter(workspace =>
             workspace && workspace.id > 0 && workspace.monitor === root.monitor);
         const active = root.activeWorkspace;
-        if (active && active.id > 0 && !values.some(workspace => workspace.id === active.id))
+        if (active && active.id > 0 && active.monitor === root.monitor
+                && !values.some(workspace => workspace.id === active.id))
             values.push(active);
         return values.map(workspace => ({ id: workspace.id, name: workspace.name }))
             .sort((a, b) => a.id - b.id);
     }
 
     OrbitScene {
+        workspaceMonitor: root.monitor
         workspaces: root.workspaceSnapshot
-        activeId: root.activeWorkspace ? root.activeWorkspace.id : -1
+        activeId: root.activeWorkspace && root.activeWorkspace.monitor === root.monitor
+            ? root.activeWorkspace.id : -1
+        scrollEnabled: Config.workspaces.scrollToSwitch
         onWorkspaceRequested: id => {
             const workspace = Hyprland.workspaces.values.find(workspace => workspace.id === id);
             if (workspace)
                 workspace.activate();
         }
-        onWheelRequested: direction => {
-            if (Config.workspaces.scrollToSwitch)
-                Hyprland.dispatch(direction < 0 ? "workspace r-1" : "workspace r+1");
-        }
+        onWheelRequested: direction => Hyprland.dispatch(direction < 0 ? "workspace r-1" : "workspace r+1")
     }
 }
