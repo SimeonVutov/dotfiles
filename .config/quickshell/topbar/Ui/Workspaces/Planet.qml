@@ -10,33 +10,18 @@ Item {
     required property string label
     property bool selected: false
     property bool interactive: true
-    property real presence: 1
-    property bool surfaceReady: false
     readonly property bool originalPlanets: Config.workspaces.planetSet === "original"
     readonly property var appearance: Surface.appearance(workspaceId, originalPlanets)
+    readonly property int imageIndex: (workspaceId - 1) % (originalPlanets ? 12 : 10) + 1
+    readonly property string imagePath: "Assets/" + (originalPlanets ? "original" : "expanded")
+        + "/planet-" + (imageIndex < 10 ? "00" : "0") + imageIndex + ".png"
     signal activated()
 
     width: 44
     height: Theme.barHeight - Theme.pillMarginV * 2
 
-    function refreshSurface() {
-        if (surface.available)
-            surface.requestPaint();
-    }
-
-    onWorkspaceIdChanged: {
-        surfaceReady = false;
-        refreshSurface();
-    }
-    onOriginalPlanetsChanged: {
-        surfaceReady = false;
-        refreshSurface();
-    }
-    onPresenceChanged: if (presence > 0 && !surfaceReady) refreshSurface()
-
     Item {
         anchors.fill: parent
-        opacity: root.presence
 
         PlanetRing {
             anchors.centerIn: parent
@@ -44,22 +29,14 @@ Item {
             tilt: root.appearance.ring ?? -0.35
         }
 
-        Canvas {
+        Image {
             id: surface
             anchors.centerIn: parent
             width: 64
             height: 64
             scale: root.appearance.diameter / 64
             smooth: true
-            onAvailableChanged: {
-                root.surfaceReady = false;
-                if (available)
-                    requestPaint();
-            }
-            onPaint: {
-                Surface.paint(getContext("2d"), 64, root.workspaceId, root.originalPlanets);
-                root.surfaceReady = true;
-            }
+            source: Qt.resolvedUrl(root.imagePath)
         }
 
         PlanetRing {
@@ -78,7 +55,7 @@ Item {
             color: root.selected || hit.containsMouse ? "#FFFFFF" : "#C8C8C8"
             style: Text.Outline
             styleColor: "#99000000"
-            opacity: root.surfaceReady ? 1 : 0
+            opacity: surface.status === Image.Ready ? 1 : 0
             width: 24
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
@@ -88,7 +65,7 @@ Item {
     MouseArea {
         id: hit
         anchors.fill: parent
-        enabled: root.interactive && root.presence > 0.2
+        enabled: root.interactive
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
