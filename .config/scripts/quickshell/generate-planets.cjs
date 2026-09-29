@@ -7,17 +7,21 @@ const vm = require('node:vm');
 const zlib = require('node:zlib');
 
 function options(args) {
-    const result = { start: 1, count: 24, output: null, legacy: false };
+    const result = { start: 1, count: 10, output: null, legacy: false, imagesOnly: false };
     for (let i = 0; i < args.length; ++i) {
         const option = args[i];
         if (option === '--help') {
-            process.stdout.write('Usage: node generate-planets.cjs [--start ID] [--count N] [--output DIR] [--legacy]\n');
+            process.stdout.write('Usage: node generate-planets.cjs [--start ID] [--count N] [--output DIR] [--legacy] [--images-only]\n');
             process.exit(0);
         }
         if (option === '--legacy') {
             result.legacy = true;
             if (!args.includes('--count'))
                 result.count = 12;
+            continue;
+        }
+        if (option === '--images-only') {
+            result.imagesOnly = true;
             continue;
         }
         if (!['--start', '--count', '--output'].includes(option) || !args[i + 1])
@@ -97,9 +101,11 @@ function main() {
             throw new Error(`No image generated for workspace ${id}`);
         const filename = `planet-${String(id).padStart(3, '0')}.png`;
         fs.writeFileSync(path.join(destination, filename), png(64, 64, image), { flag: 'wx' });
-        cards.push(`<article><div class="bar"><div class="planet" style="--diameter:${appearance.diameter}px"><img src="${filename}" alt=""></div></div><img class="detail" src="${filename}" alt=""><span>${id} · ${appearance.name}${appearance.ring === undefined ? '' : ' · ringed'}</span></article>`);
+        if (!config.imagesOnly)
+            cards.push(`<article><div class="bar"><div class="planet" style="--diameter:${appearance.diameter}px"><img src="${filename}" alt=""></div></div><img class="detail" src="${filename}" alt=""><span>${id} · ${appearance.name}${appearance.ring === undefined ? '' : ' · ringed'}</span></article>`);
     }
-    const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Quickshell planets</title><style>
+    if (!config.imagesOnly) {
+        const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Quickshell planets</title><style>
         body{margin:24px;background:#26384c;color:#eee;font:14px sans-serif}h1{font-size:20px;font-weight:500}
         main{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px}
         article{padding:12px;background:#101318;border-radius:16px;display:grid;justify-items:center;gap:6px}
@@ -107,8 +113,11 @@ function main() {
         .planet{width:var(--diameter);height:var(--diameter)}.planet img{width:100%;height:100%}
         .detail{width:64px;height:64px;image-rendering:auto}span{text-align:center;font-size:12px}
     </style><h1>Quickshell ${config.legacy ? 'original' : 'current'} workspace planets</h1><main>${cards.join('')}</main></html>`;
-    fs.writeFileSync(path.join(destination, 'index.html'), html, { flag: 'wx' });
-    process.stdout.write(`${config.count} planets generated in ${destination}\nOpen ${path.join(destination, 'index.html')} to compare them.\n`);
+        fs.writeFileSync(path.join(destination, 'index.html'), html, { flag: 'wx' });
+    }
+    process.stdout.write(`${config.count} planets generated in ${destination}\n`);
+    if (!config.imagesOnly)
+        process.stdout.write(`Open ${path.join(destination, 'index.html')} to compare them.\n`);
 }
 
 try {
