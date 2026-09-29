@@ -16,7 +16,7 @@ Singleton {
     readonly property var moduleFiles: ({
             clock: "ClockModule.qml",
             media: "MediaModule.qml",
-            workspaces: "WorkspacesModule.qml",
+            workspaces: "WorkspaceSystemModule.qml",
             hardware: "HardwareModule.qml",
             volume: "VolumeModule.qml",
             connections: "ConnectionsModule.qml",
@@ -164,7 +164,8 @@ Singleton {
             // Hyprland owns which workspaces exist per monitor (the monitor
             // switcher scripts keep those rules current), so the bar just
             // renders what the compositor reports for its own screen.
-            scrollToSwitch: true
+            scrollToSwitch: true,
+            planetSet: "expanded"
         })
 
     readonly property var media: ({
