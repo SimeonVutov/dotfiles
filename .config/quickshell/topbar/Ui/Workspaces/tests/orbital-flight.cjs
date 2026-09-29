@@ -94,6 +94,23 @@ for (const fps of [30, 60, 144, 180]) {
     assert.ok(redirected);
     assert.equal(state.orbitId, 2, 'the latest request must eventually arrive');
     assert.equal(state.mode, 'orbit');
+
+    const disappearing = flight.create(1, centers[0]);
+    const changingBodies = bodies.map(body => ({ ...body }));
+    flight.request(disappearing, 2);
+    let targetRemoved = false;
+    for (let frame = 0; frame < fps * 6; ++frame) {
+        flight.advance(disappearing, dt, changingBodies);
+        assert.ok(motion.finitePose(disappearing.pose));
+        if (disappearing.mode === 'transfer' && !targetRemoved) {
+            changingBodies[1].live = false;
+            flight.request(disappearing, 3);
+            targetRemoved = true;
+        }
+    }
+    assert.ok(targetRemoved);
+    assert.equal(disappearing.mode, 'orbit');
+    assert.equal(disappearing.orbitId, 3, 'a removed transfer target must not strand the rocket');
 }
 
 console.log(`Passed ${plans} tangent plans (${reversed} opposite-direction captures), orbit-radius and join checks, rapid switching and mid-flight redirection at four frame rates. Worst planned settled request: ${maximumDuration.toFixed(3)} s.`);
