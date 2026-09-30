@@ -18,6 +18,7 @@ Item {
 
     property var pose: null
     property var flight: null
+    property int flightRevision: 0
     property bool pendingReflow: false
     property var layoutRoutes: ({})
     property int layoutRevision: 0
@@ -140,31 +141,17 @@ Item {
         return true;
     }
 
-    function seedBody(id) {
-        let neighbor = null;
-        for (let i = 0; i < slots.count; ++i) {
-            const body = slots.get(i);
-            const route = layoutRoutes[body.workspaceId];
-            if (body.workspaceId === id || !body.live || !route)
-                continue;
-            if (!neighbor || Math.abs(body.workspaceId - id) < Math.abs(neighbor.id - id))
-                neighbor = { id: body.workspaceId, center: route.end.p[0] };
-        }
-        if (!neighbor)
-            return false;
-        positionBody(id, neighbor.center);
-        return true;
-    }
-
     function setPresent(index, present) {
         const body = slots.get(index);
         if (body.live === present)
             return false;
         slots.setProperty(index, "live", present);
         if (!present) {
-            slots.setProperty(index, "retiredAt", clock);
+            if (!layoutRoutes[body.workspaceId] || (!body.revealed && !protectedBody(body.workspaceId)))
+                slots.setProperty(index, "closed", true);
             ++retiringCount;
         } else {
+            slots.setProperty(index, "closed", false);
             retiringCount = Math.max(0, retiringCount - 1);
         }
         return true;
@@ -180,45 +167,28 @@ Item {
         for (let i = 0; i < slots.count; ++i) {
             const body = slots.get(i);
             const route = layoutRoutes[body.workspaceId];
-            if (route && (body.live || protectedBody(body.workspaceId)))
+            if (route)
                 extent = Math.max(extent, route.end.p[0] + 28);
         }
-        targetWidth = extent;
+        if (targetWidth !== extent) {
+            targetWidth = extent;
+            layoutUntil = Math.max(layoutUntil, clock + reflowDuration);
+        }
     }
 
     function reflow() {
         let moved = false;
         if (flight && flight.mode !== "orbit") {
-            let extent = targetWidth;
-            for (let i = 0; i < slots.count; ++i) {
-                const id = slots.get(i).workspaceId;
-                if (slots.get(i).live && slots.get(i).enteringAt === clock) {
-                    moved = positionBody(id, extent + 20) || moved;
-                    extent += stride;
-                }
-            }
-            if (moved)
-                clearTrail();
             pendingReflow = true;
-            ++layoutRevision;
-            updateWidth();
             return;
         }
         pendingReflow = false;
         const kept = [];
-        const retired = [];
         for (let i = 0; i < slots.count; ++i)
-            (slots.get(i).live || protectedBody(slots.get(i).workspaceId) ? kept : retired)
-                .push(slots.get(i).workspaceId);
+            kept.push(slots.get(i).workspaceId);
         kept.sort((a, b) => a - b);
-        for (let i = 0; i < kept.length; ++i)
+        for (let i = 0; i < kept.length; ++i) {
             moved = positionBody(kept[i], 28 + i * stride) || moved;
-        for (const id of retired) {
-            if (!kept.length)
-                continue;
-            const nearest = kept.reduce((best, candidate) =>
-                Math.abs(candidate - id) < Math.abs(best - id) ? candidate : best, kept[0]);
-            moved = positionBody(id, layoutRoutes[nearest].end.p[0]) || moved;
         }
         if (moved)
             clearTrail();
@@ -227,15 +197,10 @@ Item {
     }
 
     function pruneRetired() {
-        if (pendingReflow)
-            return;
         let changed = false;
         for (let i = slots.count - 1; i >= 0; --i) {
             const body = slots.get(i);
-            const route = layoutRoutes[body.workspaceId];
-            if (!body.live && !protectedBody(body.workspaceId) && route
-                    && clock >= route.started + route.duration
-                    && clock - body.retiredAt >= reflowDuration) {
+            if (!body.live && !protectedBody(body.workspaceId) && (body.closed || !body.revealed)) {
                 delete layoutRoutes[body.workspaceId];
                 slots.remove(i);
                 --retiringCount;
@@ -243,7 +208,22 @@ Item {
             }
         }
         if (changed) {
+            ++layoutRevision;
             reflow();
+        }
+    }
+
+    function finishConcealment(id) {
+        const index = slotFor(id);
+        if (index >= 0 && !slots.get(index).live && !protectedBody(id))
+            slots.setProperty(index, "closed", true);
+    }
+
+    function revealBody(id) {
+        const index = slotFor(id);
+        if (index >= 0 && !slots.get(index).revealed) {
+            slots.setProperty(index, "revealed", true);
+            ++layoutRevision;
         }
     }
 
@@ -299,15 +279,16 @@ Item {
         for (let i = 0; i < desired.length; ++i) {
             const index = slotFor(desired[i].workspaceId);
             if (index < 0) {
-                const entering = seedBody(desired[i].workspaceId);
                 slots.append({ workspaceId: desired[i].workspaceId, label: desired[i].label,
-                    live: true, retiredAt: -1,
-                    enteringAt: entering ? clock : clock - reflowDuration });
+                    live: true, closed: false,
+                    revealed: !flight || desired[i].workspaceId !== activeId, animatedEntry: !!flight });
                 changed = true;
             } else {
                 if (slots.get(index).label !== desired[i].label)
                     slots.setProperty(index, "label", desired[i].label);
                 changed = setPresent(index, true) || changed;
+                if (desired[i].workspaceId !== activeId && !protectedBody(desired[i].workspaceId))
+                    revealBody(desired[i].workspaceId);
             }
         }
         for (let i = 0; i < slots.count; ++i) {
@@ -320,7 +301,12 @@ Item {
         if (!desiredIds.has(activeId))
             return;
         if (!Motion.finitePose(pose)) {
-            flight = Flight.create(activeId, centerFor(activeId, false));
+            const center = centerFor(activeId, false);
+            if (!center)
+                return;
+            revealBody(activeId);
+            flight = Flight.create(activeId, center);
+            ++flightRevision;
             pose = flight.pose;
             heading = flight.heading;
         }
@@ -337,7 +323,7 @@ Item {
             const route = layoutRoutes[body.workspaceId];
             if (route)
                 bodies.push({ id: body.workspaceId, center: centerFor(body.workspaceId, false),
-                    live: body.live, settled: clock >= route.started + route.duration });
+                    live: body.live, settled: clock >= Math.max(layoutUntil, route.started + route.duration) });
         }
         if (clock >= layoutUntil) {
             cachedBodies = bodies;
@@ -397,7 +383,14 @@ Item {
             clearTrail();
         }
         const previousOrbitId = flight.orbitId;
+        const previousMode = flight.mode;
         Flight.advance(flight, dt, bodies);
+        if (previousMode === "orbit" && flight.mode === "departure")
+            revealBody(flight.targetId);
+        if (previousOrbitId !== flight.orbitId)
+            revealBody(flight.orbitId);
+        if (previousOrbitId !== flight.orbitId || previousMode !== flight.mode)
+            ++flightRevision;
         pose = flight.pose;
         heading = flight.heading;
         throttle = flight.throttle;
@@ -431,6 +424,7 @@ Item {
         layoutMoving = false;
         targetWidth = 0;
         flight = null;
+        ++flightRevision;
         pose = null;
         clearTrail();
         retiringCount = 0;
@@ -513,12 +507,17 @@ Item {
 
         Planet {
             required property bool live
-            required property real enteringAt
+            required property bool revealed
+            required property bool animatedEntry
             readonly property var position: root.layoutPose(workspaceId, root.layoutClock, root.layoutRevision)
+            visible: position !== null
             x: position ? position.p[0] - width / 2 : 0
+            expanded: revealed && (live || root.protectedBody(workspaceId, root.flightRevision))
+            animateEntry: animatedEntry
             interactive: live
             selected: workspaceId === root.activeId
-            z: live && root.layoutClock - enteringAt >= root.reflowDuration ? 1 : 0
+            z: 1
+            onConcealed: root.finishConcealment(workspaceId)
             onActivated: root.workspaceRequested(workspaceId)
         }
     }
