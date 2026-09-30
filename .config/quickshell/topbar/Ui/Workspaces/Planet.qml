@@ -13,11 +13,10 @@ Item {
     property bool expanded: true
     property bool animateEntry: true
     readonly property bool textureReady: surface.status === Image.Ready || surface.status === Image.Error
-    readonly property bool originalPlanets: Config.workspaces.planetSet === "original"
-    readonly property var appearance: Surface.appearance(workspaceId, originalPlanets)
-    readonly property int imageIndex: (workspaceId - 1) % (originalPlanets ? 12 : 10) + 1
-    readonly property string imagePath: "Assets/" + (originalPlanets ? "original" : "expanded")
-        + "/planet-" + (imageIndex < 10 ? "00" : "0") + imageIndex + ".png"
+    readonly property var appearance: Surface.appearance(workspaceId, false)
+    readonly property int imageIndex: (workspaceId - 1) % 10 + 1
+    readonly property string imagePath: "Assets/original/planet-"
+        + (imageIndex < 10 ? "00" : "0") + imageIndex + ".png"
     signal activated()
     signal concealed()
 

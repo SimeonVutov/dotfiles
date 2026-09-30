@@ -164,8 +164,7 @@ Singleton {
             // Hyprland owns which workspaces exist per monitor (the monitor
             // switcher scripts keep those rules current), so the bar just
             // renders what the compositor reports for its own screen.
-            scrollToSwitch: true,
-            planetSet: "expanded"
+            scrollToSwitch: true
         })
 
     readonly property var media: ({

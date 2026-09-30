@@ -41,20 +41,18 @@ function pixelsFromPng(file) {
 }
 
 let checked = 0;
-for (const [set, count, legacy] of [['expanded', 10, false], ['original', 12, true]]) {
-    for (let id = 1; id <= count; ++id) {
-        let expected;
-        const context = {
-            reset() {},
-            createImageData(width, height) {
-                return { data: new Uint8ClampedArray(width * height * 4) };
-            },
-            putImageData(image) { expected = Buffer.from(image.data); }
-        };
-        surface.paint(context, 64, id, legacy);
-        const file = path.join(directory, 'Assets', set, `planet-${String(id).padStart(3, '0')}.png`);
-        assert.deepEqual(pixelsFromPng(file), expected, `${set} planet ${id} differs from its source`);
-        ++checked;
-    }
+for (let id = 1; id <= 10; ++id) {
+    let expected;
+    const context = {
+        reset() {},
+        createImageData(width, height) {
+            return { data: new Uint8ClampedArray(width * height * 4) };
+        },
+        putImageData(image) { expected = Buffer.from(image.data); }
+    };
+    surface.paint(context, 64, id, false);
+    const file = path.join(directory, 'Assets', 'original', `planet-${String(id).padStart(3, '0')}.png`);
+    assert.deepEqual(pixelsFromPng(file), expected, `planet ${id} differs from its source`);
+    ++checked;
 }
-console.log(`Verified ${checked} pre-rendered planet textures.`);
+console.log(`Verified ${checked} workspace planet textures.`);
