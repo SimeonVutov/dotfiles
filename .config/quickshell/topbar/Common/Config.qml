@@ -16,7 +16,7 @@ Singleton {
     readonly property var moduleFiles: ({
             clock: "ClockModule.qml",
             media: "MediaModule.qml",
-            workspaces: "WorkspacesModule.qml",
+            workspaces: "WorkspaceSystemModule.qml",
             hardware: "HardwareModule.qml",
             volume: "VolumeModule.qml",
             connections: "ConnectionsModule.qml",
