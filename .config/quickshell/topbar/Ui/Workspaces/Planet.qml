@@ -10,18 +10,26 @@ Item {
     required property string label
     property bool selected: false
     property bool interactive: true
+    property bool expanded: true
+    property bool animateEntry: true
+    readonly property bool textureReady: surface.status === Image.Ready || surface.status === Image.Error
     readonly property bool originalPlanets: Config.workspaces.planetSet === "original"
     readonly property var appearance: Surface.appearance(workspaceId, originalPlanets)
     readonly property int imageIndex: (workspaceId - 1) % (originalPlanets ? 12 : 10) + 1
     readonly property string imagePath: "Assets/" + (originalPlanets ? "original" : "expanded")
         + "/planet-" + (imageIndex < 10 ? "00" : "0") + imageIndex + ".png"
     signal activated()
+    signal concealed()
 
     width: 44
     height: Theme.barHeight - Theme.pillMarginV * 2
 
-    Item {
+    PlanetSplash {
+        id: reveal
         anchors.fill: parent
+        expanded: root.expanded
+        animateEntry: root.animateEntry
+        onClosed: root.concealed()
 
         PlanetRing {
             anchors.centerIn: parent
@@ -36,6 +44,9 @@ Item {
             height: 64
             scale: root.appearance.diameter / 64
             smooth: true
+            asynchronous: true
+            cache: true
+            sourceSize: Qt.size(64, 64)
             source: Qt.resolvedUrl(root.imagePath)
         }
 
@@ -55,7 +66,7 @@ Item {
             color: root.selected || hit.containsMouse ? "#FFFFFF" : "#C8C8C8"
             style: Text.Outline
             styleColor: "#99000000"
-            opacity: surface.status === Image.Ready ? 1 : 0
+            opacity: root.textureReady ? 1 : 0
             width: 24
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
@@ -65,7 +76,7 @@ Item {
     MouseArea {
         id: hit
         anchors.fill: parent
-        enabled: root.interactive
+        enabled: root.interactive && reveal.progress > 0.9
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
