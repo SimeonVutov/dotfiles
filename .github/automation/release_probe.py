@@ -17,16 +17,19 @@ def probe():
 
     def request(prompt):
         nonlocal calls
+        current_prompt = prompt
         for attempt in range(1, 4):
             if calls >= max_calls:
                 raise ValueError('Probe AI-call budget exceeded; increase RELEASE_MAX_AI_CALLS')
             calls += 1
             try:
-                return ask(prompt)
+                return ask(current_prompt)
             except CopilotResponseError as error:
                 if attempt == 3:
                     raise
                 print(f'Copilot response invalid ({error}); retrying ({attempt}/2)', flush=True)
+                current_prompt += ('\nPREVIOUS_RESPONSE_REJECTED: Output one valid JSON object '
+                                   'with no Markdown fence, prefix, or trailing text.\n')
 
     if selection == 'final':
         reviews = json.loads((root / 'analysis.json').read_text())
