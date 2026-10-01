@@ -1,19 +1,11 @@
-## 📦 Summary (Short Description)
+## Summary
 
----
+Describe the behavior or configuration changed by this PR.
 
-## 🚀 Major Updates (Breaking or high-impact changes)
+## Validation
 
----
+List checks performed and any hardware or visual behavior verified locally.
 
-## ✨ Minor Updates (Enhancements or small changes)
+## Notes
 
----
-
-## 🐞 Fixes (Bug fixes or corrections)
-
----
-
-## 📁 Additional Notes / Migration Steps (if needed)
-
----
+Include migration steps or risks only when relevant.

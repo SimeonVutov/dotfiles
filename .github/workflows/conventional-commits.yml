@@ -1,0 +1,21 @@
+name: Conventional Commit checks
+
+on:
+  pull_request:
+    branches: [develop, master]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate PR title and non-merge commit messages
+        run: python3 .github/automation/commit_checks.py

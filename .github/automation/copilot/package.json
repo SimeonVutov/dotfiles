@@ -1,0 +1,7 @@
+{
+  "name": "dotfiles-release-analysis",
+  "private": true,
+  "dependencies": {
+    "@github/copilot": "1.0.90"
+  }
+}

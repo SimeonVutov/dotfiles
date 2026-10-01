@@ -1,0 +1,10 @@
+[Unit]
+Description=Check detached tmux sessions once per minute
+
+[Timer]
+OnActiveSec=1min
+OnUnitInactiveSec=1min
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+  - package-ecosystem: npm
+    directory: /.github/automation/copilot
+    schedule:
+      interval: weekly
+    target-branch: develop
+    commit-message:
+      prefix: build
+    open-pull-requests-limit: 2

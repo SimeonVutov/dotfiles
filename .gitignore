@@ -14,6 +14,8 @@
 
 # Github
 gh
+.github/automation/**/__pycache__/
+.github/automation/copilot/node_modules/
 
 # Tmux
 .config/tmux/plugins/
@@ -30,3 +32,7 @@ spotify
 # Vesktop
 # For now there is nothing special to sync
 .config/vesktop
+
+# Machine-specific state saved by Quickshell Monitor Switch.
+.config/hypr/conf/monitors/current.conf
+.config/hypr/conf/workspaces/current.conf

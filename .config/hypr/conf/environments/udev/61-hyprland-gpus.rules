@@ -1,0 +1,2 @@
+SUBSYSTEM=="drm", KERNEL=="card[0-9]*", KERNEL!="card*-*", KERNELS=="0000:09:00.0", ATTRS{vendor}=="0x1002", SYMLINK+="dri/amd-igpu"
+SUBSYSTEM=="drm", KERNEL=="card[0-9]*", KERNEL!="card*-*", KERNELS=="0000:01:00.0", ATTRS{vendor}=="0x10de", SYMLINK+="dri/nvidia-dgpu"

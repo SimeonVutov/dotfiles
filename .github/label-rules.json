@@ -1,0 +1,15 @@
+{
+  "area: quickshell": [".config/quickshell/*", ".config/scripts/quickshell*", ".config/scripts/app-launcher.sh", ".config/scripts/session-menu.sh"],
+  "area: hyprland": [".config/hypr/*", ".config/scripts/hyprland/*"],
+  "area: terminal": [".config/kitty/*", ".config/tmux/*", ".zshrc*", ".oh-my-zsh", ".config/scripts/tmux-*", ".config/systemd/user/tmux-*"],
+  "area: development tools": [".config/nvim", ".config/nvim/*", ".config/cgdb/*", ".gdbinit"],
+  "area: media": [".config/mpv/*", ".config/ncspot/*"],
+  "area: monitoring": [".config/btop/*", ".config/htop/*", ".config/fastfetch/*"],
+  "area: desktop utilities": [".config/dunst/*", ".config/ranger/*", ".config/glow/*"],
+  "area: power": [".config/power-mode/*", ".config/scripts/power.sh"],
+  "area: services": [".config/systemd/*"],
+  "area: theming": [".config/matugen/*", ".config/wal/*", ".settings/*", ".config/scripts/wallpaper-*"],
+  "area: scripts": [".config/scripts/*"],
+  "area: automation": [".github/*", ".gitignore", ".gitmodules"],
+  "area: documentation": ["*.md", "screenshots/*"]
+}

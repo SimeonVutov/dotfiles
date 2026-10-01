@@ -48,15 +48,9 @@
 
 ## 📸 Screenshots
 
-<div align="center">
+See the [Quickshell interface](#-quickshell-desktop) below for the topbar, app launcher, session menu, and monitor switcher.
 
-| Desktop | Workflow |
-|---|---|
-| ![Desktop](./screenshots/desktop.png) | ![Workflow](./screenshots/workflow.png) |
-
-> 📂 More screenshots in [`./screenshots/`](./screenshots/)
-
-</div>
+More screenshots are available in [`./screenshots/`](./screenshots/).
 
 ---
 
@@ -66,18 +60,18 @@
 |---|---|
 | **OS** | Arch Linux |
 | **Window Manager** | Hyprland (Wayland) |
-| **Status Bar** | Waybar |
+| **Status Bar** | Quickshell |
 | **Terminal** | Kitty |
 | **Shell** | Zsh + Oh My Zsh (agnoster) |
 | **Editor** | Neovim (submodule) |
-| **App Launcher** | Rofi |
+| **App Launcher** | Quickshell |
 | **Notifications** | Dunst |
 | **File Manager** | Ranger |
 | **Multiplexer** | Tmux |
 | **Music** | ncspot (Spotify TUI) |
 | **Media Player** | mpv |
 | **Fetch** | Fastfetch |
-| **Logout** | wlogout |
+| **Session Menu** | Quickshell |
 | **Theming** | Matugen |
 | **Fonts** | Nerd Fonts |
 
@@ -102,25 +96,40 @@ Hyprland is the core of this setup — a dynamic tiling Wayland compositor with 
 
 ---
 
-### 🟦 Waybar
+### 🟦 Quickshell Desktop
 
-> `/.config/waybar/`
+> `/.config/quickshell/topbar/`
 
-Custom status bar written in CSS with Python-powered modules.
+A custom desktop interface built with QML and Quickshell. A shared runtime powers the topbar and its overlays, with heavier panels loaded on demand.
 
-![Waybar](./screenshots/waybar.png)
+#### Topbar
 
-- **Workspaces** — Hyprland workspace indicators with active/urgent/occupied states
-- **Media Player** — live track info with playback controls (play/pause/skip), scroll to change volume
-- **Clock** — styled clock with a calendar tooltip on hover
-- **Network** — WiFi/ethernet status with SSID and signal strength
-- **Bluetooth** — connection status with device name
-- **Audio** — PulseAudio/PipeWire volume module with mute toggle and scroll-to-adjust
-- **Battery** — percentage with charging indicator and power-state icons
-- **CPU / Memory** — real-time usage with custom icons
-- **Brightness** — backlight percentage with scroll support
-- **System Tray** — app tray integration for background services
-- **Custom Styling** — fully hand-written CSS with a coherent color palette across all modules
+![Quickshell Topbar](./screenshots/quickshell-topbar.png)
+
+- **Orbital Workspaces** — procedural planets represent active workspaces, with an orbiting spacecraft and animated transfers between them
+- **Adaptive Views** — components compress according to configurable priorities as space becomes limited; right-click a component to select views that persist across restarts
+- **Media** — track information and playback controls, with compact views for smaller displays
+- **Audio and Connectivity** — output/input volume, audio devices and profiles, WiFi, and Bluetooth controls in expandable panels
+- **Hardware and Battery** — CPU usage, memory, temperature, and battery status, with sampling tailored to visible hardware metrics
+- **Clock and Calendar** — date and time with an expandable calendar
+
+#### App Launcher
+
+A satellite-inspired interface arranges applications around a central search console. Open it with `Super + W`.
+
+![Quickshell App Launcher](./screenshots/quickshell-launcher.png)
+
+#### Session Menu
+
+An animated orbital menu provides lock, logout, sleep, hibernate, restart, and shutdown actions. Open it with `Super + P`.
+
+![Quickshell Session Menu](./screenshots/quickshell-session-menu.png)
+
+#### Monitor Switcher
+
+Switch between laptop, external, extended, and duplicated displays. Adjust display placement, resolution, refresh rate, and scale through a visual layout editor. Changes use a confirmation timer and automatically revert if they are not confirmed.
+
+![Quickshell Monitor Switcher](./screenshots/quickshell-monitor-switcher.png)
 
 ---
 
@@ -159,23 +168,6 @@ Lightweight notification daemon styled to match the rest of the setup.
 
 ---
 
-### 🚀 Rofi
-
-> `/.config/rofi/`
-
-App launcher, window switcher, and dmenu replacement with a custom theme.
-
-![Rofi](./screenshots/rofi.png)
-
-- **Custom `.rasi` Theme** — hand-crafted layout with styled input bar, results list, and scrollbar
-- **App Launcher** (`drun` mode) — fuzzy search across all installed desktop entries
-- **Window Switcher** (`window` mode) — quickly jump between open windows
-- **Script Menus** — integrated with custom shell scripts for power and more
-- **Icons** — Nerd Font / icon theme integration for app icons in the list
-- **Consistent Palette** — colors match Waybar and Dunst for a unified look
-
----
-
 ### 📝 Neovim
 
 > `/.config/nvim/` *(git submodule)*
@@ -199,11 +191,11 @@ Full Neovim configuration tracked as its own submodule for independent versionin
 
 ---
 
-## 🖼️ Quickshell
+## 🖼️ Quickshell Wallpaper Selector
 
-> `/.config/quickshell/`
+> `/.config/quickshell/wallpaper/`
 
-Custom overlay UI built with Quickshell, currently used for a **wallpaper selector**.
+A separate Quickshell overlay for browsing and applying wallpapers.
 
 ![Wallpaper Selector](./screenshots/wallpaper_selector.png)
 
@@ -320,8 +312,7 @@ A collection of custom shell and Python scripts powering automated workflows.
 
 - **Wallpaper Picker** — Quickshell-based wallpaper selector with cached previews and Matugen integration
 - **Screenshot** — quick area screenshots via `grimblast`, bound directly in Hyprland
-- **System Power Menu** — wlogout launcher with keybind integration
-- **Waybar Reload** — script to hot-reload Waybar config and CSS without restarting
+- **Launcher and Session Menu** — scripts toggle the Quickshell overlays through IPC
 - **Media Control** — playerctl wrappers for media key handling
 
 ---
@@ -354,32 +345,29 @@ The colorscheme is dynamically generated by **Matugen** from the current wallpap
 
 ```
 dotfiles/
-├── .config/
-│   ├── hypr/             # Hyprland WM — keybinds, animations, monitor config
-│   ├── waybar/           # Status bar — config.jsonc + style.css + Python modules
-│   ├── kitty/            # Terminal emulator config
-│   ├── dunst/            # Notification daemon
-│   ├── rofi/             # App launcher — .rasi theme
-│   ├── nvim/             # Neovim (git submodule → own repo)
-│   ├── tmux/             # Terminal multiplexer
-│   ├── ranger/           # Terminal file manager
-│   ├── fastfetch/        # System info fetch config
-│   ├── ncspot/           # Spotify TUI client
-│   ├── mpv/              # Media player config
-│   ├── power-mode/       # Custom CPU power profile CLI
-│   ├── quickshell/       # Custom Quickshell wallpaper selector
-│   ├── matugen/          # Matugen config and color templates
-│   ├── scripts/          # Custom shell/Python scripts
-│   ├── systemd/user/     # Systemd user services
-│   ├── wlogout/          # Logout screen
-│   ├── btop/             # Beautiful system monitor
-│   ├── htop/             # Process viewer config
-│   ├── cgdb/             # Curses GDB interface
-│   └── glow/             # Markdown viewer
-├── .zshrc                # Zsh config — Oh My Zsh, aliases, tmux logic
-├── .gdbinit              # GDB pretty-printer and auto-load config
-├── .oh-my-zsh/           # Oh My Zsh (git submodule)
-└── screenshots/          # 📸 Desktop screenshots
+    .config/
+        hypr/             # Hyprland WM - keybinds, animations, monitor config
+        quickshell/       # QML topbar, shell interfaces, and wallpaper selector
+        kitty/            # Terminal emulator config
+        dunst/            # Notification daemon
+        nvim/             # Neovim (git submodule)
+        tmux/             # Terminal multiplexer
+        ranger/           # Terminal file manager
+        fastfetch/        # System info fetch config
+        ncspot/           # Spotify TUI client
+        mpv/              # Media player config
+        power-mode/       # Custom CPU power profile CLI
+        matugen/          # Matugen config and color templates
+        scripts/          # Custom shell/Python scripts
+        systemd/user/     # Systemd user services
+        btop/             # Beautiful system monitor
+        htop/             # Process viewer config
+        cgdb/             # Curses GDB interface
+        glow/             # Markdown viewer
+    .zshrc                # Zsh config - Oh My Zsh, aliases, tmux logic
+    .gdbinit              # GDB pretty-printer and auto-load config
+    .oh-my-zsh/           # Oh My Zsh (git submodule)
+    screenshots/          # Desktop screenshots
 ```
 
 ---
@@ -395,6 +383,28 @@ git clone --recurse-submodules https://github.com/SimeonVutov/dotfiles.git ~/dot
 ```
 
 *Manual symlinking of individual components is recommended until the install script is ready.*
+
+After linking the Hyprland and scripts directories, initialize the local display
+state **before starting Hyprland**:
+
+```bash
+sh ~/dotfiles/.config/scripts/hypr-init-state.sh
+```
+
+This creates a generic monitor rule and an empty workspace-rule file only if
+they do not already exist. Quickshell's monitor switcher subsequently saves your
+chosen layout there; the files remain untracked and the command is safe to rerun.
+The included hybrid GPU profile is specific to this laptop. On that machine,
+install its udev rule and reboot before starting Hyprland:
+
+```bash
+sudo install -m 644 ~/dotfiles/.config/hypr/conf/environments/udev/61-hyprland-gpus.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+```
+
+Check that `/dev/dri/amd-igpu` and `/dev/dri/nvidia-dgpu` exist after reboot.
+On other hardware, select an appropriate profile in
+`.config/hypr/conf/environments.conf` instead of using `hybrid.conf` unchanged.
 
 ---
 
