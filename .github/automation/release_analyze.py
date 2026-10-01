@@ -114,6 +114,29 @@ def evidence_source(ref, known):
     raise ValueError(f'Evidence mapping refers to missing input: {ref}')
 
 
+def summary_source(ref, summary_sources):
+    if not isinstance(ref, str):
+        raise ValueError('Analysis summary reference must be text')
+    if ref in summary_sources:
+        return ref
+    source, separator, offset = ref.rpartition('@')
+    if separator and offset.isdecimal() and source in summary_sources:
+        return source
+    raise ValueError(f'Analysis summary refers to missing input: {ref}')
+
+
+def resolve_final_refs(refs, known, summary_sources):
+    sources, indirect = [], []
+    for ref in refs:
+        try:
+            sources.append(evidence_source(ref, known))
+        except ValueError:
+            summary = summary_source(ref, summary_sources)
+            indirect.append(summary)
+            sources.extend(sorted(summary_sources[summary]))
+    return list(dict.fromkeys(sources)), list(dict.fromkeys(indirect))
+
+
 def analyze_chunk(chunk, policy, request, index):
     expected = {record['id'] for record in chunk}
     instruction = (
@@ -188,6 +211,59 @@ def load_previous_reviews(current_state):
     return reusable_reviews(records, reviews)
 
 
+def finalize(records, reviews, state, root, policy, request):
+    known = {record['id'] for record in records}
+    summaries = [{'id': str(i), 'content': json.dumps(r)} for i, r in enumerate(reviews)]
+    summary_sources = {
+        str(i): {evidence_source(ref, known) for ref in review['covered_ids']}
+        for i, review in enumerate(reviews)
+    }
+    while len(json.dumps(summaries)) > LIMIT:
+        reduced, reduced_sources = [], {}
+        for group in batches(summaries):
+            result = request('Reconcile these analyses; retain evidence ids, net outcomes, contradictions, '
+                             'and uncertainties. Return ONLY JSON with findings (string) and uncertainties (list).\n'
+                             + policy + '\nANALYSES:\n' + json.dumps(group))
+            identifier = str(len(reduced))
+            reduced.append({'id': identifier, 'content': json.dumps(result)})
+            reduced_sources[identifier] = set().union(
+                *(summary_sources[summary_source(part['id'], summary_sources)] for part in group)
+            )
+        if len(json.dumps(reduced)) >= len(json.dumps(summaries)):
+            raise ValueError('Analysis could not be reduced without exceeding the context budget')
+        summaries, summary_sources = reduced, reduced_sources
+    final = request('Create the final release notes, reconciling all outcomes. Return ONLY JSON with '
+                    'notes (Markdown), evidence (nonempty list of objects with claim and refs, '
+                    'where refs cite original evidence IDs when available, or the numbered ANALYSES '
+                    'summary IDs for broader provenance), '
+                    'and uncertainties (list). Distinguish before/after evidence from intermediate commits.\n'
+                    + policy + '\nRELEASE:\n' + json.dumps(state) + '\nANALYSES:\n' + json.dumps(summaries))
+    (root / 'final-candidate.json').write_text(json.dumps(final, indent=2))
+    notes = validate_notes(final['notes'])
+    evidence = final.get('evidence')
+    if not isinstance(evidence, list) or not evidence or not isinstance(final.get('uncertainties'), list):
+        raise ValueError('Missing final evidence report')
+    mapped = []
+    for item in evidence:
+        if not isinstance(item, dict) or not isinstance(item.get('claim'), str) or not isinstance(item.get('refs'), list):
+            raise ValueError('Malformed evidence mapping')
+        if not item['refs']:
+            raise ValueError('Evidence mapping needs at least one source')
+        sources, indirect = resolve_final_refs(item['refs'], known, summary_sources)
+        if not sources:
+            raise ValueError('Evidence mapping resolved to no original sources')
+        mapped.append((item['claim'], sources, indirect))
+    (root / 'notes.md').write_text(notes)
+    report = ('# Evidence review\n\nSummary citations expand to the original items reviewed in that '
+              'summary. They show broad provenance, not proof that every item supports the claim; '
+              'verify these claims against the final snapshot before publishing.\n\n' + '\n'.join(
+        f"- {claim}: {', '.join(sources)}"
+        + (f" (via analysis summaries {', '.join(indirect)})" if indirect else '')
+        for claim, sources, indirect in mapped
+    ) + '\n\n## Uncertainties\n' + json.dumps(final['uncertainties'], indent=2))
+    (root / 'review.md').write_text(report + '\n')
+
+
 def analyze():
     root = Path(os.environ['RELEASE_DIR'])
     policy = Path('.github/release-notes-instructions.md').read_text()
@@ -225,38 +301,7 @@ def analyze():
             result = analyze_chunk(chunk, policy, request, index + 1)
         reviews.append(result)
         (root / 'analysis.json').write_text(json.dumps(reviews, indent=2))
-    summaries = [{'id': str(i), 'content': json.dumps(r)} for i, r in enumerate(reviews)]
-    while len(json.dumps(summaries)) > LIMIT:
-        reduced = []
-        for group in batches(summaries):
-            result = request('Reconcile these analyses; retain evidence ids, net outcomes, contradictions, '
-                             'and uncertainties. Return ONLY JSON with findings (string) and uncertainties (list).\n'
-                             + policy + '\nANALYSES:\n' + json.dumps(group))
-            reduced.append({'id': str(len(reduced)), 'content': json.dumps(result)})
-        if len(json.dumps(reduced)) >= len(json.dumps(summaries)):
-            raise ValueError('Analysis could not be reduced without exceeding the context budget')
-        summaries = reduced
-    final = request('Create the final release notes, reconciling all outcomes. Return ONLY JSON with '
-                    'notes (Markdown), evidence (nonempty list of objects with claim and refs, '
-                    'where refs are supporting original or numbered-part evidence IDs), '
-                    'and uncertainties (list). Distinguish before/after evidence from intermediate commits.\n'
-                    + policy + '\nRELEASE:\n' + json.dumps(state) + '\nANALYSES:\n' + json.dumps(summaries))
-    notes = validate_notes(final['notes'])
-    evidence = final.get('evidence')
-    if not isinstance(evidence, list) or not evidence or not isinstance(final.get('uncertainties'), list):
-        raise ValueError('Missing final evidence report')
-    known = {record['id'] for record in records}
-    for item in evidence:
-        if not isinstance(item, dict) or not isinstance(item.get('claim'), str) or not isinstance(item.get('refs'), list):
-            raise ValueError('Malformed evidence mapping')
-        if not item['refs']:
-            raise ValueError('Evidence mapping needs at least one source')
-        item['refs'] = list(dict.fromkeys(evidence_source(ref, known) for ref in item['refs']))
-    (root / 'notes.md').write_text(notes)
-    report = '# Evidence review\n\n' + '\n'.join(
-        f"- {item['claim']}: {', '.join(item['refs'])}" for item in evidence
-    ) + '\n\n## Uncertainties\n' + json.dumps(final['uncertainties'], indent=2)
-    (root / 'review.md').write_text(report + '\n')
+    finalize(records, reviews, state, root, policy, request)
 
 
 if __name__ == '__main__':

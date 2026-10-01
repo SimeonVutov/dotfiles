@@ -12,8 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import eligible, next_version
 from commit_checks import valid
 from config_checks import jsonc, qml_javascript_for_node
-from release_analyze import (CopilotResponseError, analyze_chunk, batches, chunk_key,
-                             evidence_source, parse_copilot_output, reusable_reviews, validate_notes)
+from release_analyze import (CopilotResponseError, analyze, analyze_chunk, batches, chunk_key,
+                             evidence_source, parse_copilot_output, resolve_final_refs,
+                             reusable_reviews, summary_source, validate_notes)
 from release_collect import collect
 from release_metadata import build, validate
 from release_probe import probe
@@ -59,6 +60,64 @@ class Formats(unittest.TestCase):
         with self.assertRaises(ValueError):
             evidence_source('after:unknown.txt@0', known)
 
+    def test_final_summary_references_resolve_without_accepting_unknown_ids(self):
+        known = {'commit:a', 'after:sample.txt'}
+        summaries = {'0': {'commit:a', 'after:sample.txt'}}
+        self.assertEqual(summary_source('0@0', summaries), '0')
+        self.assertEqual(resolve_final_refs(['0', 'commit:a@0'], known, summaries),
+                         (['after:sample.txt', 'commit:a'], ['0']))
+        with self.assertRaises(ValueError):
+            resolve_final_refs(['missing'], known, summaries)
+
+    def test_final_report_accepts_numbered_summary_and_marks_broad_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'evidence.json').write_text(json.dumps([
+                {'id': 'commit:a', 'content': 'Final change'},
+            ]))
+            (root / 'state.json').write_text(json.dumps({'version': 'v1.0.0'}))
+            responses = [
+                {'covered_ids': ['commit:a@0'], 'findings': 'Final change: commit:a@0',
+                 'uncertainties': []},
+                {'notes': '## Highlights\n\nFinal change.',
+                 'evidence': [{'claim': 'Final change', 'refs': ['0']}], 'uncertainties': []},
+            ]
+            with patch.dict(os.environ, {'RELEASE_DIR': directory, 'RELEASE_MAX_AI_CALLS': '3',
+                                         'RELEASE_RESUME_RUN_ID': ''}):
+                with patch('release_analyze.ask', side_effect=responses):
+                    analyze()
+            review = (root / 'review.md').read_text()
+            self.assertIn('commit:a', review)
+            self.assertIn('via analysis summaries 0', review)
+            self.assertTrue((root / 'final-candidate.json').exists())
+
+    def test_reduced_summary_keeps_original_evidence_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'evidence.json').write_text(json.dumps([
+                {'id': 'after:sample.txt', 'content': 'Final content'},
+            ]))
+            (root / 'state.json').write_text(json.dumps({'version': 'v1.0.0'}))
+            calls = []
+
+            def respond(prompt):
+                calls.append(prompt)
+                if prompt.startswith('Analyze this evidence batch'):
+                    return {'covered_ids': ['after:sample.txt@0'],
+                            'findings': 'Change ' + 'x' * 71000, 'uncertainties': []}
+                if prompt.startswith('Reconcile these analyses'):
+                    return {'findings': 'Change: after:sample.txt@0', 'uncertainties': []}
+                return {'notes': '## Highlights\n\nFinal change.',
+                        'evidence': [{'claim': 'Final change', 'refs': ['0']}],
+                        'uncertainties': []}
+
+            with patch.dict(os.environ, {'RELEASE_DIR': directory, 'RELEASE_MAX_AI_CALLS': '10',
+                                         'RELEASE_RESUME_RUN_ID': ''}):
+                with patch('release_analyze.ask', side_effect=respond):
+                    analyze()
+            self.assertTrue(any(prompt.startswith('Reconcile these analyses') for prompt in calls))
+            self.assertIn('after:sample.txt', (root / 'review.md').read_text())
+
     def test_copilot_jsonl_extracts_the_final_assistant_message(self):
         output = '\n'.join(json.dumps(event) for event in [
             {'type': 'session.start', 'data': {}},
@@ -92,6 +151,28 @@ class Formats(unittest.TestCase):
                 with patch('release_probe.ask', return_value=response) as request:
                     probe()
             self.assertIn('REQUIRED_IDS:', request.call_args.args[0])
+
+    def test_final_probe_reuses_completed_batches_and_checks_final_notes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'evidence.json').write_text(json.dumps([
+                {'id': 'commit:a', 'content': 'A'},
+            ]))
+            (root / 'state.json').write_text(json.dumps({'version': 'v1.0.0'}))
+            (root / 'analysis.json').write_text(json.dumps([
+                {'covered_ids': ['commit:a@0'], 'findings': 'Change: commit:a@0',
+                 'uncertainties': []},
+            ]))
+            response = {'notes': '## Highlights\n\nFinal change.',
+                        'evidence': [{'claim': 'Final change', 'refs': ['0']}],
+                        'uncertainties': []}
+            with patch.dict(os.environ, {'RELEASE_RESUME_DIR': directory,
+                                         'RELEASE_PROBE_BATCH': 'final'}):
+                with patch('release_probe.ask', return_value=response) as request:
+                    probe()
+            self.assertEqual(request.call_count, 1)
+            self.assertIn('commit:a', (root / 'review.md').read_text())
+            self.assertTrue((root / 'notes.md').exists())
 
     def test_incomplete_batch_is_retried_without_accepting_missing_evidence(self):
         chunk = [{'id': 'commit:a', 'content': 'A'}, {'id': 'commit:b', 'content': 'B'}]
