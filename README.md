@@ -27,7 +27,7 @@
 
 <br>
 
-![Desktop Preview](./screenshots/desktop.png)
+![Quickshell App Launcher](./screenshots/quickshell-launcher.png)
 
 <br>
 
@@ -48,15 +48,9 @@
 
 ## 📸 Screenshots
 
-<div align="center">
+See the [Quickshell interface](#-quickshell-desktop) below for the topbar, app launcher, session menu, and monitor switcher.
 
-| Desktop | Workflow |
-|---|---|
-| ![Desktop](./screenshots/desktop.png) | ![Workflow](./screenshots/workflow.png) |
-
-> 📂 More screenshots in [`./screenshots/`](./screenshots/)
-
-</div>
+More screenshots are available in [`./screenshots/`](./screenshots/).
 
 ---
 
@@ -70,14 +64,14 @@
 | **Terminal** | Kitty |
 | **Shell** | Zsh + Oh My Zsh (agnoster) |
 | **Editor** | Neovim (submodule) |
-| **App Launcher** | Rofi |
+| **App Launcher** | Quickshell |
 | **Notifications** | Dunst |
 | **File Manager** | Ranger |
 | **Multiplexer** | Tmux |
 | **Music** | ncspot (Spotify TUI) |
 | **Media Player** | mpv |
 | **Fetch** | Fastfetch |
-| **Logout** | wlogout |
+| **Session Menu** | Quickshell |
 | **Theming** | Matugen |
 | **Fonts** | Nerd Fonts |
 
@@ -102,21 +96,40 @@ Hyprland is the core of this setup — a dynamic tiling Wayland compositor with 
 
 ---
 
-### 🟦 Quickshell Topbar
+### 🟦 Quickshell Desktop
 
 > `/.config/quickshell/topbar/`
 
-Custom status bar built with QML, adaptive component views, and animated workspace planets.
+A custom desktop interface built with QML and Quickshell. A shared runtime powers the topbar and its overlays, with heavier panels loaded on demand.
 
-- **Workspaces** — Hyprland workspace indicators with active/urgent/occupied states
-- **Media Player** — live track info with playback controls (play/pause/skip), scroll to change volume
-- **Clock** — clock with an expandable calendar dashboard
-- **Network** — WiFi/ethernet status with SSID and signal strength
-- **Bluetooth** — connection status with device name
-- **Audio** — PulseAudio/PipeWire volume module with mute toggle and scroll-to-adjust
-- **Battery** — percentage with charging indicator and power-state icons
-- **CPU / Memory** — real-time usage with custom icons
-- **Adaptive Views** — configurable component views that adjust to available space
+#### Topbar
+
+![Quickshell Topbar](./screenshots/quickshell-topbar.png)
+
+- **Orbital Workspaces** — procedural planets represent active workspaces, with an orbiting spacecraft and animated transfers between them
+- **Adaptive Views** — components compress according to configurable priorities as space becomes limited; right-click a component to select views that persist across restarts
+- **Media** — track information and playback controls, with compact views for smaller displays
+- **Audio and Connectivity** — output/input volume, audio devices and profiles, WiFi, and Bluetooth controls in expandable panels
+- **Hardware and Battery** — CPU usage, memory, temperature, and battery status, with sampling tailored to visible hardware metrics
+- **Clock and Calendar** — date and time with an expandable calendar
+
+#### App Launcher
+
+A satellite-inspired interface arranges applications around a central search console. Open it with `Super + W`.
+
+![Quickshell App Launcher](./screenshots/quickshell-launcher.png)
+
+#### Session Menu
+
+An animated orbital menu provides lock, logout, sleep, hibernate, restart, and shutdown actions. Open it with `Super + P`.
+
+![Quickshell Session Menu](./screenshots/quickshell-session-menu.png)
+
+#### Monitor Switcher
+
+Switch between laptop, external, extended, and duplicated displays. Adjust display placement, resolution, refresh rate, and scale through a visual layout editor. Changes use a confirmation timer and automatically revert if they are not confirmed.
+
+![Quickshell Monitor Switcher](./screenshots/quickshell-monitor-switcher.png)
 
 ---
 
@@ -159,7 +172,7 @@ Lightweight notification daemon styled to match the rest of the setup.
 
 > `/.config/rofi/`
 
-App launcher, window switcher, and dmenu replacement with a custom theme.
+Additional launcher and script-menu configuration with a custom theme. Quickshell is the primary app launcher used by the desktop keybindings.
 
 ![Rofi](./screenshots/rofi.png)
 
@@ -195,11 +208,11 @@ Full Neovim configuration tracked as its own submodule for independent versionin
 
 ---
 
-## 🖼️ Quickshell
+## 🖼️ Quickshell Wallpaper Selector
 
-> `/.config/quickshell/`
+> `/.config/quickshell/wallpaper/`
 
-Custom overlay UI built with Quickshell, currently used for a **wallpaper selector**.
+A separate Quickshell overlay for browsing and applying wallpapers.
 
 ![Wallpaper Selector](./screenshots/wallpaper_selector.png)
 
@@ -316,7 +329,7 @@ A collection of custom shell and Python scripts powering automated workflows.
 
 - **Wallpaper Picker** — Quickshell-based wallpaper selector with cached previews and Matugen integration
 - **Screenshot** — quick area screenshots via `grimblast`, bound directly in Hyprland
-- **System Power Menu** — wlogout launcher with keybind integration
+- **Launcher and Session Menu** — scripts toggle the Quickshell overlays through IPC
 - **Media Control** — playerctl wrappers for media key handling
 
 ---
@@ -354,7 +367,7 @@ dotfiles/
         quickshell/       # QML topbar, shell interfaces, and wallpaper selector
         kitty/            # Terminal emulator config
         dunst/            # Notification daemon
-        rofi/             # App launcher - .rasi theme
+        rofi/             # Additional launcher and script-menu themes
         nvim/             # Neovim (git submodule)
         tmux/             # Terminal multiplexer
         ranger/           # Terminal file manager
@@ -365,7 +378,6 @@ dotfiles/
         matugen/          # Matugen config and color templates
         scripts/          # Custom shell/Python scripts
         systemd/user/     # Systemd user services
-        wlogout/          # Logout screen
         btop/             # Beautiful system monitor
         htop/             # Process viewer config
         cgdb/             # Curses GDB interface
