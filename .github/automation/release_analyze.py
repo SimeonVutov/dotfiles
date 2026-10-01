@@ -1,12 +1,19 @@
+import hashlib
 import json
 import os
 import subprocess
 import tempfile
 from pathlib import Path
 
+from common import api, repo
+
 
 HEADINGS = ['Highlights', 'Major changes', 'Breaking changes / Migration', 'Minor changes']
 LIMIT = 70000
+
+
+class CopilotResponseError(ValueError):
+    pass
 
 
 def batches(records):
@@ -34,6 +41,33 @@ def batches(records):
         yield current
 
 
+def parse_copilot_output(output):
+    messages = []
+    try:
+        for line in output.splitlines():
+            if not line.strip():
+                continue
+            event = json.loads(line)
+            if event.get('type') == 'assistant.message':
+                content = event.get('data', {}).get('content')
+                if isinstance(content, str) and content.strip():
+                    messages.append(content.strip())
+    except (json.JSONDecodeError, AttributeError) as error:
+        raise CopilotResponseError('Copilot returned invalid JSONL output') from error
+    if not messages:
+        raise CopilotResponseError('Copilot returned no assistant message')
+    text = messages[-1]
+    if text.startswith('```json') and text.endswith('```'):
+        text = text[7:-3].strip()
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise CopilotResponseError(f'Copilot response is not one JSON object: {error.msg}') from error
+    if not isinstance(value, dict):
+        raise CopilotResponseError('Copilot response must be a JSON object')
+    return value
+
+
 def ask(prompt):
     token = os.environ.get('COPILOT_GITHUB_TOKEN')
     if not token:
@@ -41,7 +75,7 @@ def ask(prompt):
     with tempfile.TemporaryDirectory(prefix='release-copilot-') as workspace:
         env = {'PATH': os.environ['PATH'], 'HOME': workspace,
                'COPILOT_HOME': workspace, 'COPILOT_GITHUB_TOKEN': token}
-        command = ['copilot', '-p', prompt, '--silent', '--no-ask-user', '--no-auto-update',
+        command = ['copilot', '-p', prompt, '--output-format=json', '--no-ask-user', '--no-auto-update',
                    '--no-custom-instructions', '--disable-builtin-mcps', '--no-color',
                    '--deny-tool=shell', '--deny-tool=read', '--deny-tool=write',
                    '--deny-tool=url', '--excluded-tools=bash,list_bash,read_bash,stop_bash,write_bash,apply_patch,create,edit,view,list_agents,read_agent,task,write_agent,ask_user,glob,grep,rg,skill,web_fetch']
@@ -51,13 +85,7 @@ def ask(prompt):
                                 capture_output=True, timeout=600, check=False)
         if result.returncode:
             raise RuntimeError('Copilot generation failed; check authentication, model access, and quota')
-        text = result.stdout.strip()
-        if text.startswith('```json') and text.endswith('```'):
-            text = text[7:-3].strip()
-        value = json.loads(text)
-        if not isinstance(value, dict):
-            raise ValueError('Expected a JSON object from Copilot')
-        return value
+        return parse_copilot_output(result.stdout)
 
 
 def validate_notes(notes):
@@ -113,27 +141,88 @@ def analyze_chunk(chunk, policy, request, index):
     raise ValueError(f'Batch {index} response invalid after 3 attempts ({issue})')
 
 
+def chunk_key(chunk):
+    return hashlib.sha256(json.dumps(chunk, sort_keys=True).encode()).hexdigest()
+
+
+def reusable_reviews(records, reviews):
+    previous_chunks = list(batches(records))
+    if not isinstance(reviews, list) or len(reviews) > len(previous_chunks):
+        raise ValueError('Previous analysis does not match its evidence')
+    reusable = {}
+    for chunk, review in zip(previous_chunks, reviews):
+        expected = {record['id'] for record in chunk}
+        if (not isinstance(review, dict) or not isinstance(review.get('covered_ids'), list)
+                or not all(isinstance(identifier, str) for identifier in review['covered_ids'])):
+            raise ValueError('Previous analysis contains an invalid batch')
+        if (set(review['covered_ids']) != expected or not isinstance(review.get('findings'), str)
+                or not isinstance(review.get('uncertainties'), list)):
+            raise ValueError('Previous analysis contains an incomplete batch')
+        reusable[chunk_key(chunk)] = review
+    return reusable
+
+
+def load_previous_reviews(current_state):
+    run_id = os.environ.get('RELEASE_RESUME_RUN_ID', '').strip()
+    if not run_id:
+        return {}
+    if not run_id.isdecimal():
+        raise ValueError('Resume run ID must be a number')
+    run = api(f'repos/{repo()}/actions/runs/{run_id}')
+    if (run.get('head_branch') != 'master' or run.get('event') != 'workflow_dispatch'
+            or run.get('path', '').split('@', 1)[0] != '.github/workflows/prepare-release.yml'
+            or run.get('repository', {}).get('full_name') != repo()):
+        raise ValueError('Resume artifact must come from a Prepare release run on master')
+    previous = Path(os.environ['RELEASE_RESUME_DIR'])
+    old_state = json.loads((previous / 'state.json').read_text())
+    if run['head_sha'] != old_state['source_sha']:
+        raise ValueError('Resume artifact does not match its workflow run')
+    for field in ('version', 'base_tag', 'base_sha'):
+        if old_state[field] != current_state[field]:
+            raise ValueError('Resume artifact belongs to another release')
+    if subprocess.run(['git', 'merge-base', '--is-ancestor', old_state['source_sha'],
+                       current_state['source_sha']], check=False).returncode:
+        raise ValueError('Previous release source is not an ancestor of master')
+    records = json.loads((previous / 'evidence.json').read_text())
+    reviews = json.loads((previous / 'analysis.json').read_text())
+    return reusable_reviews(records, reviews)
+
+
 def analyze():
     root = Path(os.environ['RELEASE_DIR'])
     policy = Path('.github/release-notes-instructions.md').read_text()
     records = json.loads((root / 'evidence.json').read_text())
     chunks = list(batches(records))
+    state = json.loads((root / 'state.json').read_text())
+    reusable = load_previous_reviews(state)
+    cached = [reusable.get(chunk_key(chunk)) for chunk in chunks]
+    if reusable:
+        print(f'Reusing {sum(review is not None for review in cached)} completed evidence batches', flush=True)
     max_calls = int(os.environ.get('RELEASE_MAX_AI_CALLS', '100'))
-    if len(chunks) + 1 > max_calls:
-        raise ValueError(f'Evidence requires at least {len(chunks) + 1} AI calls; increase the call budget explicitly')
+    minimum_calls = sum(review is None for review in cached) + 1
+    if minimum_calls > max_calls:
+        raise ValueError(f'Evidence requires at least {minimum_calls} AI calls; increase the call budget explicitly')
     calls = 0
 
     def request(prompt):
         nonlocal calls
-        if calls >= max_calls:
-            raise ValueError('AI-call budget exceeded; increase RELEASE_MAX_AI_CALLS')
-        calls += 1
-        return ask(prompt)
+        for attempt in range(1, 4):
+            if calls >= max_calls:
+                raise ValueError('AI-call budget exceeded; increase RELEASE_MAX_AI_CALLS')
+            calls += 1
+            try:
+                return ask(prompt)
+            except CopilotResponseError as error:
+                if attempt == 3:
+                    raise
+                print(f'Copilot response invalid ({error}); retrying ({attempt}/2)', flush=True)
 
     reviews = []
     for index, chunk in enumerate(chunks):
-        print(f'Analyzing evidence batch {index + 1}/{len(chunks)}', flush=True)
-        result = analyze_chunk(chunk, policy, request, index + 1)
+        result = cached[index]
+        if result is None:
+            print(f'Analyzing evidence batch {index + 1}/{len(chunks)}', flush=True)
+            result = analyze_chunk(chunk, policy, request, index + 1)
         reviews.append(result)
         (root / 'analysis.json').write_text(json.dumps(reviews, indent=2))
     summaries = [{'id': str(i), 'content': json.dumps(r)} for i, r in enumerate(reviews)]
@@ -147,7 +236,6 @@ def analyze():
         if len(json.dumps(reduced)) >= len(json.dumps(summaries)):
             raise ValueError('Analysis could not be reduced without exceeding the context budget')
         summaries = reduced
-    state = json.loads((root / 'state.json').read_text())
     final = request('Create the final release notes, reconciling all outcomes. Return ONLY JSON with '
                     'notes (Markdown), evidence (nonempty list of objects with claim and refs, '
                     'where refs are supporting original or numbered-part evidence IDs), '
