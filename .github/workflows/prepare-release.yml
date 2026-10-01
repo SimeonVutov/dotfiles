@@ -22,8 +22,6 @@ jobs:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      RELEASE_DIR: ${{ runner.temp }}/release
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -40,6 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_BUMP: ${{ inputs.bump }}
+          RELEASE_DIR: ${{ runner.temp }}/release
       - name: Install pinned Copilot CLI
         run: npm install --prefix .github/automation/copilot --no-audit --no-fund
       - name: Analyze and reconcile changes
@@ -50,6 +49,7 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           COPILOT_MODEL: ${{ vars.RELEASE_COPILOT_MODEL }}
           RELEASE_MAX_AI_CALLS: ${{ vars.RELEASE_MAX_AI_CALLS || '100' }}
+          RELEASE_DIR: ${{ runner.temp }}/release
       - name: Save evidence and reviewed-note candidates
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -63,9 +63,6 @@ jobs:
     needs: analyze
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      RELEASE_DIR: ${{ runner.temp }}/release
-      GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -78,3 +75,6 @@ jobs:
           path: ${{ runner.temp }}/release
       - name: Create metadata-only release PR
         run: python3 .github/automation/release_propose.py
+        env:
+          RELEASE_DIR: ${{ runner.temp }}/release
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
