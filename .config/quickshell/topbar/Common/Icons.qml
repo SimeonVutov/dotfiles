@@ -4,7 +4,7 @@ import QtQuick
 import Quickshell
 
 // Nerd Font glyphs, written as codepoints rather than literal characters so
-// they survive copy/paste and diffs intact. Values match the old waybar config.
+// they survive copy/paste and diffs intact.
 Singleton {
     id: root
 

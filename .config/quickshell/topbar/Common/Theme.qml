@@ -4,7 +4,6 @@ import QtQuick
 import Quickshell
 
 Singleton {
-    // ── Colours ────────────────────────────────────────────────
     readonly property color pillBackground: "#000000"
     readonly property real pillOpacity: 0.8
     readonly property color text: "#FFFFFF"
@@ -18,7 +17,6 @@ Singleton {
     readonly property color criticalText: "#FFFFFF"
     readonly property color powerButton: "#000000"
 
-    // ── Popups ─────────────────────────────────────────────────
     readonly property color popupBackground: "#0A0A0A"
     readonly property real popupOpacity: 1.0
     readonly property color popupBorder: "#2A2A2A"
@@ -36,7 +34,6 @@ Singleton {
     readonly property int popupSpacing: 12
     readonly property int popupSectionSpacing: 18
 
-    // ── Metrics (mirrors the old waybar CSS box model) ─────────
     readonly property int barHeight: 43
     readonly property int pillRadius: 15
     readonly property int pillPaddingH: 15
@@ -47,8 +44,6 @@ Singleton {
 
     readonly property int groupItemPaddingH: 5
 
-    // ── Typography ─────────────────────────────────────────────
-    // Fontconfig supplies the same fallback chain used by the old Waybar.
     readonly property string fontFamily: "Roboto"
     readonly property int fontSizeTiny: 11
     readonly property int fontSizeCaption: 12
@@ -60,13 +55,11 @@ Singleton {
     readonly property int fontSizeDisplay: 40
     readonly property int powerFontSize: 20
 
-    // ── Motion ─────────────────────────────────────────────────
     readonly property int durationFast: 150
     readonly property int durationNormal: 300
     readonly property int easing: Easing.InOutQuad
     readonly property int easingEmphasized: Easing.OutCubic
 
-    // ── Overlay (Launcher / SessionMenu) ───────────────────────
     readonly property color overlayAbyss: "#000000"
     readonly property color overlayBackground: "#0A0A0A"
     readonly property color overlaySurface: "#191919"

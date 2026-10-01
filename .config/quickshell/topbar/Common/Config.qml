@@ -45,7 +45,6 @@ Singleton {
         return Qt.resolvedUrl("../Modules/" + file);
     }
 
-    // ── Module settings ────────────────────────────────────────
     readonly property var clock: ({
             format: "dd MMM, hh:mm AP",
             formatAlt: "ddd MMM dd, yyyy",
@@ -143,7 +142,7 @@ Singleton {
 
     readonly property var volume: ({
             // Scrolling over the output part changes the output, over the mic
-            // part changes the mic. 1% per notch is what waybar defaulted to.
+            // part changes the mic.
             scrollStep: 1,
             maxOutputVolume: 400,
             maxInputVolume: 100
