@@ -3,13 +3,27 @@ name: Prepare release
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: Prepare a release or replay one failed evidence batch
+        type: choice
+        options: [prepare, probe]
+        default: prepare
       bump:
         description: Version increment
         type: choice
         options: [patch, minor, major]
         default: patch
+      resume_run_id:
+        description: Failed Prepare release run ID (required for probe; optional for prepare)
+        type: string
+        required: false
+      probe_batch:
+        description: One-based evidence batch number to replay in probe mode
+        type: string
+        default: '12'
 
 permissions:
+  actions: read
   contents: read
   pull-requests: read
 
@@ -19,7 +33,7 @@ concurrency:
 
 jobs:
   analyze:
-    if: github.ref == 'refs/heads/master'
+    if: (github.ref == 'refs/heads/master' && inputs.mode == 'prepare') || (github.ref == 'refs/heads/develop' && inputs.mode == 'probe')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -34,14 +48,34 @@ jobs:
         with:
           node-version: '22'
       - name: Collect release evidence
+        if: inputs.mode == 'prepare'
         run: python3 .github/automation/release_collect.py
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_BUMP: ${{ inputs.bump }}
           RELEASE_DIR: ${{ runner.temp }}/release
+      - name: Load completed batches from a failed run
+        if: (inputs.mode == 'prepare' && inputs.resume_run_id != '') || inputs.mode == 'probe'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-review
+          run-id: ${{ inputs.resume_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/release-previous
       - name: Install pinned Copilot CLI
         run: npm install --prefix .github/automation/copilot --no-audit --no-fund
+      - name: Replay one release evidence batch
+        if: inputs.mode == 'probe'
+        run: |
+          export PATH="$GITHUB_WORKSPACE/.github/automation/copilot/node_modules/.bin:$PATH"
+          python3 .github/automation/release_probe.py
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          COPILOT_MODEL: ${{ vars.RELEASE_COPILOT_MODEL }}
+          RELEASE_RESUME_DIR: ${{ runner.temp }}/release-previous
+          RELEASE_PROBE_BATCH: ${{ inputs.probe_batch }}
       - name: Analyze and reconcile changes
+        if: inputs.mode == 'prepare'
         run: |
           export PATH="$GITHUB_WORKSPACE/.github/automation/copilot/node_modules/.bin:$PATH"
           python3 .github/automation/release_analyze.py
@@ -50,8 +84,11 @@ jobs:
           COPILOT_MODEL: ${{ vars.RELEASE_COPILOT_MODEL }}
           RELEASE_MAX_AI_CALLS: ${{ vars.RELEASE_MAX_AI_CALLS || '100' }}
           RELEASE_DIR: ${{ runner.temp }}/release
+          RELEASE_RESUME_DIR: ${{ runner.temp }}/release-previous
+          RELEASE_RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+          GH_TOKEN: ${{ github.token }}
       - name: Save evidence and reviewed-note candidates
-        if: always()
+        if: always() && inputs.mode == 'prepare'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-review
@@ -61,6 +98,7 @@ jobs:
 
   propose:
     needs: analyze
+    if: inputs.mode == 'prepare'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

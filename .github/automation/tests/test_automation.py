@@ -12,9 +12,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import eligible, next_version
 from commit_checks import valid
 from config_checks import jsonc, qml_javascript_for_node
-from release_analyze import analyze_chunk, batches, evidence_source, validate_notes
+from release_analyze import (CopilotResponseError, analyze_chunk, batches, chunk_key,
+                             evidence_source, parse_copilot_output, reusable_reviews, validate_notes)
 from release_collect import collect
 from release_metadata import build, validate
+from release_probe import probe
 
 
 class Formats(unittest.TestCase):
@@ -56,6 +58,40 @@ class Formats(unittest.TestCase):
         self.assertEqual(evidence_source('after:sample.txt@35000', known), 'after:sample.txt')
         with self.assertRaises(ValueError):
             evidence_source('after:unknown.txt@0', known)
+
+    def test_copilot_jsonl_extracts_the_final_assistant_message(self):
+        output = '\n'.join(json.dumps(event) for event in [
+            {'type': 'session.start', 'data': {}},
+            {'type': 'assistant.message', 'data': {'content': '{"covered_ids": []}'}},
+            {'type': 'assistant.message', 'data': {'content': '{"covered_ids": ["commit:a"]}'}},
+        ])
+        self.assertEqual(parse_copilot_output(output)['covered_ids'], ['commit:a'])
+
+    def test_copilot_jsonl_rejects_extra_response_data(self):
+        output = json.dumps({'type': 'assistant.message', 'data': {'content': '{} extra'}})
+        with self.assertRaises(CopilotResponseError):
+            parse_copilot_output(output)
+
+    def test_resume_reuses_only_identical_completed_evidence(self):
+        records = [{'id': 'commit:a', 'content': 'Original diff'}]
+        review = {'covered_ids': ['commit:a@0'], 'findings': 'Change', 'uncertainties': []}
+        reusable = reusable_reviews(records, [review])
+        self.assertEqual(reusable[chunk_key(list(batches(records))[0])], review)
+        changed = [{'id': 'commit:a', 'content': 'Different diff'}]
+        self.assertNotIn(chunk_key(list(batches(changed))[0]), reusable)
+        with self.assertRaises(ValueError):
+            reusable_reviews(records, [dict(review, covered_ids=[])])
+
+    def test_probe_replays_selected_evidence_batch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, 'evidence.json').write_text(json.dumps([
+                {'id': 'commit:a', 'content': 'A'},
+            ]))
+            response = {'covered_ids': ['commit:a@0'], 'findings': 'Change', 'uncertainties': []}
+            with patch.dict(os.environ, {'RELEASE_RESUME_DIR': directory, 'RELEASE_PROBE_BATCH': '1'}):
+                with patch('release_probe.ask', return_value=response) as request:
+                    probe()
+            self.assertIn('REQUIRED_IDS:', request.call_args.args[0])
 
     def test_incomplete_batch_is_retried_without_accepting_missing_evidence(self):
         chunk = [{'id': 'commit:a', 'content': 'A'}, {'id': 'commit:b', 'content': 'B'}]

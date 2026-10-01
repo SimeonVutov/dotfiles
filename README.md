@@ -414,6 +414,25 @@ On other hardware, select an appropriate profile in
 
 ---
 
+## License and attribution
+
+You're welcome to use and customize my work for noncommercial purposes. Keep
+the author notices in your copy; private personal use needs no public credit.
+
+If you share or publicly showcase my files, visuals, or parts of them,
+credit **Simeon Vutov**, link to [this repository](https://github.com/SimeonVutov/dotfiles),
+provide the license and attribution notice, and say what you changed. This also
+applies when you reuse my work in another application.
+
+Commercial use, including paid work and business use, needs my written
+permission. Contact me through [my GitHub profile](https://github.com/SimeonVutov).
+
+See [LICENSE](./LICENSE) for the full terms and [NOTICE](./NOTICE) for the credit
+to include. These terms cover my original work; third-party material and
+submodules keep their own licenses.
+
+---
+
 <div align="center">
 
 Made with ❤️ on Arch Linux
