@@ -416,28 +416,20 @@ On other hardware, select an appropriate profile in
 
 ## License and attribution
 
-My original contributions are covered by the custom
-[Dotfiles Noncommercial Attribution License](./LICENSE).
+You're welcome to use and customize my work for noncommercial purposes. Keep
+the author notices in your copy; private personal use needs no public credit.
 
-- **Noncommercial use:** you may use, modify, and share covered material,
-  including incorporating files or parts of them into your own projects,
-  with mandatory attribution. No separate permission is required.
-- **Credit:** retain the author's notices. When publishing or distributing
-  reused material, identify it as originating from **Simeon Vutov** and link
-  to [this repository](https://github.com/SimeonVutov/dotfiles) in your README,
-  documentation, or application credits. Include the license and applicable
-  [NOTICE](./NOTICE) information. Identify your modifications.
-- **Private personal use:** retain the notices with your local copy; public
-  or on-screen credit is not required.
-- **Commercial use:** requires my separate written permission, including use
-  in commercial products, services, paid work, or business operations.
-  Contact me through [my GitHub profile](https://github.com/SimeonVutov).
+If you share or publicly showcase my files, visuals, or parts of them,
+credit **Simeon Vutov**, link to [this repository](https://github.com/SimeonVutov/dotfiles),
+provide the license and attribution notice, and say what you changed. This also
+applies when you reuse my work in another application.
 
-These terms cover my original code and copyrightable visual material, including
-original Quickshell animation implementations. Third-party material, submodules,
-and assets retain their own terms. The license does not claim ownership of
-underlying ideas or independently created implementations. See [LICENSE](./LICENSE)
-for the full terms.
+Commercial use, including paid work and business use, needs my written
+permission. Contact me through [my GitHub profile](https://github.com/SimeonVutov).
+
+See [LICENSE](./LICENSE) for the full terms and [NOTICE](./NOTICE) for the credit
+to include. These terms cover my original work; third-party material and
+submodules keep their own licenses.
 
 ---
 

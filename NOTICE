@@ -1,18 +1,33 @@
-Simeon Vutov's dotfiles
-Copyright (c) Simeon Vutov, for his original contributions
+SIMEON VUTOV DOTFILES
+Copyright © 2026 Simeon Vutov. All rights reserved.
 
-Required attribution for covered material:
-Original material by Simeon Vutov
-https://github.com/SimeonVutov/dotfiles
+Author: Simeon Vutov
+Project: https://github.com/SimeonVutov/dotfiles
 
-Original code, configuration, documentation, and original visual and media
-material are covered by the custom Dotfiles Noncommercial Attribution License
-1.0 in LICENSE, unless separately licensed. Noncommercial reuse requires
-attribution; commercial use requires separate written permission.
+This repository contains original software, configuration, documentation, and
+visual material created by Simeon Vutov. These original contributions are made
+available under the Dotfiles Noncommercial Attribution License 1.1 included in
+the LICENSE file.
 
-Third-party material and submodules retain their own ownership and license
-terms. Inclusion in this repository or its screenshots does not make their
-assets the author's work or grant permission to reuse those assets.
+ATTRIBUTION NOTICE
 
-This NOTICE identifies the author and attribution requirements. LICENSE
-contains the governing terms.
+When distributing or publicly sharing covered material, including modified
+versions or portions incorporated into another work, retain this attribution
+as required by section 3 of LICENSE:
+
+    Original material by Simeon Vutov
+    https://github.com/SimeonVutov/dotfiles
+
+Provide the complete license text and applicable copyright notices as required
+by section 3 of LICENSE, and identify modifications. Commercial use requires
+separate written permission from Simeon Vutov under section 4 of LICENSE.
+
+THIRD-PARTY MATERIAL
+
+Third-party software, submodules, fonts, icons, wallpapers, and other assets are
+owned by their respective copyright holders and remain subject to their own
+license terms. This notice applies only to material for which Simeon Vutov owns
+the applicable rights.
+
+This notice summarizes attribution information. The LICENSE file contains the
+governing terms and controls if a summary differs from those terms.

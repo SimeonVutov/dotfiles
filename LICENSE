@@ -1,7 +1,7 @@
-Dotfiles Noncommercial Attribution License 1.0
+Dotfiles Noncommercial Attribution License 1.1
 Custom source-available license
 
-Copyright (c) Simeon Vutov
+Copyright © 2026 Simeon Vutov. All rights reserved.
 Project: https://github.com/SimeonVutov/dotfiles
 
 1. Covered material
@@ -10,6 +10,17 @@ This license applies to original material in this repository for which Simeon
 Vutov holds copyright, unless that material expressly states different terms.
 Covered material includes original code, configuration, documentation, artwork,
 media, and copyrightable animation and visual material, in whole or in part.
+The conditions also apply when covered material is modified, translated,
+converted to another format, or incorporated into another work, to the extent
+those acts require the author's permission under applicable copyright law.
+They do not assert ownership of another person's independent additions.
+
+In this license, "you" means the individual or legal entity exercising these
+permissions. "Distribution" means providing copies of covered material to
+another person or entity, whether publicly or privately, in source, compiled,
+embedded, or media form. "Public sharing" also includes public display,
+performance, or making covered material available through an application or
+online service, even when source code is not provided to its users.
 
 Third-party material, dependencies, submodules, fonts, icons, wallpapers, and
 other assets owned by others retain their respective terms. Their presence in
@@ -21,45 +32,84 @@ that Simeon Vutov does not hold.
 
 Subject to the conditions below, you may use, reproduce, modify, display, and
 distribute covered material, including incorporating it into another project,
-solely for noncommercial purposes. No separate permission or notification is
-required for these permitted uses. This permission is worldwide, royalty-free,
-and nonexclusive for the duration of the applicable copyright, subject to
-termination for breach as described below.
+solely for noncommercial purposes and only while complying with every condition
+of this license. This permission is worldwide, royalty-free, and nonexclusive
+for the duration of the applicable copyright, subject to termination for breach
+as described below. Permission under this version cannot be withdrawn while you
+comply with its terms. Later versions do not replace these terms for copies you
+received under this version.
 
-Noncommercial means a use that is not primarily intended for or directed toward
-commercial advantage or monetary compensation. Commercial use includes selling
-or commercially licensing covered material, incorporating it into commercial
-products or services, and using it for paid work or business operations.
-An organization being nonprofit does not by itself make a use noncommercial.
+Noncommercial use means a use that is not commercial as defined in section 4.
+Private personal use, unpaid hobby projects, and noncommercial sharing are
+permitted, subject to the attribution requirements in section 3. Making a
+project available without a charge does not make its use noncommercial if it
+falls within section 4. These definitions apply regardless of whether the user
+is an individual, a business, or a nonprofit organization.
 
 3. Mandatory attribution
 
-Keep the author's copyright and attribution notices with every copy or reuse of
-covered material, including modified material and portions incorporated into
-another application. The attribution must identify the original author and
-project as follows:
+Retain existing copyright, attribution, and license notices in copies of covered
+material. For private use, notices may be kept in the source files or
+accompanying local documentation; they need not appear in every copy generated
+while running the software.
+When distributing or publicly sharing covered material, including modified
+material and portions incorporated into another application, identify the
+original author and project as follows:
 
 Original material by Simeon Vutov
 https://github.com/SimeonVutov/dotfiles
 
-When publishing or distributing covered material, provide this attribution in
-a reasonably accessible place, such as a repository README, accompanying
-documentation, an application's credits or license notices, or a media credit.
-Include this license and the project's NOTICE, or equivalent notices containing
-their applicable information, with every distribution. Preserve existing
-copyright, attribution, and license notices in covered source files.
+When distributing or publicly sharing covered material, provide this attribution
+in the repository README, accompanying documentation, an application's credits or
+license notices, or a caption accompanying published media. For a hosted
+application or public demonstration, credits or documentation linked from the
+application or demonstration may be used. The credit must be readable and
+accessible to recipients or viewers without additional payment. Identify which
+files, components, or media were reused when they are part of a larger work.
+
+Every distribution must include the complete text of this license and the
+author's attribution and copyright notice from NOTICE. They may be included in
+separate files or reproduced in accompanying documentation. A link to this
+repository alone does not replace the requirement to include the license text.
+For public sharing that does not provide copies, make the full license text and
+notice available in the same credits or documentation, either directly or
+through a link to their complete text.
+
+Preserve existing copyright, attribution, and license notices in covered source
+files. When distributing or publicly sharing modifications, include a statement
+that identifies the modified files or components and summarizes your changes.
 
 Private personal use requires retaining attribution with your local copy; it
 does not require a public announcement or an on-screen credit. Attribution must
 identify the reused material without implying that Simeon Vutov created your
-entire project or endorses it. Clearly identify your modifications when sharing
-modified material. Do not present covered material as entirely your own work.
+entire project or endorses it. Do not present covered material as entirely your
+own work.
 
 4. Commercial permission
 
 Commercial use of covered material is prohibited unless Simeon Vutov grants
 separate written permission. Attribution alone does not authorize commercial
-use. Request permission through the author's GitHub profile:
+use. For this license, commercial use means any of the following:
+
+- Selling covered material or charging for access to it or for its use.
+- Incorporating covered material into products or services sold, supplied for
+  payment, or supplied as part of paid work or business operations.
+- Using covered material to perform paid work, operate a business, or advertise
+  or promote commercial products or services.
+- Publishing or distributing covered material to generate revenue, including
+  through advertising, sponsorship, or paid subscriptions.
+- Any other use of covered material undertaken to obtain a commercial advantage
+  or monetary compensation.
+
+These restrictions also apply to modified material and portions incorporated
+into another work. Written permission must come from Simeon Vutov and expressly
+authorize the proposed commercial use. Silence, attribution, and permission
+from another user do not constitute authorization.
+
+Written permission may be an agreement or an electronic message that clearly
+identifies the permitted use and is sent or signed by Simeon Vutov.
+
+Request permission through the author's GitHub profile:
 https://github.com/SimeonVutov
 
 5. Reserved rights and legal exceptions
@@ -67,18 +117,26 @@ https://github.com/SimeonVutov
 All rights not expressly granted are reserved. You may not grant recipients
 broader rights to covered material than you received under this license.
 Recipients may exercise the permissions in this license directly, subject to
-its conditions. This license does not restrict independently implemented ideas
-or other material outside the author's copyright, or uses allowed by applicable
-law without the author's permission, including applicable copyright exceptions.
-It grants no trademark rights and no right to imply the author's endorsement.
-It does not limit rights independently granted under GitHub's terms of service.
+its conditions. Nothing in this license limits a use that applicable law permits
+without the author's authorization. It grants no trademark rights and no right
+to imply the author's endorsement. It does not limit rights independently
+granted under GitHub's terms of service.
 
 6. Termination
 
 Permission under this license terminates automatically if you breach its
-conditions. Continued use requiring the author's permission then requires
-separate written authorization. Termination does not affect rights you have
-independently under applicable law.
+conditions. After termination, you must stop uses that require permission under
+this license, unless the author reinstates your permission in writing.
+Termination of your permission does not terminate permission held by recipients
+who independently comply with this license. Termination does not affect rights
+you have independently under applicable law.
+
+The README and NOTICE summarize these terms and do not grant additional rights
+or change this license. A separate written agreement with Simeon Vutov may grant
+additional rights for the uses specified in that agreement. Attribution and
+other conditions of this license continue to apply unless that agreement
+expressly changes them. A waiver for one use or recipient does not authorize
+other uses or recipients.
 
 7. Disclaimer
 
