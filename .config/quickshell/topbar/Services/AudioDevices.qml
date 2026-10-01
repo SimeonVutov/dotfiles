@@ -9,11 +9,12 @@ import Quickshell.Services.Pipewire
 Singleton {
     id: root
 
-    readonly property var nodes: Pipewire.nodes.values.filter(node => !node.isStream && (node.type & PwNodeType.Audio) !== 0)
-    readonly property var outputs: nodes.filter(node => node.isSink)
-    readonly property var inputs: nodes.filter(node => !node.isSink)
     readonly property var defaultOutput: Pipewire.defaultAudioSink
     readonly property var defaultInput: Pipewire.defaultAudioSource
+    readonly property var nodes: Pipewire.nodes.values.filter(node => !node.isStream
+        && (node.type & PwNodeType.Audio) !== 0)
+    readonly property var outputs: nodes.filter(node => node.isSink && selectable(node, defaultOutput))
+    readonly property var inputs: nodes.filter(node => !node.isSink && selectable(node, defaultInput))
 
     property var cards: []
     property string error: ""
@@ -32,9 +33,41 @@ Singleton {
             profileRefreshDelay.stop();
     }
 
+    function selectable(node, defaultNode) {
+        if (node === defaultNode)
+            return true;
+        const properties = node.properties || {};
+        if (properties["device.profile.pro"] !== true && properties["device.profile.pro"] !== "true")
+            return true;
+        const route = routeFor(node);
+        return route !== null && route.available !== "no";
+    }
+
+    function routeFor(node) {
+        if (!node)
+            return null;
+        const card = cardFor(node);
+        const index = Number((node.properties || {})["card.profile.device"]);
+        if (!card || !Number.isInteger(index))
+            return null;
+        const direction = node.isSink ? "Output" : "Input";
+        return card.routes.find(route => route.direction === direction && route.index === index) || null;
+    }
+
+    function routeInfo(info, key) {
+        const index = info.indexOf(key);
+        return index >= 0 ? info[index + 1] || "" : "";
+    }
+
     function labelFor(node) {
         if (!node)
             return "Unknown device";
+        const properties = node.properties || {};
+        if (properties["device.profile.pro"] === true || properties["device.profile.pro"] === "true") {
+            const route = routeFor(node);
+            if (route && route.product)
+                return route.product + " · " + route.description;
+        }
         return node.description || node.nickname || node.name || "Unknown device";
     }
 
@@ -62,13 +95,21 @@ Singleton {
                             description: profile.description || profile.name || "Unknown profile",
                             available: profile.available || "unknown"
                         }));
+                const routes = (parameters.EnumRoute || []).map(route => ({
+                            index: Number(route.index),
+                            direction: route.direction || "",
+                            description: route.description || "Audio output",
+                            available: route.available || "unknown",
+                            product: root.routeInfo(route.info || [], "device.product.name")
+                        }));
                 return {
                     id: Number(object.id),
                     name: properties["device.name"] || "",
                     description: properties["device.description"] || properties["device.name"] || "Audio device",
                     activeProfile: activeProfile.name || "",
                     activeProfileIndex: Number(activeProfile.index),
-                    profiles: profiles
+                    profiles: profiles,
+                    routes: routes
                 };
             });
             error = "";
@@ -105,13 +146,12 @@ Singleton {
     function profilesForCard(card) {
         if (!card)
             return [];
-        return card.profiles.filter(profile => String(profile.name).trim().toLowerCase() !== "off").sort((a, b) => {
+        return card.profiles.filter(profile => String(profile.name).trim().toLowerCase() !== "off"
+            && profile.available !== "no").sort((a, b) => {
             if (a.name === card.activeProfile)
                 return -1;
             if (b.name === card.activeProfile)
                 return 1;
-            if (a.available !== b.available)
-                return a.available === "no" ? 1 : -1;
             return a.description.localeCompare(b.description);
         });
     }
@@ -124,7 +164,8 @@ Singleton {
     }
 
     function setProfile(card, profile) {
-        if (!card || !profile || profileBusy || String(profile.name).trim().toLowerCase() === "off")
+        if (!card || !profile || profileBusy || profile.available === "no"
+                || String(profile.name).trim().toLowerCase() === "off")
             return;
         error = "";
         setProfileProcess.command = ["wpctl", "set-profile", String(card.id), String(profile.index)];

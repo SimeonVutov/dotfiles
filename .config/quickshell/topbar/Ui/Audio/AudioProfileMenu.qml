@@ -77,9 +77,9 @@ Item {
                 width: profilesView.width - (profilesView.contentHeight > profilesView.height ? scrollIndicator.gutter : 0)
                 implicitHeight: 52
                 title: modelData.description
-                subtitle: modelData.name + (modelData.available === "no" ? " · Unavailable" : "")
+                subtitle: modelData.name
                 selected: !!root.card && root.card.activeProfile === modelData.name
-                busy: AudioDevices.profileBusy || modelData.available === "no"
+                busy: AudioDevices.profileBusy
                 onChosen: AudioDevices.setProfile(root.card, modelData)
             }
         }
