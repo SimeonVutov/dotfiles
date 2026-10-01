@@ -1,39 +1,27 @@
-#!/bin/bash
-# Tracks how long tmux sessions have been detached (in active minutes)
+#!/bin/sh
 
-declare -A detached_time
+timeout_minutes=${TMUX_CLEANUP_MINUTES:-900}
+case "$timeout_minutes" in
+    ''|*[!0-9]*) exit 1 ;;
+esac
+[ "$timeout_minutes" -gt 0 ] || exit 1
 
-while true; do
-    # Sleep for 60 seconds. This pauses naturally when the laptop sleeps.
-    sleep 60
-
-    # If tmux server isn't running, clear the tracker and loop
-    if ! tmux ls >/dev/null 2>&1; then
-        detached_time=()
-        continue
+tmux list-sessions -F '#{session_id} #{session_attached} #{session_last_attached} #{?@cleanup_minutes,#{@cleanup_minutes},0} #{?@cleanup_attachment,#{@cleanup_attachment},0}' 2>/dev/null |
+while read -r session attached last_attached minutes attachment; do
+    if [ "$attached" -gt 0 ] || [ "$attachment" != "$last_attached" ]; then
+        minutes=0
+    else
+        case "$minutes" in
+            ''|*[!0-9]*) minutes=0 ;;
+            *) minutes=$((minutes + 1)) ;;
+        esac
     fi
 
-    # Loop through all sessions and their attached status (0 or 1)
-    while read -r s_name s_attached; do
-        if [ "$s_attached" -eq 0 ]; then
-            # Increment the detached counter by 1 minute
-            detached_time["$s_name"]=$(( ${detached_time["$s_name"]:-0} + 1 ))
-
-            # 15 hours = 900 minutes. Destroy if threshold reached.
-            if [ "${detached_time["$s_name"]}" -ge 900 ]; then
-                tmux kill-session -t "$s_name"
-                unset detached_time["$s_name"]
-            fi
-        else
-            # If it's attached, reset the counter to 0
-            detached_time["$s_name"]=0
-        fi
-    done < <(tmux ls -F '#{session_name} #{session_attached}' 2>/dev/null)
-
-    # Housekeeping: Remove deleted sessions from our tracking array
-    for s_name in "${!detached_time[@]}"; do
-        if ! tmux has-session -t "$s_name" 2>/dev/null; then
-            unset detached_time["$s_name"]
-        fi
-    done
+    if [ "$minutes" -ge "$timeout_minutes" ]; then
+        # Recheck attachment inside tmux before destroying a session.
+        tmux if-shell -t "$session" -F "#{&&:#{==:#{session_attached},0},#{==:#{session_last_attached},$last_attached}}" "kill-session -t $session" 2>/dev/null
+    else
+        tmux set-option -t "$session" @cleanup_minutes "$minutes" \; \
+            set-option -t "$session" @cleanup_attachment "$last_attached" 2>/dev/null
+    fi
 done

@@ -1,11 +1,7 @@
 [Unit]
-Description=Tmux Idle Session Cleanup Daemon
-After=default.target
+Description=Clean up long-detached tmux sessions
 
 [Service]
+Type=oneshot
 ExecStart=%h/.config/scripts/tmux-cleanup.sh
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=default.target
+Environment=TMUX_CLEANUP_MINUTES=900
