@@ -27,7 +27,7 @@
 
 <br>
 
-![Quickshell App Launcher](./screenshots/quickshell-launcher.png)
+![Desktop Preview](./screenshots/desktop.png)
 
 <br>
 
@@ -165,23 +165,6 @@ Lightweight notification daemon styled to match the rest of the setup.
 - **Urgency Levels** — separate styles for low / normal / critical urgency
 - **Timeouts** — per-urgency timeout configuration
 - **Dismiss Binds** — keyboard and mouse bindings to dismiss/close all
-
----
-
-### 🚀 Rofi
-
-> `/.config/rofi/`
-
-Additional launcher and script-menu configuration with a custom theme. Quickshell is the primary app launcher used by the desktop keybindings.
-
-![Rofi](./screenshots/rofi.png)
-
-- **Custom `.rasi` Theme** — hand-crafted layout with styled input bar, results list, and scrollbar
-- **App Launcher** (`drun` mode) — fuzzy search across all installed desktop entries
-- **Window Switcher** (`window` mode) — quickly jump between open windows
-- **Script Menus** — integrated with custom shell scripts for power and more
-- **Icons** — Nerd Font / icon theme integration for app icons in the list
-- **Consistent Palette** — coordinated application colors for a unified look
 
 ---
 
@@ -367,7 +350,6 @@ dotfiles/
         quickshell/       # QML topbar, shell interfaces, and wallpaper selector
         kitty/            # Terminal emulator config
         dunst/            # Notification daemon
-        rofi/             # Additional launcher and script-menu themes
         nvim/             # Neovim (git submodule)
         tmux/             # Terminal multiplexer
         ranger/           # Terminal file manager
