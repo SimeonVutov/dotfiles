@@ -15,6 +15,7 @@ Singleton {
     property real temperature: NaN     // celsius
 
     property real gpuUsage: NaN
+    property string gpuPath: ""
     readonly property real memoryPercent: memoryTotal > 0 ? memoryUsed / memoryTotal * 100 : 0
     property var histories: ({
             cpu: [],
@@ -43,8 +44,11 @@ Singleton {
                 _sampleMemory();
             if (metric === "temperature")
                 _sampleTemperature();
-            if (metric === "gpu")
+            if (metric === "gpu") {
+                if (!gpuPath && !gpuProbe.running)
+                    gpuProbe.running = true;
                 _sampleGpu();
+            }
             const values = {
                 cpu: cpuUsage,
                 memory: memoryPercent,
@@ -110,9 +114,24 @@ Singleton {
     FileView {
         id: gpuFile
         // Empty path prevents even an initial read while no GPU graph is visible.
-        path: root.graphWatchers.gpu > 0 ? Config.hardware.gpuPath : ""
+        path: root.graphWatchers.gpu > 0 ? root.gpuPath : ""
         blockAllReads: true
         printErrors: false
+    }
+
+    Process {
+        id: gpuProbe
+        command: ["sh", Quickshell.shellPath("Services/resolve-gpu-path.sh")]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const candidate = text.trim();
+                if (/^\/sys\/class\/drm\/card\d+\/device\/gpu_busy_percent$/.test(candidate)) {
+                    root.gpuPath = candidate;
+                    if (root.graphWatchers.gpu > 0)
+                        root._sampleGpu();
+                }
+            }
+        }
     }
 
     function _sampleGpu() {

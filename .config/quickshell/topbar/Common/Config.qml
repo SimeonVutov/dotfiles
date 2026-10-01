@@ -127,7 +127,6 @@ Singleton {
             graphInterval: 500,
             memoryEveryNTicks: 2,
             temperatureEveryNTicks: 3,
-            gpuPath: "/sys/class/drm/card2/device/gpu_busy_percent",
             // 240 samples * 500ms keeps the same 2-minute window at 2x resolution.
             historySamples: 240,
             powerCommand: root.configDir + "/power-mode/power-mode",
