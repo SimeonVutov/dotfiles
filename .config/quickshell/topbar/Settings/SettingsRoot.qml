@@ -20,8 +20,12 @@ Item {
     property bool confirmationMounted: false
 
     function open() {
-        if (opened || pendingOpen)
+        if (presenting || pendingOpen)
             return;
+        if (opened) {
+            presenting = true;
+            return;
+        }
         pendingOpen = true;
         if (OverlayController.request(overlayId))
             beginOpen();
@@ -53,7 +57,7 @@ Item {
         }
         function toggle(menu: string): void {
             if (menu === "monitors") {
-                if (root.opened || root.pendingOpen)
+                if (root.presenting || root.pendingOpen)
                     root.close();
                 else
                     root.open();

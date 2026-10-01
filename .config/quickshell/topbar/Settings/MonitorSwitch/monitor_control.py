@@ -155,11 +155,20 @@ def monitor_rule(monitor, selector=None):
     return rule + ",mirror," + monitor["mirror"]
 
 
-def apply_monitors(monitors):
-    # Enable destinations before disabling the screen hosting the control panel.
-    # Hyprland may warn about a transient overlap while the monitors are moved
-    # one at a time; it still applies each rule, and the final layout is
-    # validated to be overlap-free before any of this runs.
+def apply_monitors(monitors, current):
+    # Park only screens occupying another screen's destination. They remain lit
+    # until the destination is ready, without creating a transient overlap.
+    destinations = [m for m in monitors if m["enabled"] and m["mirror"] == "none"]
+    occupied = [m for m in current if m["enabled"]]
+    parking_x = max((m["x"] + dimensions(m)[0] for m in occupied + destinations), default=0) + 1
+    for monitor in occupied:
+        if not any(target["name"] != monitor["name"] and overlap(monitor, target)
+                   for target in destinations):
+            continue
+        parked = dict(monitor, x=parking_x, y=0, mirror="none")
+        hyprctl("keyword", "monitor", monitor_rule(parked))
+        parking_x += dimensions(monitor)[0] + 1
+
     for monitor in sorted(monitors, key=lambda m: (not m["enabled"], m["mirror"] != "none")):
         hyprctl("keyword", "monitor", monitor_rule(monitor))
 
@@ -271,7 +280,7 @@ def preview(payload):
     backups = None
     saving = False
     try:
-        apply_monitors(monitors)
+        apply_monitors(monitors, original)
         wait_for_layout(monitors)
         targets = workspace_targets(monitors)
         bind_workspaces(targets)
@@ -322,7 +331,7 @@ def preview(payload):
             for m in restore:
                 if m["mirror"] not in available:
                     m["mirror"] = "none"
-            apply_monitors(restore)
+            apply_monitors(restore, live)
             rebind_workspaces(prior_rules)
             relocate(hyprctl("workspaces", as_json=True), {w["id"]: w["monitor"] for w in workspaces if w["monitor"] in available}, focused)
             emit("reverted")
