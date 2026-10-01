@@ -414,6 +414,33 @@ On other hardware, select an appropriate profile in
 
 ---
 
+## License and attribution
+
+My original contributions are covered by the custom
+[Dotfiles Noncommercial Attribution License](./LICENSE).
+
+- **Noncommercial use:** you may use, modify, and share covered material,
+  including incorporating files or parts of them into your own projects,
+  with mandatory attribution. No separate permission is required.
+- **Credit:** retain the author's notices. When publishing or distributing
+  reused material, identify it as originating from **Simeon Vutov** and link
+  to [this repository](https://github.com/SimeonVutov/dotfiles) in your README,
+  documentation, or application credits. Include the license and applicable
+  [NOTICE](./NOTICE) information. Identify your modifications.
+- **Private personal use:** retain the notices with your local copy; public
+  or on-screen credit is not required.
+- **Commercial use:** requires my separate written permission, including use
+  in commercial products, services, paid work, or business operations.
+  Contact me through [my GitHub profile](https://github.com/SimeonVutov).
+
+These terms cover my original code and copyrightable visual material, including
+original Quickshell animation implementations. Third-party material, submodules,
+and assets retain their own terms. The license does not claim ownership of
+underlying ideas or independently created implementations. See [LICENSE](./LICENSE)
+for the full terms.
+
+---
+
 <div align="center">
 
 Made with ❤️ on Arch Linux

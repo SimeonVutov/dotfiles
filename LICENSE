@@ -1,0 +1,88 @@
+Dotfiles Noncommercial Attribution License 1.0
+Custom source-available license
+
+Copyright (c) Simeon Vutov
+Project: https://github.com/SimeonVutov/dotfiles
+
+1. Covered material
+
+This license applies to original material in this repository for which Simeon
+Vutov holds copyright, unless that material expressly states different terms.
+Covered material includes original code, configuration, documentation, artwork,
+media, and copyrightable animation and visual material, in whole or in part.
+
+Third-party material, dependencies, submodules, fonts, icons, wallpapers, and
+other assets owned by others retain their respective terms. Their presence in
+this repository or its screenshots does not grant additional rights in them.
+This license does not assert ownership of others' contributions or grant rights
+that Simeon Vutov does not hold.
+
+2. Noncommercial permission
+
+Subject to the conditions below, you may use, reproduce, modify, display, and
+distribute covered material, including incorporating it into another project,
+solely for noncommercial purposes. No separate permission or notification is
+required for these permitted uses. This permission is worldwide, royalty-free,
+and nonexclusive for the duration of the applicable copyright, subject to
+termination for breach as described below.
+
+Noncommercial means a use that is not primarily intended for or directed toward
+commercial advantage or monetary compensation. Commercial use includes selling
+or commercially licensing covered material, incorporating it into commercial
+products or services, and using it for paid work or business operations.
+An organization being nonprofit does not by itself make a use noncommercial.
+
+3. Mandatory attribution
+
+Keep the author's copyright and attribution notices with every copy or reuse of
+covered material, including modified material and portions incorporated into
+another application. The attribution must identify the original author and
+project as follows:
+
+Original material by Simeon Vutov
+https://github.com/SimeonVutov/dotfiles
+
+When publishing or distributing covered material, provide this attribution in
+a reasonably accessible place, such as a repository README, accompanying
+documentation, an application's credits or license notices, or a media credit.
+Include this license and the project's NOTICE, or equivalent notices containing
+their applicable information, with every distribution. Preserve existing
+copyright, attribution, and license notices in covered source files.
+
+Private personal use requires retaining attribution with your local copy; it
+does not require a public announcement or an on-screen credit. Attribution must
+identify the reused material without implying that Simeon Vutov created your
+entire project or endorses it. Clearly identify your modifications when sharing
+modified material. Do not present covered material as entirely your own work.
+
+4. Commercial permission
+
+Commercial use of covered material is prohibited unless Simeon Vutov grants
+separate written permission. Attribution alone does not authorize commercial
+use. Request permission through the author's GitHub profile:
+https://github.com/SimeonVutov
+
+5. Reserved rights and legal exceptions
+
+All rights not expressly granted are reserved. You may not grant recipients
+broader rights to covered material than you received under this license.
+Recipients may exercise the permissions in this license directly, subject to
+its conditions. This license does not restrict independently implemented ideas
+or other material outside the author's copyright, or uses allowed by applicable
+law without the author's permission, including applicable copyright exceptions.
+It grants no trademark rights and no right to imply the author's endorsement.
+It does not limit rights independently granted under GitHub's terms of service.
+
+6. Termination
+
+Permission under this license terminates automatically if you breach its
+conditions. Continued use requiring the author's permission then requires
+separate written authorization. Termination does not affect rights you have
+independently under applicable law.
+
+7. Disclaimer
+
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, COVERED MATERIAL IS PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, OR NONINFRINGEMENT. THE AUTHOR IS NOT LIABLE
+FOR CLAIMS, DAMAGES, OR OTHER LIABILITY ARISING FROM ITS USE OR DISTRIBUTION.
