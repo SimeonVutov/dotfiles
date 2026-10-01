@@ -22,7 +22,7 @@ Singleton {
     readonly property int fontCaption: 12
 
     readonly property int motion: Shared.Theme.overlayMotion
-    readonly property int entranceDuration: 620
+    readonly property int entranceDuration: 450
     readonly property int deliveryDuration: 250
     readonly property int fadeDuration: 170
     readonly property int beamExtendDuration: 340
