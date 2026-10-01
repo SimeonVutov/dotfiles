@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import eligible, next_version
 from commit_checks import valid
 from config_checks import jsonc, qml_javascript_for_node
-from release_analyze import batches, evidence_source, validate_notes
+from release_analyze import analyze_chunk, batches, evidence_source, validate_notes
 from release_collect import collect
 from release_metadata import build, validate
 
@@ -56,6 +56,33 @@ class Formats(unittest.TestCase):
         self.assertEqual(evidence_source('after:sample.txt@35000', known), 'after:sample.txt')
         with self.assertRaises(ValueError):
             evidence_source('after:unknown.txt@0', known)
+
+    def test_incomplete_batch_is_retried_without_accepting_missing_evidence(self):
+        chunk = [{'id': 'commit:a', 'content': 'A'}, {'id': 'commit:b', 'content': 'B'}]
+        responses = iter([
+            {'covered_ids': ['commit:a'], 'findings': 'Partial', 'uncertainties': []},
+            {'covered_ids': ['commit:a', 'commit:b'], 'findings': 'Complete', 'uncertainties': []},
+        ])
+        prompts = []
+
+        def request(prompt):
+            prompts.append(prompt)
+            return next(responses)
+
+        self.assertEqual(analyze_chunk(chunk, 'Policy', request, 1)['findings'], 'Complete')
+        self.assertEqual(len(prompts), 2)
+        self.assertIn('REQUIRED_IDS:', prompts[0])
+
+    def test_incomplete_batch_stops_after_three_attempts(self):
+        attempts = []
+
+        def request(prompt):
+            attempts.append(prompt)
+            return {'covered_ids': [], 'findings': 'Partial', 'uncertainties': []}
+
+        with self.assertRaisesRegex(ValueError, 'Batch 7 response invalid after 3 attempts'):
+            analyze_chunk([{'id': 'commit:a', 'content': 'A'}], 'Policy', request, 7)
+        self.assertEqual(len(attempts), 3)
 
     def test_release_sections(self):
         validate_notes('## Highlights\n\nNew release.\n\n## Minor changes\n\n- Fix audio.')
