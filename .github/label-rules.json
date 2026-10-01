@@ -1,0 +1,9 @@
+{
+  "area: quickshell": [".config/quickshell/*", ".config/scripts/quickshell*", ".config/scripts/app-launcher.sh", ".config/scripts/session-menu.sh"],
+  "area: hyprland": [".config/hypr/*", ".config/scripts/hyprland/*"],
+  "area: terminal": [".config/kitty/*", ".config/tmux/*", ".zshrc", ".config/scripts/tmux-*", ".config/systemd/user/tmux-*"],
+  "area: scripts": [".config/scripts/*"],
+  "area: theming": [".config/matugen/*"],
+  "area: automation": [".github/*"],
+  "area: documentation": ["*.md", "screenshots/*"]
+}
