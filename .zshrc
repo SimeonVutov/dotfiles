@@ -129,11 +129,15 @@ fi
 export GPG_TTY=$(tty)
 gpg-connect-agent updatestartuptty /bye >/dev/null
 
-# Refresh tmux environment variables before showing each prompt
+# Refresh the variables tmux updates when a client reattaches.
 refresh_tmux_env() {
-  if [[ -n "$TMUX" ]]; then
-    eval $(tmux show-env -s DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR 2>/dev/null)
-  fi
+  [[ -n "$TMUX" ]] || return
+
+  local variables variable
+  variables=$(tmux show-options -gv update-environment 2>/dev/null) || return
+  for variable in ${(z)variables}; do
+    eval "$(tmux show-environment -s "$variable" 2>/dev/null)"
+  done
 }
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd refresh_tmux_env
