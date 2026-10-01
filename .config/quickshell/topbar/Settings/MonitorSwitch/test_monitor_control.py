@@ -62,11 +62,22 @@ class DisplayTests(unittest.TestCase):
     def test_apply_enables_before_disabling(self):
         self.monitors[0]["enabled"] = False
         with patch.object(control, "hyprctl") as command:
-            control.apply_monitors(self.monitors)
+            control.apply_monitors(self.monitors, self.monitors)
         rules = [call.args[-1] for call in command.call_args_list]
         self.assertEqual(len(rules), 3)
         self.assertTrue(rules[-1].endswith(",disable"))
         self.assertFalse(any(rule.endswith(",disable") for rule in rules[:-1]))
+
+    def test_apply_parks_a_screen_before_enabling_its_replacement(self):
+        current = [monitor("eDP-1", internal=True), dict(monitor("DP-2"), enabled=False)]
+        target = [dict(current[0], enabled=False), dict(current[1], enabled=True)]
+        with patch.object(control, "hyprctl") as command:
+            control.apply_monitors(target, current)
+        rules = [call.args[-1] for call in command.call_args_list]
+        self.assertEqual(len(rules), 3)
+        self.assertTrue(rules[0].startswith("eDP-1,1920x1080@60,1921x0,"))
+        self.assertTrue(rules[1].startswith("DP-2,1920x1080@60,0x0,"))
+        self.assertEqual(rules[2], "eDP-1,disable")
 
     def test_preview_binds_workspaces_so_no_screen_is_left_without_one(self):
         laptop_only = [dict(m, enabled=m["name"] == "eDP-1") for m in self.monitors]
