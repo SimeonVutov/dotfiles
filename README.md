@@ -384,6 +384,28 @@ git clone --recurse-submodules https://github.com/SimeonVutov/dotfiles.git ~/dot
 
 *Manual symlinking of individual components is recommended until the install script is ready.*
 
+After linking the Hyprland and scripts directories, initialize the local display
+state **before starting Hyprland**:
+
+```bash
+sh ~/dotfiles/.config/scripts/hypr-init-state.sh
+```
+
+This creates a generic monitor rule and an empty workspace-rule file only if
+they do not already exist. Quickshell's monitor switcher subsequently saves your
+chosen layout there; the files remain untracked and the command is safe to rerun.
+The included hybrid GPU profile is specific to this laptop. On that machine,
+install its udev rule and reboot before starting Hyprland:
+
+```bash
+sudo install -m 644 ~/dotfiles/.config/hypr/conf/environments/udev/61-hyprland-gpus.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+```
+
+Check that `/dev/dri/amd-igpu` and `/dev/dri/nvidia-dgpu` exist after reboot.
+On other hardware, select an appropriate profile in
+`.config/hypr/conf/environments.conf` instead of using `hybrid.conf` unchanged.
+
 ---
 
 ## 📂 More Screenshots
