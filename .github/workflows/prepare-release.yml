@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Prepare a release or replay one failed evidence batch
+        description: Prepare a release or probe an evidence batch or final notes
         type: choice
         options: [prepare, probe]
         default: prepare
@@ -18,7 +18,7 @@ on:
         type: string
         required: false
       probe_batch:
-        description: One-based evidence batch number to replay in probe mode
+        description: One-based evidence batch number, or final to test note generation
         type: string
         default: '12'
 
@@ -64,7 +64,7 @@ jobs:
           path: ${{ runner.temp }}/release-previous
       - name: Install pinned Copilot CLI
         run: npm install --prefix .github/automation/copilot --no-audit --no-fund
-      - name: Replay one release evidence batch
+      - name: Probe release analysis
         if: inputs.mode == 'probe'
         run: |
           export PATH="$GITHUB_WORKSPACE/.github/automation/copilot/node_modules/.bin:$PATH"
@@ -74,6 +74,18 @@ jobs:
           COPILOT_MODEL: ${{ vars.RELEASE_COPILOT_MODEL }}
           RELEASE_RESUME_DIR: ${{ runner.temp }}/release-previous
           RELEASE_PROBE_BATCH: ${{ inputs.probe_batch }}
+          RELEASE_MAX_AI_CALLS: ${{ vars.RELEASE_MAX_AI_CALLS || '100' }}
+      - name: Save final probe results
+        if: always() && inputs.mode == 'probe' && inputs.probe_batch == 'final'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-final-probe
+          path: |
+            ${{ runner.temp }}/release-previous/final-candidate.json
+            ${{ runner.temp }}/release-previous/notes.md
+            ${{ runner.temp }}/release-previous/review.md
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Analyze and reconcile changes
         if: inputs.mode == 'prepare'
         run: |
