@@ -18,6 +18,11 @@ def jsonc(text):
     return json.loads(text)
 
 
+def qml_javascript_for_node(text):
+    return re.sub(r'^\.(?:pragma library|import "[^"\n]+" as [A-Za-z_]\w*)[ \t]*$',
+                  '', text, flags=re.MULTILINE)
+
+
 def check(path):
     if not eligible(str(path)) or path.is_symlink() or not path.is_file():
         return
@@ -36,7 +41,11 @@ def check(path):
     elif suffix == '.py':
         ast.parse(path.read_text(), filename=str(path))
     elif suffix in {'.js', '.cjs', '.mjs'}:
-        subprocess.run(['node', '--check', str(path)], check=True)
+        if suffix == '.js' and '.config/quickshell/' in str(path):
+            subprocess.run(['node', '--check'], input=qml_javascript_for_node(path.read_text()),
+                           text=True, check=True)
+        else:
+            subprocess.run(['node', '--check', str(path)], check=True)
     elif suffix == '.toml':
         tomllib.loads(path.read_text())
     elif suffix in {'.json', '.jsonc'}:

@@ -1,4 +1,3 @@
-# ~/.config/scripts/wallpaper-select.sh
 #!/usr/bin/env bash
 set -euo pipefail
 

@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from common import eligible, next_version
 from commit_checks import valid
-from config_checks import jsonc
+from config_checks import jsonc, qml_javascript_for_node
 from release_analyze import batches, evidence_source, validate_notes
 from release_collect import collect
 from release_metadata import build, validate
@@ -39,6 +39,10 @@ class Formats(unittest.TestCase):
     def test_jsonc_preserves_strings(self):
         self.assertEqual(jsonc('{/* comment */"url":"https://example.com", "text":",}",}'),
                          {'url': 'https://example.com', 'text': ',}'})
+
+    def test_qml_javascript_directives_are_removed_for_node(self):
+        source = '.pragma library\n.import "OrbitalMotion.js" as Motion\nconst value = 1;\n'
+        self.assertEqual(qml_javascript_for_node(source), '\n\nconst value = 1;\n')
 
     def test_evidence_is_not_truncated(self):
         text = 'source\n' * 20000
