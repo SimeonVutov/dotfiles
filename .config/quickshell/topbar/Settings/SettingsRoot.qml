@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -15,6 +17,7 @@ Item {
     property bool pendingOpen: false
     property bool presenting: false
     property string monitor: ""
+    property bool confirmationMounted: false
 
     function open() {
         if (opened || pendingOpen)
@@ -78,6 +81,25 @@ Item {
         active: root.presenting
     }
 
+    Connections {
+        target: displays
+
+        function onPreviewingChanged() {
+            if (displays.previewing) {
+                confirmationHide.stop();
+                root.confirmationMounted = true;
+            } else if (root.confirmationMounted) {
+                confirmationHide.restart();
+            }
+        }
+    }
+
+    Timer {
+        id: confirmationHide
+        interval: Theme.durationFast
+        onTriggered: root.confirmationMounted = false
+    }
+
     LazyLoader {
         active: root.opened
 
@@ -124,6 +146,28 @@ Item {
                     controller: displays
                     active: root.presenting
                 }
+            }
+        }
+    }
+
+    Variants {
+        model: root.confirmationMounted ? Quickshell.screens : []
+
+        PanelWindow {
+            required property var modelData
+
+            screen: modelData
+            visible: true
+            color: "transparent"
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.namespace: "quickshell-settings-confirm"
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
             ConfirmDialog {
