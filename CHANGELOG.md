@@ -32,15 +32,14 @@ A configurable Quickshell desktop brings an adaptive topbar, app launcher, sessi
 - Hyprland window borders use configurable active and inactive colors.
 - Kitty uses shorter repaint and input delays and no longer synchronizes rendering to the monitor.
 - Ctrl+Shift+T now opens an interactive Zsh window instead of launching tmux directly.
-- The tmux cleanup script now makes a one-time check with a configurable inactivity timeout and rechecks attachment before removing a session; a user timer schedules these checks once per minute.
+- The tmux cleanup script now makes a one-time check with a configurable inactivity timeout and rechecks attachment before removing a session. A user timer is provided for scheduled checks and must be enabled separately.
 - Tmux reloads its configuration from the configured file, refreshes client environment variables on reattach, and no longer overwrites DISPLAY with its startup value.
 
 ### Removed
 
 - The bundled Rofi launcher themes and shared styling files have been removed as the desktop moves to the Quickshell launcher.
-- The hypridle service is no longer linked to start with the graphical session.
 - The workflow that generated and applied Copilot-written pull request summaries has been removed.
-- Merging a pull request no longer automatically creates a release and tag.
+- Merging an ordinary pull request no longer automatically creates a release and tag; releases are prepared and reviewed separately.
 
 ### Fixed
 
@@ -61,3 +60,8 @@ A configurable Quickshell desktop brings an adaptive topbar, app launcher, sessi
 - Pull requests are automatically labeled according to the repository areas changed.
 - Dependabot checks GitHub Actions and automation npm dependencies weekly, grouping action updates and limiting open npm update pull requests.
 
+### Migration
+
+- Waybar, the bundled Rofi launcher, and wlogout have been replaced by Quickshell. Update custom shortcuts or scripts that invoke them to use the new Quickshell controls.
+- The default Hyprland graphics profile now targets a specific AMD/NVIDIA laptop. On other hardware, select an appropriate profile before starting Hyprland. To use the included hybrid profile, install its udev rule as described in the README.
+- Initialize local monitor and workspace state before starting Hyprland, as described in the README. The initialization script does not overwrite existing state.
