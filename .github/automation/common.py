@@ -5,7 +5,7 @@ import subprocess
 from pathlib import PurePosixPath
 
 
-ANALYSIS_REVISION = 4
+ANALYSIS_REVISION = 5
 
 
 def run(*args):

@@ -83,12 +83,32 @@ def split_text(value, budget):
     current = ''
 
     for line in lines:
-        if len(json.dumps(line)) > budget:
-            raise ValueError('A single evidence line exceeds the batch limit')
-        if current and len(json.dumps(current + line)) > budget:
-            yield current
-            current = ''
-        current += line
+        while line:
+            if current and len(json.dumps(current + line)) <= budget:
+                current += line
+                break
+
+            if current:
+                yield current
+                current = ''
+
+            if len(json.dumps(line)) <= budget:
+                current = line
+                break
+
+            low, high = 1, len(line)
+            while low < high:
+                middle = (low + high + 1) // 2
+                if len(json.dumps(line[:middle])) <= budget:
+                    low = middle
+                else:
+                    high = middle - 1
+
+            if len(json.dumps(line[:low])) > budget:
+                raise ValueError('Evidence budget cannot hold one character')
+
+            yield line[:low]
+            line = line[low:]
 
     if current:
         yield current
@@ -102,7 +122,7 @@ def record_parts(record):
         return
 
     data = json.loads(record['content'])
-    history = json.dumps(data['history_context'], ensure_ascii=False)
+    history = json.dumps(data['history_context'], ensure_ascii=False, indent=2)
     attach_history = len(history) <= LIMIT // 8
     sections = (
         ('net_diff', data['net_diff'], 'change'),
