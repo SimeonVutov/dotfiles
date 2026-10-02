@@ -5,6 +5,9 @@ import subprocess
 from pathlib import PurePosixPath
 
 
+ANALYSIS_REVISION = 4
+
+
 def run(*args):
     return subprocess.check_output(args, text=True).strip()
 
@@ -50,21 +53,46 @@ def eligible(path):
     )
 
 
-def version_tuple(tag):
-    if not re.fullmatch(r'v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)', tag):
-        raise ValueError(f'Not a stable version tag: {tag}')
-    return tuple(map(int, tag[1:].split('.')))
+VERSION = re.compile(
+    r'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+    r'(?:-alpha\.([1-9][0-9]*))?'
+)
 
 
-def next_version(tag, bump):
-    major, minor, patch = version_tuple(tag)
+def version_parts(tag):
+    match = VERSION.fullmatch(tag)
+    if not match:
+        raise ValueError(f'Not a supported version tag: {tag}')
+    major, minor, patch, alpha = match.groups()
+    return int(major), int(minor), int(patch), int(alpha) if alpha else None
+
+
+def version_key(tag):
+    major, minor, patch, alpha = version_parts(tag)
+    return major, minor, patch, alpha is None, alpha or 0
+
+
+def next_version(tag, bump, channel='stable'):
+    major, minor, patch, alpha = version_parts(tag)
+    if channel not in ('stable', 'alpha'):
+        raise ValueError('Choose stable or alpha')
+    if bump == 'prerelease':
+        if channel != 'alpha' or alpha is None:
+            raise ValueError('prerelease requires an alpha baseline and alpha channel')
+        return f'v{major}.{minor}.{patch}-alpha.{alpha + 1}'
+    if bump == 'promote':
+        if channel != 'stable' or alpha is None:
+            raise ValueError('promote requires an alpha baseline and stable channel')
+        return f'v{major}.{minor}.{patch}'
     if bump == 'major':
-        return f'v{major + 1}.0.0'
-    if bump == 'minor':
-        return f'v{major}.{minor + 1}.0'
-    if bump == 'patch':
-        return f'v{major}.{minor}.{patch + 1}'
-    raise ValueError('Choose patch, minor, or major')
+        core = f'v{major + 1}.0.0'
+    elif bump == 'minor':
+        core = f'v{major}.{minor + 1}.0'
+    elif bump == 'patch':
+        core = f'v{major}.{minor}.{patch + 1}'
+    else:
+        raise ValueError('Choose patch, minor, major, prerelease, or promote')
+    return core + ('-alpha.1' if channel == 'alpha' else '')
 
 
 def output(name, value):

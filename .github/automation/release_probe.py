@@ -2,15 +2,20 @@ import json
 import os
 from pathlib import Path
 
-from release_analyze import (CopilotResponseError, analyze_chunk, ask, batches,
-                             finalize, reusable_reviews)
+from common import ANALYSIS_REVISION
+from release_analyze import (CopilotResponseError, analysis_records, analyze_chunk, ask,
+                             batches, finalize, previous_release_notes, reusable_reviews)
 
 
 def probe():
     root = Path(os.environ['RELEASE_RESUME_DIR'])
     selection = os.environ['RELEASE_PROBE_BATCH'].strip()
+    state = json.loads((root / 'state.json').read_text())
+    if state.get('analysis_revision') != ANALYSIS_REVISION:
+        raise ValueError('This artifact uses an older analysis format; prepare a new release run')
     records = json.loads((root / 'evidence.json').read_text())
-    chunks = list(batches(records))
+    chunks = list(batches(analysis_records(records)))
+    baseline = previous_release_notes(records)
     policy = Path('.github/release-notes-instructions.md').read_text()
     max_calls = int(os.environ.get('RELEASE_MAX_AI_CALLS', '20'))
     calls = 0
@@ -36,14 +41,13 @@ def probe():
         if len(reviews) != len(chunks):
             raise ValueError(f'Final probe needs all {len(chunks)} completed evidence batches')
         reusable_reviews(records, reviews)
-        state = json.loads((root / 'state.json').read_text())
         finalize(records, reviews, state, root, policy, request)
         print(f'Final release-note probe passed using {len(reviews)} completed batches')
         return
     if not selection.isdecimal() or not 1 <= int(selection) <= len(chunks):
         raise ValueError(f'Choose an evidence batch from 1 to {len(chunks)}, or final')
     index = int(selection)
-    review = analyze_chunk(chunks[index - 1], policy, request, index)
+    review = analyze_chunk(chunks[index - 1], policy, request, index, baseline)
     print(f'Batch {index}/{len(chunks)} passed: {len(review["covered_ids"])} evidence IDs covered')
 
 

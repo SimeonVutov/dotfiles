@@ -9,21 +9,68 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from common import eligible, next_version
+from common import ANALYSIS_REVISION, eligible, next_version, version_key
 from commit_checks import valid
 from config_checks import jsonc, qml_javascript_for_node
-from release_analyze import (CopilotResponseError, analyze, analyze_chunk, batches, chunk_key,
-                             evidence_source, finalize, parse_copilot_output, resolve_final_refs,
-                             reusable_reviews, summary_source, validate_notes)
+from release_analyze import (CATEGORIES, CopilotResponseError, analyze, analyze_chunk,
+                             analysis_records, batches, candidate_inventory, chunk_key,
+                             evidence_source, finalize, parse_copilot_output,
+                             previous_release_notes, render_notes, reusable_reviews, subsystem,
+                             validate_batch_result,
+                             validate_final, validate_notes)
 from release_collect import collect
 from release_metadata import build, validate
 from release_probe import probe
 
 
+def file_record(path, before='old\n', after='new\n', diff='+new\n', commits=None, prs=None):
+    return {
+        'id': f'file-change:{path}',
+        'content': json.dumps({
+            'path': path, 'before': before, 'after': after, 'net_diff': diff,
+            'history_context': {'commits': commits or [], 'pull_requests': prs or []},
+        }),
+    }
+
+
+def sample_evidence():
+    return [
+        {'id': 'previous-release:v0.0.7', 'content': 'Previous release notes.'},
+        file_record('.config/example.conf', commits=[{'sha': 'a' * 40, 'message': 'feat: control audio'}],
+                    prs=[{'number': 12, 'title': 'Audio controls', 'body': 'Add controls'}]),
+    ]
+
+
+def batch_result(chunk, description='Audio controls are available.'):
+    return {
+        'covered_ids': sorted(part['id'] for part in chunk),
+        'candidates': [{
+            'description': description, 'category': 'Added',
+            'refs': [part['id'] for part in chunk if part['role'] == 'change'][:1],
+            'intent': '',
+        }],
+        'ignored': [], 'uncertainties': [],
+    }
+
+
+def final_result(candidate_ids):
+    changes = {category: [] for category in CATEGORIES}
+    changes['Added'] = [{'text': 'Audio controls are available.', 'ids': candidate_ids}]
+    return {
+        'highlight': 'Audio controls are now available.',
+        'highlight_ids': candidate_ids[:1],
+        'migration': [], 'changes': changes, 'omitted': [], 'uncertainties': [],
+    }
+
+
 class Formats(unittest.TestCase):
     def test_versions(self):
-        for bump, expected in [('patch', 'v0.0.8'), ('minor', 'v0.1.0'), ('major', 'v1.0.0')]:
-            self.assertEqual(next_version('v0.0.7', bump), expected)
+        self.assertEqual(next_version('v0.0.7', 'minor', 'alpha'), 'v0.1.0-alpha.1')
+        self.assertEqual(next_version('v0.1.0-alpha.1', 'prerelease', 'alpha'),
+                         'v0.1.0-alpha.2')
+        self.assertEqual(next_version('v0.1.0-alpha.2', 'promote', 'stable'), 'v0.1.0')
+        self.assertEqual(next_version('v0.0.7', 'major'), 'v1.0.0')
+        self.assertLess(version_key('v0.1.0-alpha.2'), version_key('v0.1.0'))
         for tag in ['0.0.7', 'v1.2.3-beta', 'v01.2.3']:
             with self.assertRaises(ValueError):
                 next_version(tag, 'patch')
@@ -34,7 +81,8 @@ class Formats(unittest.TestCase):
         self.assertTrue(eligible('.config/hypr/conf/environments/hybrid.conf'))
 
     def test_commit_messages(self):
-        for message in ['feat: add planets', 'fix(quickshell): repair audio', 'refactor!: replace bar']:
+        for message in ['feat: add planets', 'fix(quickshell): repair audio',
+                        'refactor!: replace bar']:
             self.assertTrue(valid(message))
         for message in ['update config', 'fix:', 'feat: ', 'fix: first\nsecond']:
             self.assertFalse(valid(message))
@@ -47,210 +95,198 @@ class Formats(unittest.TestCase):
         source = '.pragma library\n.import "OrbitalMotion.js" as Motion\nconst value = 1;\n'
         self.assertEqual(qml_javascript_for_node(source), '\n\nconst value = 1;\n')
 
-    def test_evidence_is_not_truncated(self):
-        text = 'source\n' * 20000
-        chunks = list(batches([{'id': 'file:a', 'content': text}]))
-        self.assertEqual(''.join(part['content'] for chunk in chunks for part in chunk), text)
-        self.assertEqual(len({part['id'] for chunk in chunks for part in chunk}),
-                         sum(map(len, chunks)))
+    def test_evidence_split_preserves_final_diff_and_context(self):
+        long_diff = '+feature\n' * 10000
+        record = file_record('.config/example.conf', diff=long_diff)
+        chunks = list(batches([record]))
+        parts = [part for chunk in chunks for part in chunk]
+        diff = ''.join(json.loads(part['content'])['text'] for part in parts
+                       if part['role'] == 'change')
+        self.assertEqual(diff, long_diff)
+        self.assertTrue(any(part['role'] == 'context' for part in parts))
+        self.assertTrue(all('history_context' in json.loads(part['content'])
+                            for part in parts if part['role'] == 'change'))
+        self.assertEqual(len({part['id'] for part in parts}), len(parts))
 
-    def test_evidence_part_references_resolve_to_originals(self):
-        known = {'after:sample.txt'}
-        self.assertEqual(evidence_source('after:sample.txt@35000', known), 'after:sample.txt')
+    def test_related_legacy_and_current_ui_files_share_a_subsystem(self):
+        self.assertEqual(subsystem(file_record('.config/rofi/launcher.sh')),
+                         subsystem(file_record('.config/quickshell/topbar/Launcher/Search.js')))
+        self.assertEqual(subsystem(file_record('.config/waybar/config.jsonc')),
+                         subsystem(file_record('.config/quickshell/topbar/Bar/Bar.qml')))
+
+    def test_unclassified_tracked_area_is_still_batched(self):
+        records = [file_record('.config/tmux/tmux.conf'),
+                   file_record('.config/quickshell/topbar/Services/Connectivity.qml')]
+        seen = {part['id'].split('@')[0] for chunk in batches(records) for part in chunk}
+        self.assertEqual(seen, {record['id'] for record in records})
+        self.assertIn('Maintenance', CATEGORIES)
+        self.assertIn('Documentation', CATEGORIES)
+
+    def test_evidence_references_are_exact(self):
+        known = {'file-change:sample.txt'}
+        self.assertEqual(evidence_source('file-change:sample.txt@3', known),
+                         'file-change:sample.txt')
+        for ref in ['0', 'ANALYSES 2', 'file-change:unknown.txt@0']:
+            with self.assertRaises(ValueError):
+                evidence_source(ref, known)
+
+    def test_batch_response_requires_complete_coverage_and_net_diff_refs(self):
+        chunk = list(batches(analysis_records(sample_evidence())))[0]
+        result = batch_result(chunk)
+        self.assertEqual(validate_batch_result(result, chunk), result)
         with self.assertRaises(ValueError):
-            evidence_source('after:unknown.txt@0', known)
-
-    def test_final_summary_references_resolve_without_accepting_unknown_ids(self):
-        summaries = {'0': {'commit:a', 'after:sample.txt'}}
-        self.assertEqual(summary_source('0@0', summaries), '0')
-        self.assertEqual(resolve_final_refs(['0'], summaries),
-                         (['after:sample.txt', 'commit:a'], ['0']))
+            validate_batch_result(dict(result, covered_ids=[]), chunk)
         with self.assertRaises(ValueError):
-            resolve_final_refs(['ANALYSES 0'], summaries)
+            validate_batch_result(dict(result, candidates=[dict(result['candidates'][0],
+                                                                refs=['0'])]), chunk)
         with self.assertRaises(ValueError):
-            resolve_final_refs(['missing'], summaries)
+            validate_batch_result(dict(result, candidates=[dict(result['candidates'][0],
+                                                                refs=[[]])]), chunk)
+
+    def test_batch_requires_reason_for_unpublished_comparison(self):
+        chunk = list(batches(analysis_records(sample_evidence())))[0]
+        empty = {'covered_ids': [part['id'] for part in chunk], 'candidates': [],
+                 'ignored': [], 'uncertainties': []}
         with self.assertRaises(ValueError):
-            resolve_final_refs(['commit:a@0'], summaries)
+            validate_batch_result(empty, chunk)
+        empty['ignored'] = [{'id': chunk[0]['id'], 'reason': 'Only an internal default changed.'}]
+        self.assertEqual(validate_batch_result(empty, chunk), empty)
 
-    def test_final_report_accepts_numbered_summary_and_marks_broad_provenance(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'evidence.json').write_text(json.dumps([
-                {'id': 'commit:a', 'content': 'Final change'},
-            ]))
-            (root / 'state.json').write_text(json.dumps({'version': 'v1.0.0'}))
-            responses = [
-                {'covered_ids': ['commit:a@0'], 'findings': 'Final change: commit:a@0',
-                 'uncertainties': []},
-                {'notes': '## Highlights\n\nFinal change.',
-                 'evidence': [{'claim': 'Final change', 'refs': ['0']}], 'uncertainties': []},
-            ]
-            with patch.dict(os.environ, {'RELEASE_DIR': directory, 'RELEASE_MAX_AI_CALLS': '3',
-                                         'RELEASE_RESUME_RUN_ID': ''}):
-                with patch('release_analyze.ask', side_effect=responses):
-                    analyze()
-            review = (root / 'review.md').read_text()
-            self.assertIn('commit:a', review)
-            self.assertIn('via analysis summaries 0', review)
-            self.assertTrue((root / 'final-candidate.json').exists())
-
-    def test_final_prompt_retries_invalid_reference_using_exact_allowed_ids(self):
-        with tempfile.TemporaryDirectory() as directory:
-            responses = iter([
-                {'notes': '## Highlights\n\nFinal change.',
-                 'evidence': [{'claim': 'Final change', 'refs': ['ANALYSES 0']}],
-                 'uncertainties': []},
-                {'notes': '## Highlights\n\nFinal change.',
-                 'evidence': [{'claim': 'Final change', 'refs': ['0']}],
-                 'uncertainties': []},
-            ])
-            prompts = []
-
-            def request(prompt):
-                prompts.append(prompt)
-                return next(responses)
-
-            finalize([{'id': 'commit:a', 'content': 'A'}],
-                     [{'covered_ids': ['commit:a@0'], 'findings': 'A', 'uncertainties': []}],
-                     {'version': 'v1.0.0'}, Path(directory), 'Policy', request)
-            self.assertEqual(len(prompts), 2)
-            self.assertIn('ALLOWED_SUMMARY_IDS:\n["0"]', prompts[0])
-            self.assertIn('PREVIOUS_RESPONSE_REJECTED', prompts[1])
-            self.assertIn('commit:a', Path(directory, 'review.md').read_text())
-
-    def test_reduced_summary_keeps_original_evidence_provenance(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'evidence.json').write_text(json.dumps([
-                {'id': 'after:sample.txt', 'content': 'Final content'},
-            ]))
-            (root / 'state.json').write_text(json.dumps({'version': 'v1.0.0'}))
-            calls = []
-
-            def respond(prompt):
-                calls.append(prompt)
-                if prompt.startswith('Analyze this evidence batch'):
-                    return {'covered_ids': ['after:sample.txt@0'],
-                            'findings': 'Change ' + 'x' * 71000, 'uncertainties': []}
-                if prompt.startswith('Reconcile these analysis parts'):
-                    return {'findings': 'Change: after:sample.txt@0', 'uncertainties': []}
-                return {'notes': '## Highlights\n\nFinal change.',
-                        'evidence': [{'claim': 'Final change', 'refs': ['0']}],
-                        'uncertainties': []}
-
-            with patch.dict(os.environ, {'RELEASE_DIR': directory, 'RELEASE_MAX_AI_CALLS': '10',
-                                         'RELEASE_RESUME_RUN_ID': ''}):
-                with patch('release_analyze.ask', side_effect=respond):
-                    analyze()
-            self.assertTrue(any(prompt.startswith('Reconcile these analysis parts') for prompt in calls))
-            self.assertIn('after:sample.txt', (root / 'review.md').read_text())
-
-    def test_copilot_jsonl_extracts_the_final_assistant_message(self):
-        output = '\n'.join(json.dumps(event) for event in [
-            {'type': 'session.start', 'data': {}},
-            {'type': 'assistant.message', 'data': {'content': '{"covered_ids": []}'}},
-            {'type': 'assistant.message', 'data': {'content': '{"covered_ids": ["commit:a"]}'}},
-        ])
-        self.assertEqual(parse_copilot_output(output)['covered_ids'], ['commit:a'])
-
-    def test_copilot_jsonl_rejects_extra_response_data(self):
-        output = json.dumps({'type': 'assistant.message', 'data': {'content': '{} extra'}})
-        with self.assertRaises(CopilotResponseError):
-            parse_copilot_output(output)
-        fenced = json.dumps({'type': 'assistant.message', 'data': {'content': '```json\n{}\n```'}})
-        with self.assertRaises(CopilotResponseError):
-            parse_copilot_output(fenced)
-
-    def test_resume_reuses_only_identical_completed_evidence(self):
-        records = [{'id': 'commit:a', 'content': 'Original diff'}]
-        review = {'covered_ids': ['commit:a@0'], 'findings': 'Change', 'uncertainties': []}
-        reusable = reusable_reviews(records, [review])
-        self.assertEqual(reusable[chunk_key(list(batches(records))[0])], review)
-        changed = [{'id': 'commit:a', 'content': 'Different diff'}]
-        self.assertNotIn(chunk_key(list(batches(changed))[0]), reusable)
-        with self.assertRaises(ValueError):
-            reusable_reviews(records, [dict(review, covered_ids=[])])
-
-    def test_probe_replays_selected_evidence_batch(self):
-        with tempfile.TemporaryDirectory() as directory:
-            Path(directory, 'evidence.json').write_text(json.dumps([
-                {'id': 'commit:a', 'content': 'A'},
-            ]))
-            response = {'covered_ids': ['commit:a@0'], 'findings': 'Change', 'uncertainties': []}
-            with patch.dict(os.environ, {'RELEASE_RESUME_DIR': directory, 'RELEASE_PROBE_BATCH': '1'}):
-                with patch('release_probe.ask', return_value=response) as request:
-                    probe()
-            self.assertIn('REQUIRED_IDS:', request.call_args.args[0])
-
-    def test_probe_reprompts_after_invalid_json_response(self):
-        with tempfile.TemporaryDirectory() as directory:
-            Path(directory, 'evidence.json').write_text(json.dumps([
-                {'id': 'commit:a', 'content': 'A'},
-            ]))
-            response = {'covered_ids': ['commit:a@0'], 'findings': 'Change', 'uncertainties': []}
-            with patch.dict(os.environ, {'RELEASE_RESUME_DIR': directory,
-                                         'RELEASE_PROBE_BATCH': '1'}):
-                with patch('release_probe.ask', side_effect=[CopilotResponseError('Extra data'),
-                                                             response]) as request:
-                    probe()
-            self.assertEqual(request.call_count, 2)
-            self.assertIn('PREVIOUS_RESPONSE_REJECTED', request.call_args_list[1].args[0])
-
-    def test_final_probe_reuses_completed_batches_and_checks_final_notes(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'evidence.json').write_text(json.dumps([
-                {'id': 'commit:a', 'content': 'A'},
-            ]))
-            (root / 'state.json').write_text(json.dumps({'version': 'v1.0.0'}))
-            (root / 'analysis.json').write_text(json.dumps([
-                {'covered_ids': ['commit:a@0'], 'findings': 'Change: commit:a@0',
-                 'uncertainties': []},
-            ]))
-            response = {'notes': '## Highlights\n\nFinal change.',
-                        'evidence': [{'claim': 'Final change', 'refs': ['0']}],
-                        'uncertainties': []}
-            with patch.dict(os.environ, {'RELEASE_RESUME_DIR': directory,
-                                         'RELEASE_PROBE_BATCH': 'final'}):
-                with patch('release_probe.ask', return_value=response) as request:
-                    probe()
-            self.assertEqual(request.call_count, 1)
-            self.assertIn('commit:a', (root / 'review.md').read_text())
-            self.assertTrue((root / 'notes.md').exists())
-
-    def test_incomplete_batch_is_retried_without_accepting_missing_evidence(self):
-        chunk = [{'id': 'commit:a', 'content': 'A'}, {'id': 'commit:b', 'content': 'B'}]
-        responses = iter([
-            {'covered_ids': ['commit:a'], 'findings': 'Partial', 'uncertainties': []},
-            {'covered_ids': ['commit:a', 'commit:b'], 'findings': 'Complete', 'uncertainties': []},
-        ])
+    def test_batch_retry_preserves_strict_format(self):
+        chunk = list(batches(analysis_records(sample_evidence())))[0]
+        valid = batch_result(chunk)
+        responses = iter([dict(valid, covered_ids=[]), valid])
         prompts = []
 
         def request(prompt):
             prompts.append(prompt)
             return next(responses)
 
-        self.assertEqual(analyze_chunk(chunk, 'Policy', request, 1)['findings'], 'Complete')
+        self.assertEqual(analyze_chunk(chunk, 'Policy', request, 1), valid)
         self.assertEqual(len(prompts), 2)
-        self.assertIn('REQUIRED_IDS:', prompts[0])
+        self.assertIn('CHANGE_IDS:', prompts[0])
         self.assertIn('PREVIOUS_RESPONSE_REJECTED', prompts[1])
 
-    def test_incomplete_batch_stops_after_three_attempts(self):
-        attempts = []
+    def test_batch_stops_after_three_invalid_responses(self):
+        chunk = list(batches(analysis_records(sample_evidence())))[0]
+        with self.assertRaisesRegex(ValueError, 'Batch 7 response invalid after 3 attempts'):
+            analyze_chunk(chunk, 'Policy', lambda _: {'covered_ids': []}, 7)
+
+    def test_copilot_jsonl_extracts_last_assistant_message(self):
+        output = '\n'.join(json.dumps(event) for event in [
+            {'type': 'session.start', 'data': {}},
+            {'type': 'assistant.message', 'data': {'content': '{"covered_ids": []}'}},
+            {'type': 'assistant.message', 'data': {'content': '{"covered_ids": ["exact"]}'}},
+        ])
+        self.assertEqual(parse_copilot_output(output)['covered_ids'], ['exact'])
+        for content in ['{} extra', '```json\n{}\n```']:
+            output = json.dumps({'type': 'assistant.message', 'data': {'content': content}})
+            with self.assertRaises(CopilotResponseError):
+                parse_copilot_output(output)
+
+    def test_candidate_ledger_and_public_notes(self):
+        records = sample_evidence()
+        chunk = list(batches(analysis_records(records)))[0]
+        review = batch_result(chunk)
+        candidates = candidate_inventory(records, [review])
+        self.assertEqual(candidates[0]['id'], 'B1-C1')
+        self.assertEqual(candidates[0]['refs'], ['file-change:.config/example.conf'])
+        final = final_result(['B1-C1'])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            finalize(records, [review], {'version': 'v0.1.0-alpha.1'}, root,
+                     'Policy', lambda _: final)
+            notes = (root / 'notes.md').read_text()
+            report = (root / 'review.md').read_text()
+            self.assertIn('## Highlights\n\nAudio controls', notes)
+            self.assertIn('## Added\n\n- Audio controls', notes)
+            self.assertNotIn('B1-C1', notes)
+            self.assertIn('file-change:.config/example.conf', report)
+            self.assertIn('aaaaaaaaaaaa', report)
+            self.assertIn('#12', report)
+
+    def test_every_candidate_is_published_or_explicitly_omitted(self):
+        candidates = [{'id': 'B1-C1'}, {'id': 'B2-C1'}]
+        final = final_result(['B1-C1'])
+        with self.assertRaises(ValueError):
+            validate_final(final, candidates)
+        final['omitted'] = [{'id': 'B2-C1', 'reason': 'Duplicate of the audio control.'}]
+        self.assertEqual(validate_final(final, candidates), final)
+        final['omitted'][0]['id'] = []
+        with self.assertRaises(ValueError):
+            validate_final(final, candidates)
+
+    def test_migration_follows_the_detailed_change_lists(self):
+        final = final_result(['B1-C1'])
+        final['migration'] = [{
+            'text': 'Existing users must install the new desktop package.',
+            'ids': ['B1-C1'],
+        }]
+        notes = render_notes(final)
+        self.assertLess(notes.index('## Added'), notes.index('## Migration'))
+
+    def test_finalization_retries_invalid_candidate_ids(self):
+        records = sample_evidence()
+        review = batch_result(list(batches(analysis_records(records)))[0])
+        invalid = final_result(['ANALYSES 2'])
+        valid = final_result(['B1-C1'])
+        prompts = []
+        responses = iter([invalid, valid])
 
         def request(prompt):
-            attempts.append(prompt)
-            return {'covered_ids': [], 'findings': 'Partial', 'uncertainties': []}
+            prompts.append(prompt)
+            return next(responses)
 
-        with self.assertRaisesRegex(ValueError, 'Batch 7 response invalid after 3 attempts'):
-            analyze_chunk([{'id': 'commit:a', 'content': 'A'}], 'Policy', request, 7)
-        self.assertEqual(len(attempts), 3)
+        with tempfile.TemporaryDirectory() as directory:
+            finalize(records, [review], {}, Path(directory), 'Policy', request)
+        self.assertEqual(len(prompts), 2)
+        self.assertIn('PREVIOUS_RELEASE_NOTES:', prompts[0])
+        self.assertIn('PREVIOUS_RESPONSE_REJECTED', prompts[1])
 
-    def test_release_sections(self):
-        validate_notes('## Highlights\n\nNew release.\n\n## Minor changes\n\n- Fix audio.')
-        for notes in ['', '## Fixes\n- Fix audio.', '## Highlights\nA\n## Highlights\nB',
-                      '## Highlights\nA\n## Minor changes\nB\n## Major changes\nC',
-                      '## Highlights\nhttps://github.com/a/b/compare/v1...v2']:
+    def test_resume_reuses_only_matching_final_state_evidence(self):
+        records = sample_evidence()
+        chunk = list(batches(analysis_records(records)))[0]
+        review = batch_result(chunk)
+        reusable = reusable_reviews(records, [review])
+        self.assertEqual(reusable[chunk_key(chunk)], review)
+        changed = [records[0], file_record('.config/example.conf', diff='+different\n')]
+        changed_chunk = list(batches(analysis_records(changed)))[0]
+        self.assertNotIn(chunk_key(changed_chunk), reusable)
+
+    def test_analysis_and_probe_use_same_candidate_contract(self):
+        records = sample_evidence()
+        chunk = list(batches(analysis_records(records)))[0]
+        review = batch_result(chunk)
+        final = final_result(['B1-C1'])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'evidence.json').write_text(json.dumps(records))
+            (root / 'state.json').write_text(json.dumps({
+                'version': 'v0.1.0-alpha.1', 'analysis_revision': ANALYSIS_REVISION,
+            }))
+            with patch.dict(os.environ, {'RELEASE_DIR': directory, 'RELEASE_MAX_AI_CALLS': '5',
+                                         'RELEASE_RESUME_RUN_ID': ''}):
+                with patch('release_analyze.ask', side_effect=[review, final]):
+                    analyze()
+            self.assertTrue((root / 'notes.md').exists())
+            with patch.dict(os.environ, {'RELEASE_RESUME_DIR': directory,
+                                         'RELEASE_PROBE_BATCH': 'final'}):
+                with patch('release_probe.ask', return_value=final):
+                    probe()
+            with patch.dict(os.environ, {'RELEASE_RESUME_DIR': directory,
+                                         'RELEASE_PROBE_BATCH': '1'}):
+                with patch('release_probe.ask', return_value=review):
+                    probe()
+
+    def test_release_sections_reject_internal_citations(self):
+        valid = '## Highlights\n\nNew controls are available.\n\n## Added\n\n- Control audio.\n'
+        self.assertEqual(validate_notes(valid), valid)
+        for notes in ['', '## Fixes\n\n- Audio.',
+                      '## Highlights\n\nA.\n\n## Highlights\n\nB.',
+                      '## Highlights\n\nA.\n\n## Fixed\n\n- Fix audio.\n\n## Added\n\n- A.',
+                      '## Highlights\n\nA. [0, 1]\n\n## Added\n\n- Audio.',
+                      '## Highlights\n\nA.\n\n## Added\n\n- Audio (B1-C1).',
+                      '## Highlights\n\nA.\n\n## Added\n\n- Audio.\n\nFull Changelog: x']:
             with self.assertRaises(ValueError):
                 validate_notes(notes)
 
@@ -264,7 +300,8 @@ class ReleaseMetadata(unittest.TestCase):
         self.git('config', 'user.name', 'Test')
         self.git('config', 'user.email', 'test@example.invalid')
         Path('config.txt').write_text('old\n')
-        Path('CHANGELOG.md').write_text('# Changelog\n\n## v0.0.7 - 2026-09-01\n\n### Highlights\n\nOld release.\n')
+        Path('CHANGELOG.md').write_text(
+            '# Changelog\n\n## v0.0.7 - 2026-09-01\n\n### Highlights\n\nOld release.\n')
         self.commit('fix: baseline')
         self.git('tag', 'v0.0.7')
         self.base = self.git('rev-parse', 'HEAD')
@@ -273,10 +310,13 @@ class ReleaseMetadata(unittest.TestCase):
         self.source = self.git('rev-parse', 'HEAD')
         self.bundle = Path('bundle')
         self.bundle.mkdir()
-        state = {'version': 'v0.1.0', 'base_tag': 'v0.0.7', 'base_sha': self.base,
-                 'source_sha': self.source, 'date': '2026-10-01'}
+        state = {'version': 'v0.1.0-alpha.1', 'base_tag': 'v0.0.7', 'base_sha': self.base,
+                 'source_sha': self.source, 'date': '2026-10-01', 'bump': 'minor',
+                 'channel': 'alpha', 'analysis_revision': ANALYSIS_REVISION}
         (self.bundle / 'state.json').write_text(json.dumps(state))
-        (self.bundle / 'notes.md').write_text('## Highlights\n\nNew configuration.\n')
+        (self.bundle / 'notes.md').write_text(
+            '## Highlights\n\nNew configuration is available.\n\n'
+            '## Added\n\n- Configure the new control.\n')
         Path('.github').mkdir()
 
     def tearDown(self):
@@ -293,55 +333,67 @@ class ReleaseMetadata(unittest.TestCase):
     def release(self):
         build(self.bundle)
         self.git('add', 'CHANGELOG.md', '.github/release-state.json')
-        self.git('commit', '-qm', 'chore: prepare release v0.1.0')
+        self.git('commit', '-qm', 'chore: prepare alpha release')
 
-    def test_round_trip_and_history_preserved(self):
+    def test_round_trip_preserves_history_and_full_notes(self):
         self.release()
         state, notes = validate()
         self.assertEqual(state['source_sha'], self.source)
         self.assertEqual(notes, (self.bundle / 'notes.md').read_text())
+        self.assertIn('### Added', Path('CHANGELOG.md').read_text())
         self.assertIn('Old release.', Path('CHANGELOG.md').read_text())
 
-    def test_collector_inventories_snapshots_commits_and_net_diff(self):
-        Path('untracked-example.txt').write_text('Not part of Git history.\n')
+    def test_collector_uses_only_net_changed_paths_with_history_context(self):
+        self.git('tag', 'v0.1.0-alpha.1', self.source)
+        Path('transient.txt').write_text('temporary\n')
+        self.git('add', 'transient.txt')
+        self.git('commit', '-qm', 'feat: try temporary file')
+        self.git('rm', 'transient.txt')
+        self.git('commit', '-qm', 'revert: remove temporary file')
+        Path('config.txt').write_text('final\n')
+        self.commit('fix: final config')
 
         def fake_pages(path):
             if path.endswith('/releases'):
-                return [{'draft': False, 'prerelease': False, 'tag_name': 'v0.0.7',
+                return [{'draft': False, 'tag_name': 'v0.1.0-alpha.1',
                          'body': 'Earlier release'}]
             return []
 
         settings = {'GITHUB_REF': 'refs/heads/master', 'GITHUB_REPOSITORY': 'test/repo',
-                    'RELEASE_BUMP': 'minor', 'RELEASE_DIR': str(self.bundle)}
+                    'RELEASE_BUMP': 'prerelease', 'RELEASE_CHANNEL': 'alpha',
+                    'RELEASE_DIR': str(self.bundle)}
         with patch.dict(os.environ, settings), patch('release_collect.pages', fake_pages):
             collect()
         records = json.loads((self.bundle / 'evidence.json').read_text())
-        ids = {r['id'] for r in records}
-        self.assertIn('before:config.txt', ids)
-        self.assertIn('after:config.txt', ids)
-        self.assertTrue(any(i.startswith('commit-diff:') for i in ids))
-        self.assertIn('net-diff:v0.0.7..v0.1.0', ids)
-        self.assertNotIn('after:untracked-example.txt', ids)
-        inventory = json.loads((self.bundle / 'inventory.json').read_text())
-        self.assertIn('config.txt', inventory['changed_files'])
-        self.assertNotIn('untracked-example.txt', inventory['changed_files'])
+        self.assertEqual(previous_release_notes(records), 'Earlier release')
+        file_records = analysis_records(records)
+        self.assertEqual([record['id'] for record in file_records], ['file-change:config.txt'])
+        comparison = json.loads(file_records[0]['content'])
+        self.assertEqual(comparison['before'], 'new\n')
+        self.assertEqual(comparison['after'], 'final\n')
+        self.assertIn('+final', comparison['net_diff'])
+        self.assertTrue(any('final config' in item['message']
+                            for item in comparison['history_context']['commits']))
+        self.assertEqual(json.loads((self.bundle / 'state.json').read_text())['version'],
+                         'v0.1.0-alpha.2')
 
-    def test_stale_preparation(self):
+    def test_stale_preparation_is_rejected(self):
         Path('config.txt').write_text('third\n')
         self.commit('fix: another change')
         with self.assertRaises(ValueError):
             build(self.bundle)
 
-    def test_unrelated_changes_rejected(self):
+    def test_unrelated_changes_are_rejected(self):
         self.release()
         Path('config.txt').write_text('third\n')
         self.commit('fix: unexpected change')
         with self.assertRaises(ValueError):
             validate()
 
-    def test_history_edit_rejected(self):
+    def test_history_edit_is_rejected(self):
         self.release()
-        Path('CHANGELOG.md').write_text(Path('CHANGELOG.md').read_text().replace('Old release.', 'Changed history.'))
+        Path('CHANGELOG.md').write_text(
+            Path('CHANGELOG.md').read_text().replace('Old release.', 'Changed history.'))
         self.git('add', 'CHANGELOG.md')
         self.git('commit', '-qm', 'docs: alter history')
         with self.assertRaises(ValueError):
