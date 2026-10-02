@@ -1,0 +1,10 @@
+{
+  "version": "v0.1.0-alpha.1",
+  "base_tag": "v0.0.7",
+  "base_sha": "90b2d591627288981a39df032841e9e233817995",
+  "source_sha": "290d5384c1a1b4176d8e1389d6e68d84aad696d9",
+  "bump": "minor",
+  "channel": "alpha",
+  "analysis_revision": 5,
+  "date": "2026-10-02"
+}
