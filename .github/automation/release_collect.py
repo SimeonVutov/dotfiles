@@ -4,7 +4,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from common import eligible, git, next_version, pages, repo, version_tuple
+from common import ANALYSIS_REVISION, eligible, git, next_version, pages, repo, version_key
 
 
 def collect():
@@ -12,17 +12,17 @@ def collect():
         raise ValueError('Prepare releases from master only')
     target = git('rev-parse', 'HEAD')
     releases = pages(f'repos/{repo()}/releases')
-    stable = []
+    published = []
     for release in releases:
-        if release['draft'] or release['prerelease']:
+        if release['draft']:
             continue
         try:
-            stable.append((version_tuple(release['tag_name']), release))
+            published.append((version_key(release['tag_name']), release))
         except ValueError:
             continue
-    if not stable:
-        raise ValueError('A published stable release is required as the baseline')
-    previous = max(stable, key=lambda item: item[0])[1]
+    if not published:
+        raise ValueError('A published release is required as the baseline')
+    previous = max(published, key=lambda item: item[0])[1]
     base_tag = previous['tag_name']
     base = git('rev-parse', f'{base_tag}^{{commit}}')
     subprocess.run(['git', 'merge-base', '--is-ancestor', base, target], check=True)
@@ -33,68 +33,83 @@ def collect():
         f'repos/{repo()}/pulls?state=open&base=master'
     )):
         raise ValueError('Review or close the existing release PR before preparing another')
-    version = next_version(base_tag, os.environ['RELEASE_BUMP'])
+    bump = os.environ['RELEASE_BUMP']
+    channel = os.environ.get('RELEASE_CHANNEL', 'stable')
+    version = next_version(base_tag, bump, channel)
     if version in git('tag', '--list').splitlines():
         raise ValueError('The proposed version tag already exists')
     root = Path(os.environ['RELEASE_DIR'])
     root.mkdir(parents=True, exist_ok=True)
-    records, excluded, prs = [], set(), {}
+    records = []
+    paths = git('diff', '--name-only', '--no-renames', base, target).splitlines()
+    allowed = [path for path in paths if eligible(path)]
+    excluded = sorted(set(paths) - set(allowed))
+    touched = {path: [] for path in allowed}
+    messages = {}
+    pull_requests = {}
+    prs_by_commit = {}
+    for sha in commits:
+        commit_paths = set(git('diff-tree', '--root', '-m', '--no-commit-id',
+                               '--name-only', '-r', sha).splitlines())
+        relevant = commit_paths.intersection(touched)
+        if not relevant:
+            continue
+        messages[sha] = git('show', '-s', '--format=%B', sha)
+        for path in relevant:
+            touched[path].append(sha)
+        prs_by_commit[sha] = []
+        for pr in pages(f'repos/{repo()}/commits/{sha}/pulls'):
+            if not pr.get('merged_at'):
+                continue
+            number = pr['number']
+            prs_by_commit[sha].append(number)
+            pull_requests[number] = {
+                'number': number, 'title': pr['title'], 'body': pr.get('body') or '',
+            }
 
     def add(kind, identity, content):
         records.append({'id': f'{kind}:{identity}', 'content': content})
 
     add('previous-release', base_tag, previous.get('body') or '')
-    for sha in commits:
-        add('commit', sha, git('show', '-s', '--format=%B', sha))
-        paths = git('diff-tree', '--root', '-m', '--no-commit-id', '--name-only', '-r', sha).splitlines()
-        allowed = sorted({p for p in paths if eligible(p)})
-        excluded.update(p for p in paths if not eligible(p))
-        if allowed:
-            add('commit-diff', sha, git('show', '--format=', '--diff-merges=first-parent', '--no-ext-diff', '--no-textconv',
-                                      '--no-renames', sha, '--', *allowed))
-        for pr in pages(f'repos/{repo()}/commits/{sha}/pulls'):
-            merged = pr.get('merge_commit_sha')
-            if pr.get('merged_at') and merged:
-                if merged in commits:
-                    prs[pr['number']] = pr
-    for number, pr in sorted(prs.items()):
-        add('pr', str(number), json.dumps({
-            'number': number, 'title': pr['title'], 'body': pr.get('body'),
-            'author': pr['user']['login'], 'labels': [x['name'] for x in pr['labels']],
-        }))
-    for ref, prefix in [(base, 'before'), (target, 'after')]:
-        tree = subprocess.check_output(['git', 'ls-tree', '-rz', ref]).split(b'\0')
-        for entry in filter(None, tree):
-            metadata, raw_path = entry.split(b'\t', 1)
-            path = raw_path.decode('utf-8')
-            if not eligible(path):
-                excluded.add(path)
-                continue
-            mode, kind, oid = metadata.decode().split()
-            if mode == '160000':
-                add(prefix, path, f'Submodule pointer {oid}; contents not inspected')
-                continue
-            data = subprocess.check_output(['git', 'cat-file', 'blob', oid])
-            try:
-                text = data.decode('utf-8')
-                if '\0' in text:
-                    raise UnicodeError()
-            except UnicodeError:
-                text = f'Binary asset: {len(data)} bytes, object {oid}; visual contents not inspected'
-            add(prefix, path, text)
-    paths = git('diff', '--name-only', base, target).splitlines()
-    allowed = [p for p in paths if eligible(p)]
-    if allowed:
-        add('net-diff', f'{base_tag}..{version}', git(
-            'diff', '--no-ext-diff', '--no-textconv', '--no-renames', base, target, '--', *allowed
-        ))
+
+    def snapshot(ref, path):
+        entry = subprocess.check_output(['git', 'ls-tree', '-z', ref, '--', path])
+        if not entry:
+            return None
+        metadata, _ = entry.rstrip(b'\0').split(b'\t', 1)
+        mode, kind, oid = metadata.decode().split()
+        if mode == '160000':
+            return f'Submodule pointer {oid}; contents not inspected'
+        data = subprocess.check_output(['git', 'cat-file', 'blob', oid])
+        try:
+            text = data.decode('utf-8')
+            if '\0' in text:
+                raise UnicodeError()
+            return text
+        except UnicodeError:
+            return f'Binary asset: {len(data)} bytes, object {oid}; visual contents not inspected'
+
+    for path in allowed:
+        before = snapshot(base, path)
+        after = snapshot(target, path)
+        diff = git('diff', '--no-ext-diff', '--no-textconv', '--no-renames', base, target, '--', path)
+        related_commits = touched[path]
+        related_prs = sorted({number for sha in related_commits for number in prs_by_commit[sha]})
+        add('file-change', path, json.dumps({
+            'path': path, 'before': before, 'after': after, 'net_diff': diff,
+            'history_context': {
+                'commits': [{'sha': sha, 'message': messages[sha]} for sha in related_commits],
+                'pull_requests': [pull_requests[number] for number in related_prs],
+            },
+        }, ensure_ascii=False))
     state = {'version': version, 'base_tag': base_tag, 'base_sha': base, 'source_sha': target,
+             'bump': bump, 'channel': channel, 'analysis_revision': ANALYSIS_REVISION,
              'date': datetime.date.today().isoformat()}
     (root / 'state.json').write_text(json.dumps(state, indent=2) + '\n')
     (root / 'evidence.json').write_text(json.dumps(records, ensure_ascii=False))
     (root / 'inventory.json').write_text(json.dumps({
         'records': [r['id'] for r in records], 'commits': commits,
-        'changed_files': paths, 'excluded_paths': sorted(excluded),
+        'changed_files': paths, 'excluded_paths': excluded,
     }, indent=2) + '\n')
 
 

@@ -1,6 +1,6 @@
 import subprocess
 
-from common import api, git, pages, repo
+from common import api, git, pages, repo, version_parts
 from release_metadata import validate
 
 
@@ -35,7 +35,7 @@ def publish():
         return
     api(f'repos/{repo()}/releases', 'POST', {
         'tag_name': state['version'], 'target_commitish': sha, 'name': state['version'],
-        'body': notes, 'draft': False, 'prerelease': False,
+        'body': notes, 'draft': False, 'prerelease': version_parts(state['version'])[3] is not None,
     })
     print(f"Published {state['version']} at {sha}")
 

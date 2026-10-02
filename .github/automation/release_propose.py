@@ -24,13 +24,17 @@ def propose():
     git('add', '--', 'CHANGELOG.md', STATE_PATH)
     git('commit', '-m', f"chore: prepare release {state['version']}")
     subprocess.run(['git', 'push', 'origin', f'HEAD:refs/heads/{branch}'], check=True)
+    notes = (root / 'notes.md').read_text().strip()
+    source_url = f"{os.environ['GITHUB_SERVER_URL']}/{repo()}/commit/{state['source_sha']}"
+    run_url = f"{os.environ['GITHUB_SERVER_URL']}/{repo()}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
     body = (
-        f"Prepare **{state['version']}** from `{state['source_sha']}`.\n\n"
-        'Review the generated changelog, especially superseded changes and migration steps. '
-        'This PR changes only release metadata. Merging it publishes the reviewed notes.\n\n'
-        f"The full evidence and coverage report is in the artifact for "
-        f"[the preparation run]({os.environ['GITHUB_SERVER_URL']}/{repo()}/actions/runs/"
-        f"{os.environ['GITHUB_RUN_ID']}).\n\n"
+        f"# {state['version']} release review\n\n"
+        f"Release source: [`{state['source_sha'][:12]}`]({source_url}) "
+        '(the master commit used for this comparison). '
+        'This PR changes only release metadata.\n\n'
+        f"{notes}\n\n"
+        f"Review the notes and migration steps against the [preparation evidence]({run_url}). "
+        'Merging this PR publishes these notes.\n\n'
         'If master advances before this is merged, close this PR and prepare a fresh release.'
     )
     pr = api(f'repos/{repo()}/pulls', 'POST', {
