@@ -14,8 +14,9 @@ from commit_checks import valid
 from config_checks import jsonc, qml_javascript_for_node
 from release_analyze import (CATEGORIES, CopilotResponseError, analyze, analyze_chunk,
                              analysis_records, batches, candidate_inventory, chunk_key,
-                             evidence_source, finalize, parse_copilot_output,
-                             previous_release_notes, render_notes, reusable_reviews, subsystem,
+                             evidence_source, finalize, parse_copilot_output, record_parts,
+                             previous_release_notes, render_notes, reusable_reviews, split_text,
+                             subsystem,
                              validate_batch_result,
                              validate_final, validate_notes)
 from release_collect import collect
@@ -107,6 +108,22 @@ class Formats(unittest.TestCase):
         self.assertTrue(all('history_context' in json.loads(part['content'])
                             for part in parts if part['role'] == 'change'))
         self.assertEqual(len({part['id'] for part in parts}), len(parts))
+
+    def test_unbroken_evidence_line_is_split_without_losing_text(self):
+        value = 'a' * 20000 + '😀' * 1000 + '\nnext line\n'
+        pieces = list(split_text(value, 1000))
+        self.assertEqual(''.join(pieces), value)
+        self.assertTrue(all(len(json.dumps(piece)) <= 1000 for piece in pieces))
+
+    def test_long_pr_body_is_preserved_in_context_parts(self):
+        body = 'A long pull request explanation. ' * 2000
+        record = file_record('.config/example.conf', prs=[{
+            'number': 12, 'title': 'Describe the change', 'body': body,
+        }])
+        parts = list(record_parts(record))
+        history = ''.join(json.loads(part['content'])['text'] for part in parts
+                          if json.loads(part['content'])['field'] == 'history_context')
+        self.assertEqual(json.loads(history)['pull_requests'][0]['body'], body)
 
     def test_related_legacy_and_current_ui_files_share_a_subsystem(self):
         self.assertEqual(subsystem(file_record('.config/rofi/launcher.sh')),
