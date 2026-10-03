@@ -9,7 +9,7 @@ Singleton {
     readonly property string homeDir: Quickshell.env("HOME") || ""
     readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || homeDir + "/.config"
 
-    property var modulesLeft: ["clock", "media"]
+    property var modulesLeft: ["clock", "media", "notifications"]
     property var modulesCenter: ["workspaces"]
     property var modulesRight: ["hardware", "volume", "connections", "battery", "power"]
 
@@ -21,7 +21,8 @@ Singleton {
             volume: "VolumeModule.qml",
             connections: "ConnectionsModule.qml",
             battery: "BatteryModule.qml",
-            power: "PowerModule.qml"
+            power: "PowerModule.qml",
+            notifications: "NotificationsModule.qml"
         })
 
     readonly property var compressionSteps: [
@@ -29,8 +30,10 @@ Singleton {
         { module: "hardware", remove: "usage" },
         { module: "volume", remove: "input" },
         { module: "connections", remove: "bluetooth" },
+        { module: "notifications", view: "compact" },
         { module: "media", view: "noName" },
         { module: "media", view: "controls" },
+        { module: "notifications", view: "icon" },
         { module: "connections", view: "icons" },
         { module: "clock", view: "time" },
         { module: "power", hidden: true }
