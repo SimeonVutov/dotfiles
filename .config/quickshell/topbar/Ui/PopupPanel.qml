@@ -28,6 +28,7 @@ PopupWindow {
     property bool animateHeight: false
     property bool smoothAnchorMovement: false
     property bool plainReveal: false
+    property bool focusGrabEnabled: true
     property real anchorOffsetX: anchorItem ? Math.round((anchorItem.width - panelWidth) / 2) : 0
     property int contentPadding: Theme.popupPadding
     property alias columns: layout.columns
@@ -81,7 +82,7 @@ PopupWindow {
 
     // Hyprland tells us when the user clicked somewhere else.
     HyprlandFocusGrab {
-        active: root.open
+        active: root.open && root.focusGrabEnabled
         windows: [root]
         onCleared: root.open = false
     }
