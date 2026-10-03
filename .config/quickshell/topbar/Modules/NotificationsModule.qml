@@ -45,7 +45,7 @@ BarModule {
     Connections {
         target: channel
         function onPhaseChanged() {
-            terminal.open = channel.phase === "opening" || channel.phase === "reading" || channel.phase === "empty" || channel.phase === "handoff";
+            terminal.open = channel.phase === "reading" || channel.phase === "empty" || channel.phase === "handoff";
         }
     }
 

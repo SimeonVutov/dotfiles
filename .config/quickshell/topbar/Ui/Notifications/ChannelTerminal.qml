@@ -34,10 +34,6 @@ PopupPanel {
     animateHeight: true
     smoothAnchorMovement: true
     focusGrabEnabled: false
-    HoverHandler {
-        parent: root.overlayItem
-        onHoveredChanged: root.receiver.hovered = hovered
-    }
     onOpenChanged: {
         if (!open && receiver.phase !== "listening" && receiver.phase !== "closing")
             receiver.closeCurrent();
