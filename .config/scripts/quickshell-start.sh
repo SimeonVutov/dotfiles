@@ -11,6 +11,10 @@ fi
 quickshell_malloc_conf='narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:0'
 export MALLOC_CONF="$quickshell_malloc_conf"
 
+if [ "$1" = topbar ] && [ -f "$(dirname "$0")/../quickshell/topbar/notifications.disabled" ]; then
+    export QS_TOPBAR_NOTIFICATIONS=0
+fi
+
 if [ "${2:-}" = restart ]; then
     restart_pids=$(qs list -j -c "$1" 2>/dev/null | jq -r '.[] | select(.pid > 0) | .pid' 2>/dev/null)
     for restart_pid in $restart_pids; do

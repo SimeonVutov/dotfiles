@@ -9,7 +9,8 @@ Singleton {
     readonly property string homeDir: Quickshell.env("HOME") || ""
     readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || homeDir + "/.config"
 
-    property var modulesLeft: ["clock", "media", "notifications"]
+    readonly property bool notificationsEnabled: Quickshell.env("QS_TOPBAR_NOTIFICATIONS") !== "0"
+    property var modulesLeft: notificationsEnabled ? ["clock", "media", "notifications"] : ["clock", "media"]
     property var modulesCenter: ["workspaces"]
     property var modulesRight: ["hardware", "volume", "connections", "battery", "power"]
 

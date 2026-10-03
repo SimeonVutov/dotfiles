@@ -1,5 +1,20 @@
 # Topbar notifications
 
+## Enable or disable
+
+Notifications are enabled by default. To disable them only on this machine,
+create `~/.config/quickshell/topbar/notifications.disabled` and restart the
+topbar:
+
+```sh
+touch ~/.config/quickshell/topbar/notifications.disabled
+sh ~/.config/scripts/quickshell-start.sh topbar restart
+```
+
+Remove the marker and restart to enable notifications again. The marker is
+ignored by Git. When disabled, Quickshell does not load the notification module
+or its `NotificationServer`, so it does not own `org.freedesktop.Notifications`.
+
 The radio waveform in the topbar is the notification indicator. Incoming
 messages disturb the waveform and join its queue; they **do not open the panel**.
 Click the waveform to read the next message. The panel also opens when the
