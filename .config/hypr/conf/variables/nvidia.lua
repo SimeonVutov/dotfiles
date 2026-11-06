@@ -1,0 +1,4 @@
+return {
+    terminal = "kitty --single-instance",
+    browser = "prime-run firefox",
+}
