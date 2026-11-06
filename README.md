@@ -391,9 +391,22 @@ state **before starting Hyprland**:
 sh ~/dotfiles/.config/scripts/hypr-init-state.sh
 ```
 
-This creates a generic monitor rule and an empty workspace-rule file only if
-they do not already exist. Quickshell's monitor switcher subsequently saves your
-chosen layout there; the files remain untracked and the command is safe to rerun.
+The converted entry point is `hypr/hyprland.lua`. The Lua modules retain the
+`conf/` layout, selected profiles, values, and commented examples.
+Hyprlock and Hypridle still use their own `.conf` files. Hypridle calls the
+wake script, which uses the Lua dispatcher syntax.
+Quickshell uses Lua dispatchers for workspace controls and logout. Its monitor
+switcher delegates to the shared display backend in `scripts/hyprland/`, which
+saves Lua monitor and workspace rules and retains the preview/rollback behavior.
+Matugen generates the Lua color palette. Lua can also read the existing
+Hyprlang palette before a Lua palette has been generated.
+
+`SUPER+L` remains the screen-lock shortcut. The unrecognized `XF86Lock`
+hardware-key entry is retained as a comment, without assigning another key.
+
+This creates `conf/monitors/current.lua` and `conf/workspaces/current.lua` only
+if they do not already exist. Existing display state remains untouched; the
+files stay untracked and the command is safe to rerun.
 The included hybrid GPU profile is specific to this laptop. On that machine,
 install its udev rule and reboot before starting Hyprland:
 
@@ -404,7 +417,7 @@ sudo udevadm control --reload-rules
 
 Check that `/dev/dri/amd-igpu` and `/dev/dri/nvidia-dgpu` exist after reboot.
 On other hardware, select an appropriate profile in
-`.config/hypr/conf/environments.conf` instead of using `hybrid.conf` unchanged.
+`.config/hypr/conf/environments.lua` instead of using `hybrid.lua` unchanged.
 
 ---
 
