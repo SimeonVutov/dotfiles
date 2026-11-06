@@ -165,7 +165,7 @@ Item {
                 }
 
                 const commands = {
-                    exit: ["hyprctl", "dispatch", "exit"],
+                    exit: ["hyprctl", "dispatch", "hl.dsp.exit()"],
                     reboot: ["systemctl", "reboot"],
                     shutdown: ["systemctl", "poweroff"],
                     suspend: ["sh", "-c", "loginctl lock-session && systemctl suspend"],
