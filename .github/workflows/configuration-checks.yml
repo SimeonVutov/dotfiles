@@ -28,7 +28,7 @@ jobs:
       - name: Install validators
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck zsh
+          sudo apt-get install -y shellcheck zsh lua5.4
           python3 -m pip install PyYAML==6.0.3
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
       - name: Validate changed configurations
