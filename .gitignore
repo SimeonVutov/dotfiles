@@ -36,6 +36,8 @@ spotify
 # Machine-specific state saved by Quickshell Monitor Switch.
 .config/hypr/conf/monitors/current.conf
 .config/hypr/conf/workspaces/current.conf
+.config/hypr/conf/monitors/current.lua
+.config/hypr/conf/workspaces/current.lua
 
 # Local topbar preference.
 .config/quickshell/topbar/notifications.disabled
