@@ -42,7 +42,13 @@ To implement a widget, add its QML under `widgets/` and set its `component` in
 the catalog. Its root must declare `property var widgetSettings` and fill its
 provided rectangle. Add custom settings with a `key`, `label`, `kind`, and
 `initial` value; numeric settings also declare `minimum`, `maximum`, and `step`.
-Existing controls support numeric sliders and six-digit hex colors. Optional
+Set `livePreview: true` to preview edits before they are saved, or `false` to
+apply the setting only after confirmation. Omitted flags default to false.
+The shared appearance settings all enable live preview, including color edits.
+Incomplete or invalid input is not previewed, and Escape restores saved values.
+Existing controls support numeric sliders and a color wheel with RGBA and hex
+input. Picker hex uses #RRGGBB or #RRGGBBAA; saved values use Qt
+#RRGGBB or #AARRGGBB. Color edits preview until Apply; Cancel or Escape reverts. Optional
 components receive presentation settings, not the authentication controller.
 
 Clock and Unlock are implemented. Other catalog entries are placeholders; there
