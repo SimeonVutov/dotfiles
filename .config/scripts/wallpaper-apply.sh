@@ -4,12 +4,14 @@ set -euo pipefail
 
 WALLPAPER="${1:-}"
 COLOR="${2:-}"
-CACHE_FILE="${HOME}/.cache/current_wallpaper"
-BLURRED_WALLPAPER="${HOME}/.cache/blurred_wallpaper.png"
-MATUGEN_CACHE="${HOME}/.cache/matugen"
-FRAME_DIR="${HOME}/.cache/wallpaper_cache/frames"
+CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}"
+CACHE_FILE="${CACHE_DIR}/current_wallpaper"
+BLURRED_WALLPAPER="${CACHE_DIR}/blurred_wallpaper.png"
+MATUGEN_CACHE="${CACHE_DIR}/matugen"
+FRAME_DIR="${CACHE_DIR}/wallpaper_cache/frames"
 BLUR="50x30"
-TMP_PNG="/tmp/matugen_input.png"
+TMP_PNG=""
+BLURRED_TEMP=""
 
 log() {
     printf '[wallpaper-apply] %s\n' "$*"
@@ -21,6 +23,10 @@ warn() {
 
 [[ -n "$WALLPAPER" ]] || { warn "No wallpaper path provided"; exit 1; }
 [[ -f "$WALLPAPER" ]] || { warn "Wallpaper does not exist: $WALLPAPER"; exit 1; }
+
+mkdir -p "$CACHE_DIR" "$MATUGEN_CACHE" "$FRAME_DIR"
+TMP_PNG=$(mktemp --suffix=.png)
+trap 'rm -f -- "$TMP_PNG" "${BLURRED_TEMP:-}"' EXIT
 
 log "Applying wallpaper: $WALLPAPER"
 echo "$WALLPAPER" > "$CACHE_FILE"
@@ -91,8 +97,11 @@ for socket in /tmp/kitty-*; do
 done
 
 log "Generating blurred wallpaper cache"
-magick "$TMP_PNG" -resize 75% "$BLURRED_WALLPAPER"
-[[ "$BLUR" != "0x0" ]] && magick "$BLURRED_WALLPAPER" -blur "$BLUR" "$BLURRED_WALLPAPER"
+BLURRED_TEMP=$(mktemp "${CACHE_DIR}/.blurred-wallpaper.XXXXXX.png")
+magick "$TMP_PNG" -resize 75% "$BLURRED_TEMP"
+[[ "$BLUR" != "0x0" ]] && magick "$BLURRED_TEMP" -blur "$BLUR" "$BLURRED_TEMP"
+# Publish a complete image so a lock screen never reads a partially written PNG.
+mv -f -- "$BLURRED_TEMP" "$BLURRED_WALLPAPER"
 
 rm -f "$TMP_PNG"
 log "Done"

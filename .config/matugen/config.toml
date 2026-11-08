@@ -15,6 +15,10 @@ output_path = "~/.cache/matugen/colors-kitty.conf"
 input_path  = "~/.config/matugen/templates/colors-hyprlock.conf"
 output_path = "~/.cache/matugen/colors-hyprlock.conf"
 
+[templates.lockscreen]
+input_path  = "~/.config/matugen/templates/colors-lockscreen.json"
+output_path = "~/.cache/matugen/colors-lockscreen.json"
+
 [templates.css]
 input_path  = "~/.config/matugen/templates/colors.css"
 output_path = "~/.cache/matugen/colors.css"
