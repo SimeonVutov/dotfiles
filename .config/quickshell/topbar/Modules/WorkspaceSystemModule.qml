@@ -29,8 +29,8 @@ BarModule {
         onWorkspaceRequested: id => {
             const workspace = Hyprland.workspaces.values.find(workspace => workspace.id === id);
             if (workspace)
-                workspace.activate();
+                Hyprland.dispatch('hl.dsp.focus({ workspace = "' + workspace.id + '" })');
         }
-        onWheelRequested: direction => Hyprland.dispatch(direction < 0 ? "workspace r-1" : "workspace r+1")
+        onWheelRequested: direction => Hyprland.dispatch('hl.dsp.focus({ workspace = "' + (direction < 0 ? "r-1" : "r+1") + '" })')
     }
 }

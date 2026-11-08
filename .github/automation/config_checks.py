@@ -40,6 +40,8 @@ def check(path):
             subprocess.run(['shellcheck', '--severity=error', '--shell', shell, str(path)], check=True)
     elif suffix == '.py':
         ast.parse(path.read_text(), filename=str(path))
+    elif suffix == '.lua':
+        subprocess.run(['luac', '-p', str(path)], check=True)
     elif suffix in {'.js', '.cjs', '.mjs'}:
         if suffix == '.js' and '.config/quickshell/' in str(path):
             subprocess.run(['node', '--check'], input=qml_javascript_for_node(path.read_text()),

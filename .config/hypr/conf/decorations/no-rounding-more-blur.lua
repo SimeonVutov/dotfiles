@@ -1,0 +1,23 @@
+-- ----------------------------------------------------- 
+-- General window decoration
+-- name: "No Rounding More Blur"
+-- ----------------------------------------------------- 
+
+hl.config({ decoration = {
+    rounding = 0,
+    blur = {
+        enabled = true,
+        size = 12,
+        passes = 6,
+        new_optimizations = true,
+        ignore_opacity = true,
+        xray = true,
+    },
+    active_opacity = 1.0,
+    inactive_opacity = 0.6,
+    fullscreen_opacity = 1.0,
+    
+    shadow = {
+        enabled = false,
+    },
+} })
