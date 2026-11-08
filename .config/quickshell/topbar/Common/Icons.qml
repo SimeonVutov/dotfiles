@@ -27,6 +27,8 @@ Singleton {
     readonly property string chevronDown: cp(0xf078)
     readonly property string check: cp(0xf00c)
     readonly property string close: cp(0xf00d)
+    readonly property string trash: cp(0xf1f8)
+    readonly property string move: cp(0x2194)
     readonly property string automatic: cp(0xf021)
 
     // Battery: index 0 is empty, 4 is full.
