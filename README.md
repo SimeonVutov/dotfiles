@@ -91,7 +91,7 @@ Hyprland is the core of this setup — a dynamic tiling Wayland compositor with 
 - **Input** — fine-tuned touchpad gestures, mouse sensitivity, and keyboard repeat rates
 - **Monitors** — multi-monitor support with per-display resolution, refresh rate, and scaling
 - **Keybinds** — a complete, logically grouped keybind system covering workspaces, windows, apps, media, and scripts
-- **Hypridle / Hyprlock** — auto screen lock with configurable idle timeout
+- **Hypridle / Quickshell** — password-authenticated session locking with a configurable idle timeout
 - **Environment Variables** — Wayland-native env vars for proper app compatibility (XDG, cursor, Qt/GTK backends)
 
 ---
@@ -393,8 +393,8 @@ sh ~/dotfiles/.config/scripts/hypr-init-state.sh
 
 The converted entry point is `hypr/hyprland.lua`. The Lua modules retain the
 `conf/` layout, selected profiles, values, and commented examples.
-Hyprlock and Hypridle still use their own `.conf` files. Hypridle calls the
-wake script, which uses the Lua dispatcher syntax.
+Hypridle retains its native `.conf` file and calls the independent Quickshell
+locker. Its wake script uses the Lua dispatcher syntax.
 Quickshell uses Lua dispatchers for workspace controls and logout. Its monitor
 switcher delegates to the shared display backend in `scripts/hyprland/`, which
 saves Lua monitor and workspace rules and retains the preview/rollback behavior.
@@ -453,3 +453,35 @@ Made with ❤️ on Arch Linux
 *If this helped you, consider leaving a ⭐*
 
 </div>
+
+### Quickshell lockscreen
+
+The lockscreen runs separately from the top bar. `SUPER+L`, the session menu,
+and Hypridle use `sh ~/.config/scripts/lock-screen.sh`. It authenticates through
+the system PAM `login` policy and only releases the Wayland session lock after
+authentication succeeds. Locking does not pause players or stop applications.
+
+Open the layout editor with `SUPER+SHIFT+L` or
+`sh ~/.config/scripts/quick-settings.sh lockscreen`.
+Click a placed widget to select it and expand its settings. Use its top-left
+move control to reposition it, then click to place it. Click a library item to
+start placing a new widget. Escape
+cancels placement. Red cells are occupied; green cells are free. Accepted changes
+save atomically to `${XDG_STATE_HOME:-~/.local/state}/quickshell/lockscreen-layout.json`.
+The grid density is adjustable; increasing it shrinks widget rectangles while
+keeping their cell spans. The editor previews the layout on each selected display.
+The password widget is required; invalid saved layouts fall back to a working
+default. The left panel edits placed widgets; the right panel lists unplaced ones.
+
+Clock and password widgets work immediately. Music, calendar, tasks, and progress
+are layout placeholders for later implementations. Register a trusted component
+and its cell span/settings in `quickshell/topbar/Lockscreen/WidgetCatalog.js`; its QML
+root receives `widgetSettings` and fills its allotted rectangle. Authentication
+stays outside this component registry. See the local lockscreen README for details.
+
+The wallpaper pipeline creates `~/.cache/blurred_wallpaper.png` once per change.
+Both the lockscreen and editor use that image without live blur. The lockscreen
+uses the matching Matugen palette. Restart the unlocked locker once after changes
+with `sh ~/.config/scripts/quickshell-start.sh lockscreen restart`. A crashed locker
+leaves the desktop locked by the compositor; the script refuses to restart a
+confirmed active lock. Do not use `qs kill` on the locker during a locked session.
