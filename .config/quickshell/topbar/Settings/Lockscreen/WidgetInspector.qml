@@ -16,11 +16,6 @@ ScrollView {
         width: root.availableWidth
         spacing: 12
 
-        BarText {
-            text: "Placed widgets"
-            color: Theme.popupSubtleText
-        }
-
         Repeater {
             model: root.controller.layout.widgets
 
@@ -121,27 +116,25 @@ ScrollView {
                         spacing: 12
 
                         RowLayout {
-                            SettingsChoice {
+                            NumberStepper {
                                 Layout.fillWidth: true
                                 label: "Width"
-                                model: Array.from({
-                                    length: root.controller.layout.columns
-                                }, (_, index) => String(index + 1))
-                                currentIndex: card.modelData.columns - 1
-                                onChosen: index => root.controller.updateWidget(card.modelData.id, {
-                                        columns: index + 1
+                                minimum: card.definition.required ? 4 : 1
+                                maximum: root.controller.layout.columns - card.modelData.column
+                                value: card.modelData.columns
+                                onEdited: value => root.controller.updateWidget(card.modelData.id, {
+                                        columns: value
                                     })
                             }
 
-                            SettingsChoice {
+                            NumberStepper {
                                 Layout.fillWidth: true
                                 label: "Height"
-                                model: Array.from({
-                                    length: root.controller.layout.rows
-                                }, (_, index) => String(index + 1))
-                                currentIndex: card.modelData.rows - 1
-                                onChosen: index => root.controller.updateWidget(card.modelData.id, {
-                                        rows: index + 1
+                                minimum: card.definition.required ? 3 : 1
+                                maximum: root.controller.layout.rows - card.modelData.row
+                                value: card.modelData.rows
+                                onEdited: value => root.controller.updateWidget(card.modelData.id, {
+                                        rows: value
                                     })
                             }
                         }
@@ -175,6 +168,7 @@ ScrollView {
                                     Slider {
                                         property bool cancelling: false
 
+                                        live: true
                                         from: setting.modelData.minimum
                                         to: setting.modelData.maximum
                                         stepSize: setting.modelData.step
@@ -185,17 +179,22 @@ ScrollView {
 
                                             if (cancelling) {
                                                 cancelling = false;
+                                                root.controller.previewWidget = null;
                                                 value = Qt.binding(() => setting.current);
                                             } else {
                                                 root.controller.updateSetting(card.modelData.id, setting.modelData.key, value);
                                             }
                                         }
 
+                                        onValueChanged: if (pressed && !cancelling)
+                                            root.controller.previewSetting(card.modelData.id, setting.modelData.key, value)
+
                                         onMoved: if (!pressed)
                                             root.controller.updateSetting(card.modelData.id, setting.modelData.key, value)
 
                                         Keys.onEscapePressed: event => {
                                             cancelling = pressed;
+                                            root.controller.previewWidget = null;
                                             value = Qt.binding(() => setting.current);
                                             root.forceActiveFocus();
                                             event.accepted = true;
@@ -206,24 +205,11 @@ ScrollView {
                                 Component {
                                     id: colorControl
 
-                                    TextField {
-                                        text: setting.current
-                                        color: Theme.popupText
-                                        placeholderText: "#ffffff"
-                                        selectByMouse: true
-                                        background: Rectangle {
-                                            color: Theme.popupBackground
-                                            radius: 6
-                                            border.color: Theme.popupBorder
-                                        }
-                                        onEditingFinished: if (text !== setting.current)
-                                            root.controller.updateSetting(card.modelData.id, setting.modelData.key, text)
-
-                                        Keys.onEscapePressed: event => {
-                                            text = setting.current;
-                                            root.forceActiveFocus();
-                                            event.accepted = true;
-                                        }
+                                    ColorPicker {
+                                        value: setting.current
+                                        onPreviewed: color => root.controller.previewSetting(card.modelData.id, setting.modelData.key, color)
+                                        onEdited: color => root.controller.updateSetting(card.modelData.id, setting.modelData.key, color)
+                                        onCancelled: root.controller.previewWidget = null
                                     }
                                 }
                             }

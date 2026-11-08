@@ -12,6 +12,7 @@ Item {
     readonly property var available: Catalog.widgets.filter(definition => !layout.widgets.some(widget => widget.type === definition.type))
     property string selected: ""
     property var moving: null
+    property var previewWidget: null
     property int grabColumn: 0
     property int grabRow: 0
     property string error: ""
@@ -75,6 +76,7 @@ Item {
             error = "";
             return storage.save(next);
         } catch (exception) {
+            previewWidget = null;
             error = exception.message;
             rejected();
             return false;
@@ -105,6 +107,26 @@ Item {
         });
     }
 
+    function previewSetting(id, key, value) {
+        const widget = layout.widgets.find(item => item.id === id);
+        if (!widget)
+            return;
+
+        const setting = Catalog.controls(widget.type).find(control => control.key === key);
+        if (!setting?.livePreview)
+            return;
+
+        const next = Grid.copy(previewWidget?.id === id ? previewWidget : widget);
+        next.settings[key] = value;
+        try {
+            Grid.validateSettings(next);
+            previewWidget = next;
+        } catch (exception) {
+            // Incomplete input, such as a partially typed color, is not renderable.
+            previewWidget = null;
+        }
+    }
+
     function removeWidget(id) {
         const widget = layout.widgets.find(item => item.id === id);
         if (!ready || !widget || Catalog.find(widget.type).required)
@@ -132,10 +154,13 @@ Item {
 
     function cancelMove() {
         moving = null;
+        previewWidget = null;
         error = "";
     }
 
     Lock.LayoutStore {
         id: storage
+        onSaved: root.previewWidget = null
+        onSaveFailed: root.previewWidget = null
     }
 }

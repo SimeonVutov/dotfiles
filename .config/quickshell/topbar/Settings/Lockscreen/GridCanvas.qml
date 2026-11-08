@@ -51,7 +51,10 @@ Rectangle {
                 readonly property int row: Math.floor(index / root.controller.layout.columns)
                 readonly property bool underPointer: !!root.controller.moving && Grid.contains(root.controller.moving, column, row)
                 readonly property bool blocked: underPointer && Grid.occupied(root.controller.layout, column, row, root.controller.moving.id)
+                readonly property bool occupied: Grid.occupied(root.controller.layout, column, row, "")
 
+                visible: underPointer || !occupied
+                z: underPointer ? 1 : 0
                 x: column * root.cellWidth + 1
                 y: row * root.cellHeight + 1
                 width: root.cellWidth - 2
@@ -78,17 +81,23 @@ Rectangle {
         Repeater {
             model: root.controller.layout.widgets
 
-            delegate: Rectangle {
+            delegate: Item {
+                id: widgetPreview
                 required property var modelData
+                readonly property var settings: Object.assign(Catalog.defaults(modelData.type), root.controller.previewWidget?.id === modelData.id ? root.controller.previewWidget.settings : modelData.settings)
 
                 x: modelData.column * root.cellWidth + 4
                 y: modelData.row * root.cellHeight + 4
                 width: modelData.columns * root.cellWidth - 8
                 height: modelData.rows * root.cellHeight - 8
-                radius: 9
-                color: root.controller.selected === modelData.id ? "#c02d2d2d" : "#b01a1a1a"
                 opacity: root.controller.moving?.id === modelData.id ? .25 : 1
-                border.color: root.controller.selected === modelData.id ? Theme.overlayBorderBright : Theme.popupBorder
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: widgetPreview.settings.cornerRadius
+                    color: widgetPreview.settings.backgroundColor
+                    opacity: widgetPreview.settings.backgroundOpacity
+                }
 
                 Text {
                     anchors.centerIn: parent
@@ -96,15 +105,17 @@ Rectangle {
                     text: Catalog.find(modelData.type).name
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
-                    color: Theme.overlayText
+                    color: widgetPreview.settings.textColor
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSmall
+                    font.bold: root.controller.selected === modelData.id
                 }
             }
         }
 
         Rectangle {
             id: ghost
+            z: 2
             property real shakeOffset: 0
 
             visible: !!root.controller.moving

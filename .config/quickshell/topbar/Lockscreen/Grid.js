@@ -61,8 +61,8 @@ function validateSettings(widget) {
         if (!setting)
             throw new Error("Unknown widget setting: " + key);
 
-        if (setting.kind === "color" && (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value)))
-            throw new Error("Use a six-digit hex color.");
+        if (setting.kind === "color" && (typeof value !== "string" || !/^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)))
+            throw new Error("Use a hex color with an optional alpha channel.");
 
         if (setting.kind === "number" && (typeof value !== "number" || !Number.isFinite(value)
                 || value < setting.minimum || value > setting.maximum))

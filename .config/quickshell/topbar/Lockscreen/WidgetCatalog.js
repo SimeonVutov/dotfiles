@@ -13,10 +13,10 @@ var widgets = [
 
 // Add widget-specific controls here using the same declarative setting contract.
 var settings = [
-    {key: "backgroundOpacity", label: "Background opacity", kind: "number", minimum: 0, maximum: 1, step: .05, initial: 0},
-    {key: "backgroundColor", label: "Background color", kind: "color", initial: "#1a1a1a"},
-    {key: "textColor", label: "Text color", kind: "color", initial: "#ffffff"},
-    {key: "cornerRadius", label: "Corner radius", kind: "number", minimum: 0, maximum: 48, step: 1, initial: 18}
+    {key: "backgroundOpacity", livePreview: true, label: "Background opacity", kind: "number", minimum: 0, maximum: 1, step: .05, initial: 0},
+    {key: "backgroundColor", livePreview: true, label: "Background color", kind: "color", initial: "#1a1a1a"},
+    {key: "textColor", livePreview: true, label: "Text color", kind: "color", initial: "#ffffff"},
+    {key: "cornerRadius", livePreview: true, label: "Corner radius", kind: "number", minimum: 0, maximum: 48, step: 1, initial: 18}
 ];
 
 function find(type) {
