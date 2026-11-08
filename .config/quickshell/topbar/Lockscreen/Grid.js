@@ -103,8 +103,12 @@ function validate(layout) {
 
 function place(layout, widget) {
     const next = copy(layout);
-    next.widgets = next.widgets.filter(other => other.id !== widget.id);
-    next.widgets.push(copy(widget));
+    const index = next.widgets.findIndex(other => other.id === widget.id);
+    if (index === -1)
+        next.widgets.push(copy(widget));
+    else
+        next.widgets[index] = copy(widget);
+
     return validate(next);
 }
 
