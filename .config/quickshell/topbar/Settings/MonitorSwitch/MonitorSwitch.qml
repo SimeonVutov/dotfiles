@@ -10,6 +10,7 @@ ColumnLayout {
 
     required property var controller
     property bool active: false
+    signal lockscreenRequested()
     readonly property var selected: controller.selectedMonitor
     readonly property var scaleFactors: DisplayLayout.scales(selected)
     // Only the modes this machine can actually reach are offered, so the row
@@ -167,6 +168,14 @@ ColumnLayout {
             enabled: !!root.selected && !root.controller.busy
             model: root.scaleFactors.map(f => Number(f.toFixed(5)) + "×")
             onChosen: index => root.controller.setScale(root.scaleFactors[index])
+        }
+
+        ConnectionButton {
+            Layout.alignment: Qt.AlignBottom
+            implicitHeight: 38
+            text: "Lockscreen"
+            enabled: !root.controller.busy
+            onClicked: root.lockscreenRequested()
         }
 
         ConnectionButton {

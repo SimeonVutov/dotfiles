@@ -8,6 +8,7 @@ import Quickshell.Hyprland
 import qs.Common
 import qs.Ui
 import "MonitorSwitch" as Displays
+import "Lockscreen" as Lock
 
 Item {
     id: root
@@ -18,8 +19,12 @@ Item {
     property bool presenting: false
     property string monitor: ""
     property bool confirmationMounted: false
+    property string menu: "monitors"
 
-    function open() {
+    function open(menu) {
+        if (menu === "monitors" || menu === "lockscreen")
+            root.menu = menu;
+
         if (presenting || pendingOpen)
             return;
         if (opened) {
@@ -52,15 +57,20 @@ Item {
     IpcHandler {
         target: "settings"
         function open(menu: string): void {
-            if (menu === "monitors")
-                root.open();
+            if (menu === "monitors" || menu === "lockscreen")
+                root.open(menu);
         }
         function toggle(menu: string): void {
-            if (menu === "monitors") {
+            if (menu === "monitors" || menu === "lockscreen") {
+                if (root.presenting && root.menu !== menu) {
+                    root.open(menu);
+                    return;
+                }
+
                 if (root.presenting || root.pendingOpen)
                     root.close();
                 else
-                    root.open();
+                    root.open(menu);
             }
         }
         function close(): void {
@@ -82,7 +92,7 @@ Item {
 
     Displays.MonitorService {
         id: displays
-        active: root.presenting
+        active: root.presenting && root.menu === "monitors"
     }
 
     Connections {
@@ -136,7 +146,9 @@ Item {
 
             QuickSettingsPanel {
                 anchors.fill: parent
-                title: "Monitor Switch"
+                title: root.menu === "monitors" ? "Monitor Switch" : "Lockscreen Layout"
+                panelWidth: root.menu === "monitors" ? 920 : 1480
+                panelHeight: root.menu === "monitors" ? 640 : 850
                 presenting: root.presenting
                 onCloseRequested: if (!displays.previewing)
                     root.close()
@@ -147,8 +159,17 @@ Item {
 
                 Displays.MonitorSwitch {
                     anchors.fill: parent
+                    visible: root.menu === "monitors"
                     controller: displays
-                    active: root.presenting
+                    active: root.presenting && visible
+                    onLockscreenRequested: root.open("lockscreen")
+                }
+
+                Lock.LockscreenEditor {
+                    anchors.fill: parent
+                    visible: root.menu === "lockscreen"
+                    active: root.presenting && visible
+                    onCloseRequested: root.close()
                 }
             }
         }
