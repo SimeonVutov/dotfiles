@@ -79,7 +79,7 @@ class Formats(unittest.TestCase):
     def test_excluded_paths(self):
         for path in ['.env', 'sample/.env.local', 'sample/private.key', '.ssh/id_rsa']:
             self.assertFalse(eligible(path))
-        self.assertTrue(eligible('.config/hypr/conf/environments/hybrid.conf'))
+        self.assertTrue(eligible('.config/hypr/conf/environments/hybrid.lua'))
 
     def test_commit_messages(self):
         for message in ['feat: add planets', 'fix(quickshell): repair audio',
