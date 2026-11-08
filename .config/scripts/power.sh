@@ -16,7 +16,7 @@ fi
 if [[ "$1" == "lock" ]]; then
     echo ":: Lock"
     sleep 0.3
-    hyprlock    
+    sh "$(dirname "$0")/lock-screen.sh"
 fi
 
 if [[ "$1" == "reboot" ]]; then
@@ -40,13 +40,11 @@ fi
 if [[ "$1" == "suspend" ]]; then
     echo ":: Suspend"
     sleep 0.3
-    systemctl suspend
-    hyprlock
+    sh "$(dirname "$0")/lock-screen.sh" && systemctl suspend
 fi
 
 if [[ "$1" == "hibernate" ]]; then
     echo ":: Hibernate"
     sleep 1; 
-    systemctl hibernate
-    hyprlock
+    sh "$(dirname "$0")/lock-screen.sh" && systemctl hibernate
 fi
