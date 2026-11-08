@@ -15,11 +15,6 @@ ScrollView {
         width: root.availableWidth
         spacing: 12
 
-        BarText {
-            text: "Widgets"
-            color: Theme.popupSubtleText
-        }
-
         Repeater {
             model: root.controller.available
 

@@ -13,6 +13,7 @@ ColumnLayout {
     spacing: 8
 
     BarText {
+        visible: root.label.length > 0
         text: root.label
         color: Theme.popupSubtleText
         font.pixelSize: Theme.fontSizeCaption

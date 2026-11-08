@@ -39,62 +39,111 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        spacing: 16
-
-        Item {
-            Layout.fillWidth: true
-        }
-
-        SettingsChoice {
-            id: gridSize
-
-            label: "Grid"
-            enabled: layoutController.ready && !layoutController.moving
-            model: Grid.resolutions.map(size => size.columns + " × " + size.rows)
-            currentIndex: Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns)
-            onChosen: index => {
-                const size = Grid.resolutions[index];
-                layoutController.resizeGrid(size.columns, size.rows);
-                currentIndex = Qt.binding(() => Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns));
-            }
-        }
-
-        SettingsChoice {
-            label: "Preview display"
-            model: Quickshell.screens.map(screen => screen.name)
-            onChosen: index => root.previewScreen = index
-        }
-
-        ConnectionButton {
-            visible: !!layoutController.moving
-            text: "Cancel move"
-            onClicked: layoutController.cancelMove()
-        }
-    }
-
-    RowLayout {
-        Layout.fillWidth: true
         Layout.fillHeight: true
         spacing: 18
 
-        WidgetInspector {
-            Layout.preferredWidth: 250
+        ColumnLayout {
+            Layout.preferredWidth: 240
+            Layout.minimumWidth: 240
+            Layout.maximumWidth: 240
             Layout.fillHeight: true
-            controller: layoutController
+            spacing: 12
+
+            BarText {
+                text: "Active Widget Settings"
+                color: Theme.popupSubtleText
+            }
+
+            WidgetInspector {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                controller: layoutController
+            }
         }
 
-        GridCanvas {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumWidth: 340
-            controller: layoutController
-            aspectRatio: root.screen ? root.screen.width / root.screen.height : 16 / 9
+            spacing: 12
+
+            GridCanvas {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                controller: layoutController
+                aspectRatio: root.screen ? root.screen.width / root.screen.height : 16 / 9
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 16
+
+                BarText {
+                    text: "Grid size"
+                    color: Theme.popupSubtleText
+                    font.pixelSize: Theme.fontSizeCaption
+                }
+
+                SettingsChoice {
+                    id: gridSize
+
+                    Layout.preferredWidth: 140
+                    Layout.maximumWidth: 140
+                    Layout.alignment: Qt.AlignVCenter
+                    enabled: layoutController.ready && !layoutController.moving
+                    model: Grid.resolutions.map(size => size.columns + " × " + size.rows)
+                    currentIndex: Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns)
+                    onChosen: index => {
+                        const size = Grid.resolutions[index];
+                        layoutController.resizeGrid(size.columns, size.rows);
+                        currentIndex = Qt.binding(() => Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns));
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                BarText {
+                    text: "Preview display"
+                    color: Theme.popupSubtleText
+                    font.pixelSize: Theme.fontSizeCaption
+                }
+
+                SettingsChoice {
+                    Layout.preferredWidth: 180
+                    Layout.maximumWidth: 180
+                    Layout.alignment: Qt.AlignVCenter
+                    model: Quickshell.screens.map(screen => screen.name)
+                    onChosen: index => root.previewScreen = index
+                }
+
+                ConnectionButton {
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: !!layoutController.moving
+                    text: "Cancel move"
+                    onClicked: layoutController.cancelMove()
+                }
+            }
         }
 
-        WidgetLibrary {
-            Layout.preferredWidth: 200
+        ColumnLayout {
+            Layout.preferredWidth: 240
+            Layout.minimumWidth: 240
+            Layout.maximumWidth: 240
             Layout.fillHeight: true
-            controller: layoutController
+            spacing: 12
+
+            BarText {
+                text: "Inactive Widgets"
+                color: Theme.popupSubtleText
+            }
+
+            WidgetLibrary {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                controller: layoutController
+            }
         }
     }
 
