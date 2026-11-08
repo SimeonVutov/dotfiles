@@ -32,12 +32,12 @@ hl.bind(mainMod .. " + up", hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + down", hl.dsp.focus({ direction = "down" }))
 
 hl.bind("SUPER + SHIFT + H", hl.dsp.window.move({ direction = "left" }))
-hl.bind("SUPER + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
+hl.bind("SUPER + SHIFT + L", hl.dsp.exec_cmd("sh ~/.config/scripts/quick-settings.sh lockscreen"))
 hl.bind("SUPER + SHIFT + K", hl.dsp.window.move({ direction = "up" }))
 hl.bind("SUPER + SHIFT + J", hl.dsp.window.move({ direction = "down" }))
 
 
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("hyprlock"))
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("sh ~/.config/scripts/lock-screen.sh"))
 
 -- Monitors
 hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("sh ~/.config/scripts/quick-settings.sh monitors"))
@@ -87,5 +87,5 @@ hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause")) -- Audio pause
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next")) -- Audio next
 hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous")) -- Audio previous
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("pactl set-source-mute @DEFAULT_SOURCE@ toggle")) -- Toggle microphone
--- hl.bind("XF86Lock", hl.dsp.exec_cmd("hyprlock")) -- Open screenlock
+-- hl.bind("XF86Lock", hl.dsp.exec_cmd("sh ~/.config/scripts/lock-screen.sh")) -- Open screenlock
 -- XF86Lock is not a recognized keysym; SUPER+L above remains the lock shortcut.
