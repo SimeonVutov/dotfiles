@@ -1,6 +1,6 @@
 #!/bin/sh
 case "${1:-}" in
-    topbar|wallpaper) ;;
+    topbar|wallpaper|lockscreen) ;;
     *) exit 2 ;;
 esac
 if [ ! -f /usr/share/glvnd/egl_vendor.d/50_mesa.json ]; then
@@ -11,11 +11,23 @@ fi
 quickshell_malloc_conf='narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:0'
 export MALLOC_CONF="$quickshell_malloc_conf"
 
+if [ "$1" = lockscreen ]; then
+    ulimit -c 0
+fi
+
 if [ "$1" = topbar ] && [ -f "$(dirname "$0")/../quickshell/topbar/notifications.disabled" ]; then
     export QS_TOPBAR_NOTIFICATIONS=0
 fi
 
 if [ "${2:-}" = restart ]; then
+    if [ "$1" = lockscreen ]; then
+        lock_status=$(qs ipc -n -c lockscreen call lockscreen status 2>/dev/null)
+        if [ "$lock_status" = locked ] || [ "$lock_status" = locking ]; then
+            printf '%s\n' 'Quickshell: unlock the session before restarting the locker.' >&2
+            exit 1
+        fi
+    fi
+
     restart_pids=$(qs list -j -c "$1" 2>/dev/null | jq -r '.[] | select(.pid > 0) | .pid' 2>/dev/null)
     for restart_pid in $restart_pids; do
         qs kill --pid "$restart_pid" || exit 1
