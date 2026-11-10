@@ -15,10 +15,18 @@ Item {
     signal saved
     signal saveFailed
 
+    function reload() {
+        if (!ready || saving)
+            return;
+
+        ready = false;
+        file.reload();
+    }
+
     function load() {
         try {
             const text = file.text().trim();
-            root.layout = text ? Grid.validate(JSON.parse(text)) : Grid.initial();
+            root.layout = text ? Grid.migrate(JSON.parse(text)) : Grid.initial();
             root.error = "";
         } catch (exception) {
             // A malformed layout must never prevent the password surface loading.
@@ -30,14 +38,24 @@ Item {
     function save(next) {
         if (!ready || saving)
             return false;
+
+        let validated;
         try {
-            pending = Grid.validate(next);
+            validated = Grid.validate(next);
         } catch (exception) {
             error = exception.message;
             return false;
         }
-        saving = true;
+
         error = "";
+        // FileView does not emit saved when setText receives unchanged content.
+        if (JSON.stringify(validated) === JSON.stringify(layout)) {
+            saved();
+            return true;
+        }
+
+        pending = validated;
+        saving = true;
         file.setText(JSON.stringify(pending, null, 2) + "\n");
         return true;
     }

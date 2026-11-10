@@ -12,15 +12,31 @@ Item {
     readonly property var colors: palette
     readonly property var passwordSettings: Catalog.find("authentication").resolve(layoutStore.layout.widgets.find(widget => widget.type === "authentication")?.settings)
 
+    property bool lockRequested: false
+
     function requestLock() {
-        if (session.locked)
+        if (session.locked || lockRequested)
+            return;
+
+        Quickshell.watchFiles = false;
+        lockRequested = true;
+        layoutStore.reload();
+        activateLock();
+    }
+
+    function activateLock() {
+        if (!lockRequested || !layoutStore.ready)
             return;
 
         session.locked = true;
+        lockRequested = false;
+        if (!session.locked)
+            Quickshell.watchFiles = true;
     }
 
     LayoutStore {
         id: layoutStore
+        onReadyChanged: root.activateLock()
     }
 
     LockPalette {
@@ -34,8 +50,10 @@ Item {
         attemptLimit: root.passwordSettings.attemptLimit
         timeoutMinutes: root.passwordSettings.retryTimeoutMinutes
         onAuthenticated: {
-            if (session.secure)
+            if (session.secure) {
                 session.locked = false;
+                Quickshell.watchFiles = true;
+            }
         }
     }
 
@@ -61,7 +79,7 @@ Item {
         }
 
         function status(): string {
-            return root.secure ? "locked" : session.locked ? "locking" : "unlocked";
+            return root.secure ? "locked" : session.locked || root.lockRequested ? "locking" : "unlocked";
         }
     }
 
