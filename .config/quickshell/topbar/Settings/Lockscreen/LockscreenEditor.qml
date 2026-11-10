@@ -78,25 +78,25 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 16
 
-                BarText {
-                    text: "Grid size"
-                    color: Theme.popupSubtleText
-                    font.pixelSize: Theme.fontSizeCaption
-                }
+                RowLayout {
+                    spacing: 8
 
-                SettingsChoice {
-                    id: gridSize
+                    BarText {
+                        text: "Grid size"
+                        color: Theme.popupSubtleText
+                        font.pixelSize: Theme.fontSizeCaption
+                    }
 
-                    Layout.preferredWidth: 140
-                    Layout.maximumWidth: 140
-                    Layout.alignment: Qt.AlignVCenter
-                    enabled: layoutController.ready && !layoutController.moving
-                    model: Grid.resolutions.map(size => size.columns + " × " + size.rows)
-                    currentIndex: Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns)
-                    onChosen: index => {
-                        const size = Grid.resolutions[index];
-                        layoutController.resizeGrid(size.columns, size.rows);
-                        currentIndex = Qt.binding(() => Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns));
+                    SettingsChoice {
+                        Layout.preferredWidth: 120
+                        enabled: layoutController.ready && !layoutController.moving
+                        model: Grid.resolutions.map(size => size.columns + " × " + size.rows)
+                        currentIndex: Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns)
+                        onChosen: index => {
+                            const size = Grid.resolutions[index];
+                            layoutController.resizeGrid(size.columns, size.rows);
+                            currentIndex = Qt.binding(() => Grid.resolutions.findIndex(size => size.columns === layoutController.layout.columns));
+                        }
                     }
                 }
 
@@ -104,26 +104,36 @@ ColumnLayout {
                     Layout.fillWidth: true
                 }
 
-                BarText {
-                    text: "Preview display"
-                    color: Theme.popupSubtleText
-                    font.pixelSize: Theme.fontSizeCaption
+                AnimationControls {
+                    controller: layoutController
                 }
 
-                SettingsChoice {
-                    Layout.preferredWidth: 180
-                    Layout.maximumWidth: 180
-                    Layout.alignment: Qt.AlignVCenter
-                    model: Quickshell.screens.map(screen => screen.name)
-                    onChosen: index => root.previewScreen = index
+                Item {
+                    Layout.fillWidth: true
                 }
 
-                ConnectionButton {
-                    Layout.alignment: Qt.AlignVCenter
-                    visible: !!layoutController.moving
-                    text: "Cancel move"
-                    onClicked: layoutController.cancelMove()
+                RowLayout {
+                    spacing: 8
+
+                    BarText {
+                        text: "Preview display"
+                        color: Theme.popupSubtleText
+                        font.pixelSize: Theme.fontSizeCaption
+                    }
+
+                    SettingsChoice {
+                        Layout.preferredWidth: 160
+                        model: Quickshell.screens.map(screen => screen.name)
+                        onChosen: index => root.previewScreen = index
+                    }
                 }
+            }
+
+            ConnectionButton {
+                Layout.alignment: Qt.AlignRight
+                visible: !!layoutController.moving
+                text: "Cancel move"
+                onClicked: layoutController.cancelMove()
             }
         }
 

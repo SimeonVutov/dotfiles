@@ -1,5 +1,6 @@
 .pragma library
 .import "WidgetCatalog.js" as Catalog
+.import "Animations.js" as Animations
 
 var resolutions = [18, 27, 36, 54, 72].map(columns => ({columns: columns, rows: columns * 2 / 3}));
 
@@ -9,7 +10,7 @@ function copy(value) {
 }
 
 function initial() {
-    return {version: 1, columns: 18, rows: 12, widgets: [
+    return {version: 1, columns: 18, rows: 12, animation: Animations.defaults(), widgets: [
         {id: "clock", type: "clock", column: 5, row: 0, columns: 8, rows: 6, settings: Catalog.defaults("clock")},
         {id: "authentication", type: "authentication", column: 6, row: 7, columns: 6, rows: 1, settings: Catalog.defaults("authentication")}
     ]};
@@ -91,6 +92,7 @@ function validate(layout) {
     });
 
     const next = copy(layout);
+    next.animation = Animations.resolve(next.animation);
     return next;
 }
 

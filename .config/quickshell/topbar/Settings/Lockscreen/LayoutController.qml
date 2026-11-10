@@ -158,6 +158,16 @@ Item {
         error = "";
     }
 
+    function updateAnimation(changes) {
+        if (!ready)
+            return;
+
+        const next = Grid.copy(layout);
+        next.animation = Object.assign({}, next.animation, changes);
+        error = "";
+        storage.save(next);
+    }
+
     Lock.LayoutStore {
         id: storage
         onSaved: root.previewWidget = null

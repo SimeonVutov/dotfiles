@@ -11,8 +11,9 @@ Item {
     readonly property var authenticator: authentication
     readonly property var colors: palette
     readonly property var passwordSettings: Catalog.find("authentication").resolve(layoutStore.layout.widgets.find(widget => widget.type === "authentication")?.settings)
-
     property bool lockRequested: false
+    property bool unlocking: false
+    property real unlockProgress: 0
 
     function requestLock() {
         if (session.locked || lockRequested)
@@ -20,22 +21,32 @@ Item {
 
         Quickshell.watchFiles = false;
         lockRequested = true;
+        // Read the saved layout before constructing any monitor surfaces.
         layoutStore.reload();
-        activateLock();
+        snapshots.start();
     }
 
     function activateLock() {
-        if (!lockRequested || !layoutStore.ready)
+        if (!lockRequested || !layoutStore.ready || !snapshots.ready)
             return;
 
         session.locked = true;
         lockRequested = false;
-        if (!session.locked)
+        if (!session.locked) {
+            snapshots.release();
             Quickshell.watchFiles = true;
+        }
+    }
+
+    DesktopSnapshot {
+        id: snapshots
+
+        onReadyChanged: root.activateLock()
     }
 
     LayoutStore {
         id: layoutStore
+
         onReadyChanged: root.activateLock()
     }
 
@@ -46,27 +57,54 @@ Item {
     Authenticator {
         id: authentication
 
-        enabled: session.secure
+        enabled: session.secure && !root.unlocking
         attemptLimit: root.passwordSettings.attemptLimit
         timeoutMinutes: root.passwordSettings.retryTimeoutMinutes
         onAuthenticated: {
-            if (session.secure) {
-                session.locked = false;
-                Quickshell.watchFiles = true;
+            if (session.secure && !root.unlocking) {
+                root.unlocking = true;
+                unlockAnimation.start();
             }
+        }
+    }
+
+    NumberAnimation {
+        id: unlockAnimation
+
+        target: root
+        property: "unlockProgress"
+        from: 0
+        to: 1
+        duration: layoutStore.layout.animation.type === "none" ? 0 : layoutStore.layout.animation.duration
+        easing.type: Easing.InOutSine
+        onFinished: {
+            session.locked = false;
+            snapshots.release();
+            root.unlocking = false;
+            root.unlockProgress = 0;
+            Quickshell.watchFiles = true;
         }
     }
 
     WlSessionLock {
         id: session
 
+        onLockedChanged: if (!locked && !root.lockRequested)
+            snapshots.release()
+
         WlSessionLockSurface {
+            id: lockSurface
             color: "#0a0a0a"
 
             LockFace {
                 anchors.fill: parent
+                presenting: session.secure && lockSurface.visible
                 controller: root
                 store: layoutStore
+                snapshot: snapshots.contains(lockSurface.screen) ? snapshots.source : ""
+                snapshotRect: snapshots.rectangle(lockSurface.screen)
+                exiting: root.unlocking
+                exitProgress: root.unlockProgress
             }
         }
     }

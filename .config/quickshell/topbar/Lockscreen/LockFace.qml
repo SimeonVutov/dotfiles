@@ -1,12 +1,16 @@
 import QtQuick
 import "WidgetCatalog.js" as Catalog
 
-Item {
+LockTransition {
     id: root
     required property var controller
     required property var store
+    settings: store.layout.animation
+    ready: background.ready
+    fallbackSource: background.imageSource
 
     CachedBackground {
+        id: background
         anchors.fill: parent
     }
     Repeater {

@@ -6,13 +6,17 @@ Rectangle {
     id: root
     property string cacheDirectory: Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache"
     property int revision: 0
+    readonly property url imageSource: wallpaper.source
+    readonly property bool ready: wallpaper.status === Image.Ready || wallpaper.status === Image.Error
     color: "#0a0a0a"
     Image {
+        id: wallpaper
         anchors.fill: parent
         source: "file://" + root.cacheDirectory + "/blurred_wallpaper.png?revision=" + root.revision
         fillMode: Image.PreserveAspectCrop
         cache: false
         asynchronous: true
+        retainWhileLoading: true
     }
     // The blur is baked by wallpaper-apply.sh; no live shader or media capture.
     Rectangle {
