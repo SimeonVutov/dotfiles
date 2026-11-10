@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import "WidgetCatalog.js" as Catalog
 
 Item {
     id: root
@@ -9,6 +10,7 @@ Item {
     readonly property bool secure: session.secure
     readonly property var authenticator: authentication
     readonly property var colors: palette
+    readonly property var passwordSettings: Catalog.find("authentication").resolve(layoutStore.layout.widgets.find(widget => widget.type === "authentication")?.settings)
 
     function requestLock() {
         if (session.locked)
@@ -29,6 +31,8 @@ Item {
         id: authentication
 
         enabled: session.secure
+        attemptLimit: root.passwordSettings.attemptLimit
+        timeoutMinutes: root.passwordSettings.retryTimeoutMinutes
         onAuthenticated: {
             if (session.secure)
                 session.locked = false;

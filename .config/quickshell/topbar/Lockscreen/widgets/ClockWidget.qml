@@ -1,42 +1,47 @@
 import QtQuick
 import Quickshell
+import ".."
 
-Item {
+Widget {
     id: root
-    property var widgetSettings: ({
-            textColor: "#ffffff"
-        })
-    readonly property real fit: Math.max(.1, Math.min(1, width / 850, height / 500))
+
+    widgetType: "clock"
+    designWidth: referenceSize.width * 8 / 18
+    designHeight: referenceSize.height / 2
+
     SystemClock {
         id: clock
         precision: SystemClock.Seconds
     }
-    Column {
-        anchors.centerIn: parent
-        spacing: 12 * root.fit
-        Text {
+
+    Repeater {
+        model: [
+            {
+                format: "dddd",
+                size: 90,
+                offset: 350
+            },
+            {
+                format: "dd MMMM",
+                size: 40,
+                offset: 250
+            },
+            {
+                format: "- hh:mm AP -",
+                size: 20,
+                offset: 190
+            }
+        ]
+
+        delegate: Text {
+            required property var modelData
             anchors.horizontalCenter: parent.horizontalCenter
-            text: Qt.formatDateTime(clock.date, "dddd")
-            color: root.widgetSettings.textColor
+            y: root.referenceSize.height / 2 - modelData.offset - height / 2
+            text: Qt.formatDateTime(clock.date, modelData.format).replace(/ (AM|PM)/, "")
+            color: root.settings.textColor
             font.family: "SF Pro Display"
             font.bold: true
-            font.pointSize: 90 * root.fit
-        }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: Qt.formatDateTime(clock.date, "dd MMMM")
-            color: root.widgetSettings.textColor
-            font.family: "SF Pro Display"
-            font.bold: true
-            font.pointSize: 40 * root.fit
-        }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: Qt.formatDateTime(clock.date, "- hh:mm -")
-            color: root.widgetSettings.textColor
-            font.family: "SF Pro Display"
-            font.bold: true
-            font.pointSize: 20 * root.fit
+            font.pointSize: modelData.size
         }
     }
 }

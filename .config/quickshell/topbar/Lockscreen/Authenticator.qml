@@ -1,31 +1,39 @@
 import QtQuick
 import Quickshell.Services.Pam
+import "widgets/password"
 
 Item {
     id: root
 
-    readonly property bool ready: enabled && pam.active && pam.responseRequired && !retry.running
+    property bool checking: false
+    readonly property bool ready: enabled && pam.active && pam.responseRequired && !checking && !retry.running && !policy.blocked
     readonly property bool busy: enabled && !ready
-    property string error: ""
+    readonly property bool coolingDown: policy.blocked
+    property int attemptLimit: 3
+    property int timeoutMinutes: 5
+    property string lastError: ""
+    readonly property string error: policy.blocked ? "Try again in " + Math.floor(policy.remainingSeconds / 60) + ":" + String(policy.remainingSeconds % 60).padStart(2, "0") : lastError
     property string message: ""
 
+    signal rejected
     signal authenticated
     signal clearInput
 
     function begin() {
-        if (!enabled || pam.active)
+        if (!enabled || pam.active || policy.blocked)
             return;
 
         message = "";
         if (!pam.start())
-            error = "Authentication could not start. Try again.";
+            lastError = "Authentication could not start. Try again.";
     }
 
     function respond(response) {
         if (!ready)
             return;
 
-        error = "";
+        lastError = "";
+        checking = true;
         pam.respond(response);
         clearInput();
     }
@@ -35,9 +43,10 @@ Item {
         if (enabled) {
             begin();
         } else {
+            checking = false;
             retry.stop();
             pam.abort();
-            error = "";
+            lastError = "";
             message = "";
         }
     }
@@ -45,21 +54,38 @@ Item {
     Component.onCompleted: if (enabled)
         begin()
 
+    RetryPolicy {
+        id: policy
+        attemptLimit: Math.max(1, root.attemptLimit)
+        timeoutMinutes: Math.max(1, root.timeoutMinutes)
+        onReleased: root.begin()
+    }
+
     PamContext {
         id: pam
 
         config: "login"
-        onPamMessage: root.message = message
+        onPamMessage: {
+            root.message = message;
+            if (responseRequired)
+                root.checking = false;
+        }
         onCompleted: result => {
+            root.checking = false;
             root.message = "";
             root.clearInput();
             if (!root.enabled)
                 return;
 
             if (result === PamResult.Success) {
+                policy.reset();
                 root.authenticated();
             } else {
-                root.error = result === PamResult.Error ? "Authentication unavailable. Try again." : "Authentication failed. Try again.";
+                root.lastError = result === PamResult.Error ? "Authentication unavailable. Try again." : "Wrong password";
+                if (result === PamResult.Failed || result === PamResult.MaxTries) {
+                    policy.recordFailure();
+                    root.rejected();
+                }
                 retry.restart();
             }
         }
@@ -68,7 +94,10 @@ Item {
     Timer {
         id: retry
 
-        interval: 1500
-        onTriggered: root.begin()
+        interval: 2000
+        onTriggered: {
+            root.lastError = "";
+            root.begin();
+        }
     }
 }

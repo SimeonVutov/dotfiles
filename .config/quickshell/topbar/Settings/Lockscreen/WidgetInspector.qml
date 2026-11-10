@@ -119,7 +119,7 @@ ScrollView {
                             NumberStepper {
                                 Layout.fillWidth: true
                                 label: "Width"
-                                minimum: card.definition.required ? 4 : 1
+                                minimum: card.definition.minimumColumns || 1
                                 maximum: root.controller.layout.columns - card.modelData.column
                                 value: card.modelData.columns
                                 onEdited: value => root.controller.updateWidget(card.modelData.id, {
@@ -130,8 +130,8 @@ ScrollView {
                             NumberStepper {
                                 Layout.fillWidth: true
                                 label: "Height"
-                                minimum: card.definition.required ? 3 : 1
-                                maximum: root.controller.layout.rows - card.modelData.row
+                                minimum: card.definition.minimumRows || 1
+                                maximum: Math.min(card.definition.maximumRows || root.controller.layout.rows, root.controller.layout.rows - card.modelData.row)
                                 value: card.modelData.rows
                                 onEdited: value => root.controller.updateWidget(card.modelData.id, {
                                         rows: value
@@ -159,7 +159,7 @@ ScrollView {
 
                                 Loader {
                                     Layout.fillWidth: true
-                                    sourceComponent: setting.modelData.kind === "number" ? numericControl : colorControl
+                                    sourceComponent: setting.modelData.control === "stepper" ? stepperControl : setting.modelData.control === "color" ? colorControl : numericControl
                                 }
 
                                 Component {
@@ -199,6 +199,17 @@ ScrollView {
                                             root.forceActiveFocus();
                                             event.accepted = true;
                                         }
+                                    }
+                                }
+
+                                Component {
+                                    id: stepperControl
+
+                                    NumberStepper {
+                                        minimum: setting.modelData.minimum
+                                        maximum: setting.modelData.maximum
+                                        value: setting.current
+                                        onEdited: value => root.controller.updateSetting(card.modelData.id, setting.modelData.key, value)
                                     }
                                 }
 

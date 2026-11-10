@@ -21,32 +21,38 @@ Item {
             width: modelData.columns * root.width / root.store.layout.columns
             height: modelData.rows * root.height / root.store.layout.rows
             clip: true
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 5
-                radius: cell.widgetSettings.cornerRadius
-                color: cell.widgetSettings.backgroundColor
-                opacity: cell.widgetSettings.backgroundOpacity
-            }
             Loader {
                 anchors.fill: parent
                 active: cell.modelData.type !== "authentication" && !!cell.definition?.component
                 source: active ? Qt.resolvedUrl(cell.definition.component) : ""
-                onLoaded: item.widgetSettings = Qt.binding(() => cell.widgetSettings)
+                onLoaded: {
+                    item.widgetSettings = Qt.binding(() => cell.widgetSettings);
+                    item.referenceSize = Qt.binding(() => Qt.size(root.width, root.height));
+                }
             }
-            Text {
-                anchors.centerIn: parent
-                width: Math.max(0, parent.width - 12)
-                height: Math.max(0, parent.height - 12)
-                visible: cell.modelData.type !== "authentication" && !cell.definition?.component
-                text: cell.definition?.name || ""
-                color: cell.widgetSettings.textColor
-                font.family: "SF Pro Display"
-                font.pixelSize: 20
-                minimumPixelSize: 8
-                fontSizeMode: Text.Fit
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+            Loader {
+                anchors.fill: parent
+                active: cell.modelData.type !== "authentication" && !cell.definition?.component
+                sourceComponent: Component {
+                    Widget {
+                        widgetType: cell.modelData.type
+                        widgetSettings: cell.widgetSettings
+                        referenceSize: Qt.size(root.width, root.height)
+
+                        Text {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            text: cell.definition?.name || ""
+                            color: cell.widgetSettings.textColor
+                            font.family: "SF Pro Display"
+                            font.pixelSize: 20
+                            minimumPixelSize: 8
+                            fontSizeMode: Text.Fit
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
             }
             Loader {
                 anchors.fill: parent
@@ -55,6 +61,7 @@ Item {
                     PasswordWidget {
                         controller: root.controller
                         widgetSettings: cell.widgetSettings
+                        referenceSize: Qt.size(root.width, root.height)
                     }
                 }
             }

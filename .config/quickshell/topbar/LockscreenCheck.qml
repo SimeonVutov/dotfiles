@@ -35,6 +35,7 @@ ShellRoot {
     Item {
         id: preview
         property bool busy: false
+        property bool checking: false
         property bool ready: true
         readonly property var authenticator: preview
         property string error: ""
@@ -43,6 +44,7 @@ ShellRoot {
                 text: "#ffffff",
                 accent: "#555555"
             })
+        signal rejected
         signal clearInput
         function respond(response) {
             error = "Preview cannot unlock a session.";
