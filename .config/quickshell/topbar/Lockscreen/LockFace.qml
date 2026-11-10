@@ -1,5 +1,7 @@
 import QtQuick
 import "WidgetCatalog.js" as Catalog
+// Register dependencies before the catalog loads this widget by URL.
+import "widgets/music"
 
 LockTransition {
     id: root

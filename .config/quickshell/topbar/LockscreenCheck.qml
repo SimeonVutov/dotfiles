@@ -67,7 +67,7 @@ ShellRoot {
 
             if (root.stage === 0) {
                 controller.beginNew("music");
-                controller.moveTo(2, 11);
+                controller.moveTo(3, 10);
                 controller.place();
                 root.stage++;
             } else if (root.stage === 1) {
