@@ -4,8 +4,13 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function load(name, imports = {}) {
-    const code = fs.readFileSync(path.join(__dirname, name), 'utf8').replace(/^\.(?:pragma|import).*$/gm, '');
-    const context = vm.createContext({...imports});
+    const source = fs.readFileSync(path.join(__dirname, name), 'utf8');
+    const dependencies = {...imports};
+    for (const match of source.matchAll(/^\.import "([^"]+)" as (\w+)$/gm)) {
+        dependencies[match[2]] = load(path.join(path.dirname(name), match[1]));
+    }
+    const code = source.replace(/^\.(?:pragma|import).*$/gm, '');
+    const context = vm.createContext(dependencies);
     vm.runInContext(code, context, {filename: name});
     return context;
 }
@@ -29,7 +34,7 @@ assert.throws(() => Grid.place(initial, music({row: -1})), /inside/);
 assert.throws(() => Grid.place(initial, music({rows: .5})), /whole/);
 assert.throws(() => Grid.place(initial, music({columns: 0})), /inside/);
 assert.throws(() => Grid.remove(initial, 'authentication'), /password/);
-assert.throws(() => Grid.place(initial, {...initial.widgets[1], rows: 1}), /at least/);
+assert.throws(() => Grid.place(initial, {...initial.widgets[1], rows: 2}), /exactly 1/);
 assert.equal(Grid.placementError(placed, music({column: 1})), '');
 assert.equal(Grid.occupied(placed, 0, 10, 'music'), false);
 assert.equal(Grid.occupied(placed, 6, 7, 'music'), true);

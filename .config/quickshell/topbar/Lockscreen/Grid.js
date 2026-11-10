@@ -11,7 +11,7 @@ function copy(value) {
 function initial() {
     return {version: 1, columns: 18, rows: 12, widgets: [
         {id: "clock", type: "clock", column: 5, row: 0, columns: 8, rows: 6, settings: Catalog.defaults("clock")},
-        {id: "authentication", type: "authentication", column: 6, row: 7, columns: 6, rows: 3, settings: Catalog.defaults("authentication")}
+        {id: "authentication", type: "authentication", column: 6, row: 7, columns: 6, rows: 1, settings: Catalog.defaults("authentication")}
     ]};
 }
 
@@ -31,7 +31,8 @@ function occupied(layout, column, row, excluding) {
 }
 
 function placementError(layout, widget) {
-    if (!Catalog.find(widget.type))
+    const definition = Catalog.find(widget.type);
+    if (!definition)
         return "Unknown widget.";
 
     if (![widget.column, widget.row, widget.columns, widget.rows].every(Number.isInteger))
@@ -41,8 +42,11 @@ function placementError(layout, widget) {
             || widget.column + widget.columns > layout.columns || widget.row + widget.rows > layout.rows)
         return "Keep the whole widget inside the grid.";
 
-    if (widget.type === "authentication" && (widget.columns < 4 || widget.rows < 3))
-        return "Unlock needs at least 4 × 3 cells.";
+    if (widget.columns < (definition.minimumColumns || 1) || widget.rows < (definition.minimumRows || 1))
+        return definition.name + " is smaller than its minimum cell span.";
+
+    if (definition.maximumRows && widget.rows > definition.maximumRows)
+        return definition.name + " must be exactly " + definition.maximumRows + " row high.";
 
     if (layout.widgets.some(other => other.id !== widget.id && overlaps(other, widget)))
         return "Those cells are already occupied.";
@@ -51,23 +55,11 @@ function placementError(layout, widget) {
 }
 
 function validateSettings(widget) {
-    if (!widget.settings || typeof widget.settings !== "object" || Array.isArray(widget.settings))
-        throw new Error("Invalid widget settings.");
+    const definition = Catalog.find(widget.type);
+    if (!definition)
+        throw new Error("Unknown widget.");
 
-    const controls = Catalog.controls(widget.type);
-    Object.keys(widget.settings).forEach(key => {
-        const setting = controls.find(control => control.key === key);
-        const value = widget.settings[key];
-        if (!setting)
-            throw new Error("Unknown widget setting: " + key);
-
-        if (setting.kind === "color" && (typeof value !== "string" || !/^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)))
-            throw new Error("Use a hex color with an optional alpha channel.");
-
-        if (setting.kind === "number" && (typeof value !== "number" || !Number.isFinite(value)
-                || value < setting.minimum || value > setting.maximum))
-            throw new Error("Setting outside its supported range.");
-    });
+    definition.validate(widget.settings);
 }
 
 function validate(layout) {
@@ -98,7 +90,8 @@ function validate(layout) {
         validateSettings(widget);
     });
 
-    return copy(layout);
+    const next = copy(layout);
+    return next;
 }
 
 function place(layout, widget) {
@@ -108,6 +101,17 @@ function place(layout, widget) {
         next.widgets.push(copy(widget));
     else
         next.widgets[index] = copy(widget);
+
+    return validate(next);
+}
+
+function migrate(layout) {
+    const next = copy(layout);
+    const password = next?.widgets?.find(widget => widget.type === "authentication");
+    if (password && Number.isInteger(password.row) && Number.isInteger(password.rows) && password.rows > 1) {
+        password.row += Math.floor((password.rows - 1) / 2);
+        password.rows = 1;
+    }
 
     return validate(next);
 }
