@@ -83,6 +83,11 @@ Item {
             root.unlocking = false;
             root.unlockProgress = 0;
             Quickshell.watchFiles = true;
+            // Re-enabling the watcher does not detect edits made while locked.
+            Qt.callLater(() => {
+                if (!session.locked && !root.lockRequested)
+                    Quickshell.reload(false);
+            });
         }
     }
 
