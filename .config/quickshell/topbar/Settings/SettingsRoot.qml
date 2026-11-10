@@ -162,7 +162,6 @@ Item {
                     visible: root.menu === "monitors"
                     controller: displays
                     active: root.presenting && visible
-                    onLockscreenRequested: root.open("lockscreen")
                 }
 
                 Lock.LockscreenEditor {
