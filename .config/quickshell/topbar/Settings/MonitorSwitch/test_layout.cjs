@@ -25,6 +25,11 @@ function valid(monitors) {
 }
 
 const original = [monitor("eDP-1", 0), monitor("DP-1", 1920, 2560, 1440), monitor("DP-2", 4480)];
+const reordered = layout.reorder(original, "DP-1", 0);
+assert.deepEqual(Array.from(reordered, m => m.name), ["DP-1", "eDP-1", "DP-2"]);
+assert.deepEqual(Array.from(reordered, m => m.x), [1920, 0, 4480]);
+const disabled = original.map(m => Object.assign({}, m, {enabled: m.name !== "eDP-1"}));
+assert.deepEqual(Array.from(layout.reorder(disabled, "DP-2", 0), m => m.name), ["eDP-1", "DP-2", "DP-1"]);
 for (const mode of ["laptop", "external", "extend", "custom"])
     valid(layout.mode(original, mode));
 

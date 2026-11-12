@@ -24,7 +24,8 @@ Rectangle {
     // Mid-drag the map shows where the release would actually land, arrangement
     // and all, rather than the layout as it stands.
     readonly property var staged: dragging ? Layout.draft(controller.monitors, dragging, (dragX - originX) / zoom, (dragY - originY) / zoom, threshold) : controller.monitors
-    readonly property var rectangles: Layout.displayRects(staged, duplicate)
+    // Stable delegates keep an order change from animating screens to each other's positions.
+    readonly property var rectangles: Layout.displayRects(staged, duplicate).sort((a, b) => a.name.localeCompare(b.name))
     readonly property var extent: Layout.bounds(Layout.displayRects(controller.monitors, duplicate))
     readonly property real fit: Math.min((width - mapPadding * 2) / extent.width, (height - mapPadding * 2) / extent.height)
     readonly property real zoom: dragViewport ? dragViewport.zoom : fit
@@ -218,7 +219,8 @@ Rectangle {
                 spacing: 2
                 BarText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.duplicate && tile.monitor.enabled ? "◎" : String(tile.index + 1)
+                    text: !tile.monitor.enabled ? "–" : root.duplicate ? "◎"
+                        : String(root.controller.monitors.filter(m => m.enabled).findIndex(m => m.name === tile.monitor.name) + 1)
                     font.pixelSize: Math.max(14, Math.min(34, tile.height * .24))
                     font.bold: true
                 }

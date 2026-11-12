@@ -4,6 +4,17 @@ function copy(monitors) {
     return monitors.map(m => Object.assign({}, m));
 }
 
+function reorder(monitors, name, position) {
+    const active = monitors.filter(m => m.enabled);
+    const index = active.findIndex(m => m.name === name);
+    if (index < 0 || position < 0 || position >= active.length)
+        return copy(monitors);
+    const moved = active.splice(index, 1)[0];
+    active.splice(position, 0, moved);
+    let next = 0;
+    return monitors.map(m => Object.assign({}, m.enabled ? active[next++] : m));
+}
+
 function size(monitor) {
     const rotated = monitor.transform % 2 !== 0;
     return {
