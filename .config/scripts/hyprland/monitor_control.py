@@ -20,6 +20,38 @@ WORKSPACE_IDS = range(1, 11)
 MODE_PATTERN = re.compile(r"^(\d+)x(\d+)@(\d+(?:\.\d+)?)(?:Hz)?$")
 CONNECTOR_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
 SAVED_MONITOR_PATTERN = re.compile(r' -- monitor-switch: ("(?:[^"\\]|\\.)*")$')
+ORDER_PREFIX = "-- monitor-switch-order: "
+
+
+def saved_order(line):
+    if not line.startswith(ORDER_PREFIX):
+        return None
+
+    try:
+        order = json.loads(line[len(ORDER_PREFIX):])
+    except ValueError:
+        return None
+
+    if not isinstance(order, list) or not all(isinstance(item, str) for item in order):
+        return None
+    if len(set(order)) != len(order):
+        return None
+
+    return order
+
+
+def restore_order(monitors, path):
+    # A preference belongs to the complete connected setup, including disabled outputs.
+    by_identity = {m.get("identity", m["selector"]): m for m in monitors}
+    if len(by_identity) != len(monitors) or not path.exists():
+        return monitors
+
+    for line in reversed(path.read_text().splitlines()):
+        order = saved_order(line)
+        if order is not None and set(order) == set(by_identity):
+            return [by_identity[item] for item in order]
+
+    return monitors
 
 
 def hyprctl(*args, as_json=False):
@@ -62,6 +94,10 @@ def discover():
         selector = "desc:" + description if description and unique and not re.search(r"[,;\x00-\x1f#$\\]", description) else name
         monitors.append({
             "name": name, "selector": selector, "description": description,
+            "identity": hashlib.sha256(json.dumps([
+                description, output.get("make", ""), output.get("model", ""), output.get("serial", ""),
+                name if not description or not unique else "",
+            ]).encode()).hexdigest(),
             "internal": bool(re.match(r"^(eDP|LVDS|DSI)-?", name)),
             "enabled": not output.get("disabled", False),
             "width": width, "height": height, "rate": rate,
@@ -70,7 +106,10 @@ def discover():
             "x": output.get("x", 0), "y": output.get("y", 0),
             "mirror": names_by_id.get(str(output.get("mirrorOf", "none")), "none"), "modes": modes,
         })
+
     monitors.sort(key=lambda m: (not m["internal"], m["name"]))
+    config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr/conf"
+    monitors = restore_order(monitors, config / "monitors/current.lua")
     revision = hashlib.sha256(json.dumps(monitors, sort_keys=True).encode()).hexdigest()
     return {"monitors": monitors, "revision": revision}
 
@@ -99,8 +138,9 @@ def validate(payload, state):
     if mode not in ("laptop", "external", "extend", "duplicate", "custom"):
         raise ValueError("Unknown display mode")
     result = []
-    for original in state["monitors"]:
-        requested = next(m for m in draft if m["name"] == original["name"])
+    originals = {m["name"]: m for m in state["monitors"]}
+    for requested in draft:
+        original = originals[requested["name"]]
         monitor = dict(original)
         if type(requested.get("enabled")) is not bool:
             raise ValueError("Invalid display state")
@@ -307,16 +347,24 @@ def persist(monitors, targets, paths):
     selectors = {m["selector"] for m in monitors} | {m["name"] for m in monitors}
     existing = paths[0].read_text() if paths[0].exists() else ""
     retained = []
+    order = [m.get("identity", m["selector"]) for m in monitors]
+
     for line in existing.splitlines():
+        previous_order = saved_order(line)
+        if previous_order is not None and set(previous_order) == set(order):
+            continue
         saved = SAVED_MONITOR_PATTERN.search(line)
         if saved and json.loads(saved[1]) in selectors:
             continue
         retained.append(line)
+
     stable = {m["name"]: m["selector"] for m in monitors}
     saved = [dict(m, mirror=stable.get(m["mirror"], "none")) for m in monitors]
-    contents = ["\n".join(retained + [saved_monitor_rule(m) for m in saved]) + "\n",
-                "".join(workspace_rule(n, m["selector"]) + "\n" for n, m in targets.items())]
+    monitor_lines = retained + [ORDER_PREFIX + json.dumps(order)] + [saved_monitor_rule(m) for m in saved]
+    workspace_lines = [workspace_rule(number, monitor["selector"]) for number, monitor in targets.items()]
+    contents = ["\n".join(monitor_lines) + "\n", "".join(line + "\n" for line in workspace_lines)]
     backups = [path.read_text() if path.exists() else None for path in paths]
+
     try:
         for path, content in zip(paths, contents):
             atomic_write(path, content)
@@ -418,17 +466,43 @@ def interrupted(_signal, _frame):
     raise InterruptedError("Display preview cancelled")
 
 
+def sync_workspaces():
+    monitors = discover()["monitors"]
+    if not any(m["enabled"] and m["mirror"] == "none" for m in monitors):
+        return
+
+    targets = workspace_targets(monitors)
+    rules = {
+        str(rule.get("workspaceString")): rule.get("monitor")
+        for rule in hyprctl("workspacerules", as_json=True)
+    }
+    if all(rules.get(str(number)) in (monitor["name"], monitor["selector"])
+           for number, monitor in targets.items()):
+        return
+
+    bind_workspaces(targets)
+    focused = hyprctl("activeworkspace", as_json=True).get("id", 0)
+    relocate(hyprctl("workspaces", as_json=True), {n: m["name"] for n, m in targets.items()}, focused)
+
+
 def main():
     try:
         if len(sys.argv) == 2 and sys.argv[1] == "inspect":
             emit("state", **discover())
             return
-        if len(sys.argv) != 3 or sys.argv[1] != "preview":
-            raise ValueError("Expected inspect or preview")
+
+        syncing = len(sys.argv) == 2 and sys.argv[1] == "sync-workspaces"
+        if not syncing and (len(sys.argv) != 3 or sys.argv[1] != "preview"):
+            raise ValueError("Expected inspect, preview or sync-workspaces")
+
         runtime = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
         descriptor = os.open(runtime / "quickshell-monitor-switch.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         with os.fdopen(descriptor, "w") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock, fcntl.LOCK_EX | (0 if syncing else fcntl.LOCK_NB))
+            if syncing:
+                sync_workspaces()
+                return
+
             signal.signal(signal.SIGTERM, interrupted)
             signal.signal(signal.SIGINT, interrupted)
             preview(json.loads(sys.argv[2]))

@@ -46,6 +46,14 @@ Item {
         dirty = true;
     }
 
+    function setOrder(name, position) {
+        if (busy || mode === "duplicate" || !monitors.some(m => m.name === name && m.enabled))
+            return;
+
+        monitors = Layout.reorder(monitors, name, position);
+        dirty = true;
+    }
+
     function toggleDisplay(name) {
         if (busy || mode !== "custom" || monitors.length < 3)
             return;

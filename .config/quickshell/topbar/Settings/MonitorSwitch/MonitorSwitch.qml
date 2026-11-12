@@ -69,6 +69,12 @@ ColumnLayout {
         onSelected: mode => root.controller.chooseMode(mode)
     }
 
+    MonitorOrder {
+        Layout.fillWidth: true
+        visible: root.controller.mode !== "duplicate" && controller.monitors.filter(m => m.enabled).length > 1
+        controller: root.controller
+    }
+
     DisplayMap {
         Layout.fillWidth: true
         Layout.fillHeight: true

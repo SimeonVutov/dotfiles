@@ -36,7 +36,7 @@ function advance(state, seconds, bodies) {
             const target = bodies.find(body => body.id === state.requestedId && body.live);
             if (!target || target.id === source.id || state.requestAge < settleDuration || !bodies.every(body => body.settled))
                 break;
-            const plan = Motion.plan(source.center, target.center, state.angle, state.direction, bodies.map(body => body.center));
+            const plan = Motion.plan(source.center, target.center, state.angle, state.direction, bodies.map(body => body.center), state.outerTransfers);
             if (plan) {
                 state.plan = plan;
                 state.targetId = target.id;

@@ -35,6 +35,69 @@ class DisplayTests(unittest.TestCase):
         self.assertEqual(result[1]["mirror"], "eDP-1")
         self.assertTrue(all(m["name"] == "eDP-1" for m in control.workspace_targets(result).values()))
 
+    def test_requested_order_assigns_main_workspaces_without_moving_displays(self):
+        laptop, external, other = self.payload["monitors"]
+        self.payload["monitors"] = [external, laptop, other]
+
+        result = control.validate(self.payload, self.state)
+        targets = control.workspace_targets(result)
+        self.assertTrue(all(targets[n]["name"] == "DP-1" for n in range(1, 6)))
+        self.assertEqual([m["x"] for m in result], [1920, 0, 3840])
+
+    def test_orders_are_remembered_per_connected_setup(self):
+        laptop, x, y = self.monitors
+
+        with tempfile.TemporaryDirectory() as directory:
+            paths = [Path(directory) / "monitors.lua", Path(directory) / "workspaces.lua"]
+            for setup in ([x, laptop], [y, laptop]):
+                control.persist(setup, control.workspace_targets(setup), paths)
+
+            for setup, expected in (([laptop, x], [x, laptop]), ([laptop, y], [y, laptop]),
+                                    ([laptop, x, y], [laptop, x, y]), ([laptop], [laptop])):
+                restored = control.restore_order(setup, paths[0])
+                self.assertEqual([m["name"] for m in restored], [m["name"] for m in expected])
+
+            combined = [y, x, laptop]
+            control.persist(combined, control.workspace_targets(combined), paths)
+            self.assertEqual(control.restore_order([laptop, x, y], paths[0]), combined)
+            self.assertEqual(control.restore_order([laptop, x], paths[0]), [x, laptop])
+
+    def test_unknown_hardware_and_invalid_order_use_default(self):
+        laptop, external = self.monitors[:2]
+        original = [dict(external, identity="screen-X"), dict(laptop, identity="laptop")]
+        replacement = [dict(laptop, identity="laptop"), dict(external, identity="screen-Y")]
+
+        with tempfile.TemporaryDirectory() as directory:
+            paths = [Path(directory) / "monitors.lua", Path(directory) / "workspaces.lua"]
+            control.persist(original, control.workspace_targets(original), paths)
+            self.assertEqual(control.restore_order(replacement, paths[0]), replacement)
+
+            paths[0].write_text(control.ORDER_PREFIX + '["laptop", "laptop"]\n'
+                                + control.ORDER_PREFIX + '{"invalid": true}\n')
+            self.assertEqual(control.restore_order(replacement, paths[0]), replacement)
+
+    def test_workspace_sync_uses_restored_order_and_skips_matching_rules(self):
+        ordered = [self.monitors[1], self.monitors[0], self.monitors[2]]
+        responses = {"workspacerules": [], "workspaces": [], "activeworkspace": {"id": 1}}
+
+        with (
+            patch.object(control, "discover", return_value={"monitors": ordered}),
+            patch.object(control, "hyprctl", side_effect=lambda command, *args, **kwargs: responses.get(command, "ok")),
+            patch.object(control, "bind_workspaces") as bind,
+        ):
+            control.sync_workspaces()
+            self.assertEqual(bind.call_args.args[0][1]["name"], "DP-1")
+
+        rules = [{"workspaceString": str(n), "monitor": m["selector"]}
+                 for n, m in control.workspace_targets(ordered).items()]
+        with (
+            patch.object(control, "discover", return_value={"monitors": ordered}),
+            patch.object(control, "hyprctl", return_value=rules),
+            patch.object(control, "bind_workspaces") as bind,
+        ):
+            control.sync_workspaces()
+            bind.assert_not_called()
+
     def test_invalid_requests_are_rejected_before_apply(self):
         variants = []
         for changes in ({"x": 400}, {"x": 9000}, {"rate": float("nan")}, {"rate": 61},

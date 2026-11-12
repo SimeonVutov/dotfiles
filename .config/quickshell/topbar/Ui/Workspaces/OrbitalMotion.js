@@ -72,35 +72,44 @@ function progression(distance, duration, speed, seconds) {
 
 function tangentRoutes(source, destination, direction, bodies) {
     const dx = destination[0] - source[0];
-    if (!Number.isFinite(dx) || Math.abs(dx) <= 2 * radiusX)
+    const dy = (destination[1] - source[1]) * radiusX / radiusY;
+    const distance = Math.hypot(dx, dy);
+    if (!Number.isFinite(distance) || distance <= 2 * radiusX)
         return [];
+
     const routes = [];
     for (const opposite of [false, true]) {
-        const nx = opposite ? 2 * radiusX / dx : 0;
-        const ny = -Math.sign(dx) * direction * Math.sqrt(1 - nx * nx);
+        const along = opposite ? 2 * radiusX / distance : 0;
+        const across = direction * Math.sqrt(1 - along * along);
+        const nx = along * dx / distance + across * dy / distance;
+        const ny = along * dy / distance - across * dx / distance;
         const start = [source[0] + radiusX * nx, radiusX * ny];
         const end = [destination[0] + (opposite ? -1 : 1) * radiusX * nx,
-            (opposite ? -1 : 1) * radiusX * ny];
+            dy + (opposite ? -1 : 1) * radiusX * ny];
         const vector = [end[0] - start[0], end[1] - start[1]];
         const length = Math.hypot(vector[0], vector[1]);
         const clear = bodies.every(body => {
-            const t = Math.max(0, Math.min(1, ((body[0] - start[0]) * vector[0] - start[1] * vector[1]) / (length * length)));
-            return Math.hypot(start[0] + t * vector[0] - body[0], start[1] + t * vector[1]) >= 17;
+            const y = (body[1] - source[1]) * radiusX / radiusY;
+            const t = Math.max(0, Math.min(1, ((body[0] - start[0]) * vector[0] + (y - start[1]) * vector[1]) / (length * length)));
+            return Math.hypot(start[0] + t * vector[0] - body[0], start[1] + t * vector[1] - y) >= 17;
         });
         if (!clear)
             continue;
         const angle = Math.atan2(ny, nx);
         routes.push({ start: start, end: end, length: length, source: source.slice(), destination: destination.slice(),
             departureAngle: angle, arrivalAngle: opposite ? angle + Math.PI : angle,
-            direction: opposite ? -direction : direction, duration: Math.min(0.56, 0.34 + length / 600) });
+            direction: opposite ? -direction : direction, departureDirection: direction,
+            duration: Math.min(0.56, 0.34 + length / 600) });
     }
     return routes;
 }
 
-function plan(source, destination, angle, direction, bodies) {
+function plan(source, destination, angle, direction, bodies, outerOnly) {
     const routes = tangentRoutes(source, destination, direction, bodies);
     let best = null;
     for (const route of routes) {
+        if (outerOnly && route.direction !== direction)
+            continue;
         const arc = ((route.departureAngle - angle) * direction % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
         const duration = arc < 0.12 ? arc / angularSpeed
             : Math.min(transferBudget - route.duration, Math.max(0.1, arc / 9));
@@ -118,15 +127,60 @@ function sampleDeparture(plan, seconds) {
         plan.direction * travel.speed, plan.direction * travel.acceleration) };
 }
 
+function sampleCurve(curve, seconds) {
+    const timing = sample(curve, seconds);
+    const progress = Math.max(0, Math.min(1, timing.p[0]));
+    const count = curve.segments ? curve.segments.length : 1;
+    const segment = Math.min(count - 1, Math.floor(progress * count));
+    const t = progress * count - segment;
+    const u = 1 - t;
+    const points = curve.segments ? curve.segments[segment] : curve.controls;
+    const pose = {p: [], v: [], a: []};
+
+    for (let axis = 0; axis < 3; axis++) {
+        const first = 3 * (u * u * (points[1][axis] - points[0][axis])
+            + 2 * u * t * (points[2][axis] - points[1][axis]) + t * t * (points[3][axis] - points[2][axis]));
+        const second = 6 * (u * (points[2][axis] - 2 * points[1][axis] + points[0][axis])
+            + t * (points[3][axis] - 2 * points[2][axis] + points[1][axis]));
+        pose.p.push(u ** 3 * points[0][axis] + 3 * u * u * t * points[1][axis]
+            + 3 * u * t * t * points[2][axis] + t ** 3 * points[3][axis]);
+        pose.v.push(first * timing.v[0] * count);
+        pose.a.push(second * (timing.v[0] * count) ** 2 + first * timing.a[0] * count);
+    }
+
+    const angle = Math.PI * t;
+    const sine = Math.sin(angle);
+    const cosine = Math.cos(angle);
+    const firstBend = 4 * sine ** 3 * cosine * Math.PI;
+    const secondBend = 4 * (3 * sine * sine * cosine * cosine - sine ** 4) * Math.PI * Math.PI;
+    for (let axis = 0; axis < 3; axis++) {
+        const bend = curve.arc * curve.normal[axis];
+        pose.p[axis] += bend * sine ** 4;
+        pose.v[axis] += bend * firstBend * timing.v[0];
+        pose.a[axis] += bend * (secondBend * timing.v[0] ** 2 + firstBend * timing.a[0]);
+    }
+
+    return pose;
+}
+
 function sampleTransfer(route, seconds) {
+    if (route.curve)
+        return sampleCurve(route.curve, seconds);
+
     const travel = progression(route.length, route.duration, radiusX * angularSpeed, seconds);
     const vector = [(route.end[0] - route.start[0]) / route.length,
         (route.end[1] - route.start[1]) / route.length];
     const plane = [route.start[0] + vector[0] * travel.position, route.start[1] + vector[1] * travel.position];
     const tangent = [vector[0], vector[1] * radiusY / radiusX, vector[1] * radiusZ / radiusX];
+
+    // Monitor height differences translate the orbit plane without adding depth at arrival.
+    const depth = (route.destination[1] - route.source[1]) * radiusZ / radiusY;
+    const t = Math.max(0, Math.min(1, seconds / route.duration));
+    const depthSpeed = depth * 30 * t * t * (1 - t) * (1 - t) / route.duration;
+    const depthAcceleration = depth * 60 * t * (1 - t) * (1 - 2 * t) / (route.duration * route.duration);
     return {
-        p: [plane[0], route.source[1] + plane[1] * radiusY / radiusX, plane[1] * radiusZ / radiusX],
-        v: tangent.map(value => value * travel.speed),
-        a: tangent.map(value => value * travel.acceleration)
+        p: [plane[0], route.source[1] + plane[1] * radiusY / radiusX, plane[1] * radiusZ / radiusX - depth * ease(t)],
+        v: tangent.map((value, index) => value * travel.speed - (index === 2 ? depthSpeed : 0)),
+        a: tangent.map((value, index) => value * travel.acceleration - (index === 2 ? depthAcceleration : 0))
     };
 }
