@@ -20,6 +20,31 @@ WORKSPACE_IDS = range(1, 11)
 MODE_PATTERN = re.compile(r"^(\d+)x(\d+)@(\d+(?:\.\d+)?)(?:Hz)?$")
 CONNECTOR_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
 SAVED_MONITOR_PATTERN = re.compile(r' -- monitor-switch: ("(?:[^"\\]|\\.)*")$')
+ORDER_PREFIX = "-- monitor-switch-order: "
+
+
+def saved_order(line):
+    if not line.startswith(ORDER_PREFIX):
+        return None
+    try:
+        order = json.loads(line[len(ORDER_PREFIX):])
+    except ValueError:
+        return None
+    if isinstance(order, list) and all(isinstance(item, str) for item in order) and len(set(order)) == len(order):
+        return order
+    return None
+
+
+def restore_order(monitors, path):
+    # A preference belongs to the complete connected setup, including disabled outputs.
+    by_identity = {m.get("identity", m["selector"]): m for m in monitors}
+    if len(by_identity) != len(monitors) or not path.exists():
+        return monitors
+    for line in reversed(path.read_text().splitlines()):
+        order = saved_order(line)
+        if order is not None and set(order) == set(by_identity):
+            return [by_identity[item] for item in order]
+    return monitors
 
 
 def hyprctl(*args, as_json=False):
@@ -62,6 +87,10 @@ def discover():
         selector = "desc:" + description if description and unique and not re.search(r"[,;\x00-\x1f#$\\]", description) else name
         monitors.append({
             "name": name, "selector": selector, "description": description,
+            "identity": hashlib.sha256(json.dumps([
+                description, output.get("make", ""), output.get("model", ""), output.get("serial", ""),
+                name if not description or not unique else "",
+            ]).encode()).hexdigest(),
             "internal": bool(re.match(r"^(eDP|LVDS|DSI)-?", name)),
             "enabled": not output.get("disabled", False),
             "width": width, "height": height, "rate": rate,
@@ -71,6 +100,8 @@ def discover():
             "mirror": names_by_id.get(str(output.get("mirrorOf", "none")), "none"), "modes": modes,
         })
     monitors.sort(key=lambda m: (not m["internal"], m["name"]))
+    config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr/conf"
+    monitors = restore_order(monitors, config / "monitors/current.lua")
     revision = hashlib.sha256(json.dumps(monitors, sort_keys=True).encode()).hexdigest()
     return {"monitors": monitors, "revision": revision}
 
@@ -99,8 +130,9 @@ def validate(payload, state):
     if mode not in ("laptop", "external", "extend", "duplicate", "custom"):
         raise ValueError("Unknown display mode")
     result = []
-    for original in state["monitors"]:
-        requested = next(m for m in draft if m["name"] == original["name"])
+    originals = {m["name"]: m for m in state["monitors"]}
+    for requested in draft:
+        original = originals[requested["name"]]
         monitor = dict(original)
         if type(requested.get("enabled")) is not bool:
             raise ValueError("Invalid display state")
@@ -307,14 +339,18 @@ def persist(monitors, targets, paths):
     selectors = {m["selector"] for m in monitors} | {m["name"] for m in monitors}
     existing = paths[0].read_text() if paths[0].exists() else ""
     retained = []
+    order = [m.get("identity", m["selector"]) for m in monitors]
     for line in existing.splitlines():
+        previous_order = saved_order(line)
+        if previous_order is not None and set(previous_order) == set(order):
+            continue
         saved = SAVED_MONITOR_PATTERN.search(line)
         if saved and json.loads(saved[1]) in selectors:
             continue
         retained.append(line)
     stable = {m["name"]: m["selector"] for m in monitors}
     saved = [dict(m, mirror=stable.get(m["mirror"], "none")) for m in monitors]
-    contents = ["\n".join(retained + [saved_monitor_rule(m) for m in saved]) + "\n",
+    contents = ["\n".join(retained + [ORDER_PREFIX + json.dumps(order)] + [saved_monitor_rule(m) for m in saved]) + "\n",
                 "".join(workspace_rule(n, m["selector"]) + "\n" for n, m in targets.items())]
     backups = [path.read_text() if path.exists() else None for path in paths]
     try:
