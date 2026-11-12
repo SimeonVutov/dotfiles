@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import qs.Ui.Workspaces
 import "../Ui/Workspaces/OrbitFlight.js" as Flight
 import "../Ui/Workspaces/OrbitalMotion.js" as Motion
+import "../Ui/Workspaces/MonitorTransfer.js" as MonitorTransfer
 
 Singleton {
     id: root
@@ -111,6 +112,13 @@ Singleton {
         const end = Motion.orbit(route.destination, route.arrivalAngle, route.direction * Motion.angularSpeed);
         const distance = Math.hypot(end.p[0] - start.p[0], end.p[1] - start.p[1]);
         route.duration = Math.max(.85, Math.min(1.4, distance / 1800));
+
+        const screens = Object.values(scenes).map(entry => entry.screen);
+        const edgeCurve = MonitorTransfer.throughSharedEdge(start, end, screens, route.duration);
+        if (edgeCurve) {
+            route.curve = edgeCurve;
+            return;
+        }
 
         // Long tangent handles shape the curve; a separate timing curve preserves orbital speed at both ends.
         const length = Math.max(1, distance * .35, Math.hypot(start.v[0], start.v[1]) * route.duration / 3);
