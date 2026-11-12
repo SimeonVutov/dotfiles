@@ -3,12 +3,37 @@ import Quickshell.Hyprland
 import qs.Common
 import qs.Ui
 import qs.Ui.Workspaces
+import qs.Services
 
 BarModule {
     id: root
 
     readonly property var monitor: screen ? Hyprland.monitorFor(screen) : null
     readonly property var activeWorkspace: monitor ? monitor.activeWorkspace : null
+    property string registeredMonitor: ""
+
+    function registerScene() {
+        if (registeredMonitor)
+            WorkspaceRocket.unregisterScene(registeredMonitor, orbit);
+        registeredMonitor = monitor?.name || "";
+        if (registeredMonitor && screen)
+            WorkspaceRocket.registerScene(registeredMonitor, orbit, screen);
+    }
+
+    Component.onCompleted: registerScene()
+    Component.onDestruction: if (WorkspaceRocket) WorkspaceRocket.unregisterScene(registeredMonitor, orbit)
+    onMonitorChanged: Qt.callLater(registerScene)
+    onActiveWorkspaceChanged: Qt.callLater(registerScene)
+
+    Connections {
+        target: root.screen
+        function onGeometryChanged() { root.registerScene(); }
+    }
+
+    Connections {
+        target: orbit
+        function onImplicitWidthChanged() { Qt.callLater(root.registerScene); }
+    }
     readonly property var workspaceSnapshot: {
         const values = Hyprland.workspaces.values.filter(workspace =>
             workspace && workspace.id > 0 && workspace.monitor === root.monitor);
@@ -21,6 +46,8 @@ BarModule {
     }
 
     OrbitScene {
+        id: orbit
+        shipActive: !!root.monitor && WorkspaceRocket.monitorName === root.monitor.name && WorkspaceRocket.stage !== "transfer"
         workspaceMonitor: root.monitor
         workspaces: root.workspaceSnapshot
         activeId: root.activeWorkspace && root.activeWorkspace.monitor === root.monitor

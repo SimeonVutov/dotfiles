@@ -13,6 +13,7 @@ Item {
     property int activeId: -1
     property bool motionEnabled: true
     property bool scrollEnabled: true
+    property bool shipActive: true
     signal workspaceRequested(int workspaceId)
     signal wheelRequested(int direction)
 
@@ -29,6 +30,7 @@ Item {
     property bool layoutMoving: false
     property real targetWidth: 0
     property real heading: 0
+    property bool externalDeparture: false
     property real throttle: 0
     property real braking: 0
     property real clock: 0
@@ -178,7 +180,7 @@ Item {
 
     function reflow() {
         let moved = false;
-        if (flight && flight.mode !== "orbit") {
+        if (externalDeparture || (flight && flight.mode !== "orbit")) {
             pendingReflow = true;
             return;
         }
@@ -343,6 +345,83 @@ Item {
         nextTrailAt = clock;
     }
 
+    function screenPose(screen) {
+        if (!Motion.finitePose(pose))
+            return null;
+        const point = mapToItem(null, pose.p[0], pose.p[1]);
+        return {
+            p: [screen.x + point.x, screen.y + point.y, pose.p[2]],
+            v: pose.v.slice(),
+            a: pose.a.slice()
+        };
+    }
+
+    function departureState(screen) {
+        if (!flight || flight.mode !== "orbit")
+            return null;
+        const center = centerFor(flight.orbitId, false);
+        if (!center)
+            return null;
+        const point = mapToItem(null, center[0], center[1]);
+        return {
+            state: Object.assign({}, flight, {pose: screenPose(screen), heading: heading}),
+            body: {id: flight.orbitId, center: [screen.x + point.x, screen.y + point.y], live: true, settled: true}
+        };
+    }
+
+    function arrivalTarget(screen) {
+        flight = null;
+        pose = null;
+        settledActiveId = activeId;
+        synchronize();
+        const center = centerFor(activeId, true);
+        if (center && slotFor(activeId) >= 0) {
+            revealBody(activeId);
+            flight = Flight.create(activeId, center);
+            pose = flight.pose;
+            heading = flight.heading;
+        }
+        if (!center || slotFor(activeId) < 0)
+            return null;
+        const point = mapToItem(null, center[0], center[1]);
+        return {id: activeId, center: [screen.x + point.x, screen.y + point.y], live: true, settled: true};
+    }
+
+    function acceptFlight(arrival) {
+        const center = centerFor(arrival.orbitId, true);
+        if (!center)
+            return;
+        flight = Flight.create(arrival.orbitId, center);
+        flight.angle = arrival.angle;
+        flight.direction = arrival.direction;
+        flight.heading = arrival.heading;
+        flight.pose = Motion.orbit(center, arrival.angle, arrival.direction * Motion.angularSpeed);
+        pose = flight.pose;
+        heading = flight.heading;
+        ++flightRevision;
+    }
+
+    function displayDeparture(state, screen, seconds) {
+        const point = mapFromItem(null, state.pose.p[0] - screen.x, state.pose.p[1] - screen.y);
+        pose = Object.assign({}, state.pose, {p: [point.x, point.y, state.pose.p[2]]});
+        heading = state.heading;
+        throttle = state.throttle;
+        braking = state.braking;
+        clock += seconds;
+        recordTrail();
+    }
+
+    function recordTrail() {
+        if (!layoutMoving && clock >= nextTrailAt) {
+            const next = (trailHead + 1) % trailCapacity;
+            trailPoints[next] = { x: pose.p[0], y: pose.p[1], z: pose.p[2], heat: throttle, time: clock };
+            trailHead = next;
+            trailClock = clock;
+            nextTrailAt = nextTrailAt < clock - trailInterval
+                ? clock + trailInterval : nextTrailAt + trailInterval;
+        }
+    }
+
     function advance(seconds) {
         if (!Number.isFinite(seconds) || seconds <= 0)
             return;
@@ -356,6 +435,8 @@ Item {
         }
         if (retiringCount > 0)
             pruneRetired();
+        if (!shipActive)
+            return;
         if (slots.count === 0) {
             pose = null;
             flight = null;
@@ -399,14 +480,7 @@ Item {
             reflow();
         if (!Motion.finitePose(pose))
             return;
-        if (!layoutMoving && clock >= nextTrailAt) {
-            const next = (trailHead + 1) % trailCapacity;
-            trailPoints[next] = { x: pose.p[0], y: pose.p[1], z: pose.p[2], heat: throttle, time: clock };
-            trailHead = next;
-            trailClock = clock;
-            nextTrailAt = nextTrailAt < clock - trailInterval
-                ? clock + trailInterval : nextTrailAt + trailInterval;
-        }
+        recordTrail();
     }
 
     function resetForMonitor() {
@@ -455,6 +529,19 @@ Item {
         queueSync();
     }
     onWorkspaceMonitorChanged: if (ready) resetForMonitor()
+    onExternalDepartureChanged: {
+        if (!externalDeparture && pendingReflow)
+            reflow();
+    }
+    onShipActiveChanged: {
+        clearTrail();
+        if (shipActive && ready && !Motion.finitePose(pose)) {
+            flight = null;
+            pose = null;
+            settledActiveId = activeId;
+            synchronize();
+        }
+    }
     onScrollEnabledChanged: {
         if (!scrollEnabled) {
             wheelDelay.stop();
@@ -463,7 +550,7 @@ Item {
     }
 
     FrameAnimation {
-        running: root.motionEnabled && root.visible && root.Window.window !== null
+        running: root.motionEnabled && !root.externalDeparture && root.visible && root.Window.window !== null
             && root.Window.window.visible && root.flight !== null
         onTriggered: root.advance(frameTime)
     }
@@ -496,7 +583,7 @@ Item {
             rotation: head && tail ? Math.atan2(tail.y - head.y, tail.x - head.x) * 180 / Math.PI : 0
             color: head && head.heat > 0.25 ? "#E8C59B" : "#FFFFFF"
             opacity: Math.max(0, 1 - age / 1.05) * 0.58
-            visible: connected && opacity > 0
+            visible: root.shipActive && connected && opacity > 0
             z: head && head.z > 0 ? 2 : 0
         }
     }
@@ -536,13 +623,13 @@ Item {
             radius: width / 2
             color: "#FFE4BD"
             opacity: point ? point.heat * Math.max(0, 1 - age / 0.5) * 0.8 : 0
-            visible: opacity > 0.01
+            visible: root.shipActive && opacity > 0.01
             z: point && point.z > 0 ? 2 : 0
         }
     }
 
     OrbitalShip {
-        visible: root.pose !== null
+        visible: root.shipActive && root.pose !== null
         x: root.pose ? root.pose.p[0] - width / 2 : 0
         y: root.pose ? root.pose.p[1] - height / 2 : 0
         z: root.pose && root.pose.p[2] > 0 ? 3 : 0
