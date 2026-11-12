@@ -454,17 +454,37 @@ def interrupted(_signal, _frame):
     raise InterruptedError("Display preview cancelled")
 
 
+def sync_workspaces():
+    monitors = discover()["monitors"]
+    if not any(m["enabled"] and m["mirror"] == "none" for m in monitors):
+        return
+    targets = workspace_targets(monitors)
+    rules = {str(rule.get("workspaceString")): rule.get("monitor")
+             for rule in hyprctl("workspacerules", as_json=True)}
+    if all(rules.get(str(number)) in (monitor["name"], monitor["selector"])
+           for number, monitor in targets.items()):
+        return
+
+    bind_workspaces(targets)
+    focused = hyprctl("activeworkspace", as_json=True).get("id", 0)
+    relocate(hyprctl("workspaces", as_json=True), {n: m["name"] for n, m in targets.items()}, focused)
+
+
 def main():
     try:
         if len(sys.argv) == 2 and sys.argv[1] == "inspect":
             emit("state", **discover())
             return
-        if len(sys.argv) != 3 or sys.argv[1] != "preview":
-            raise ValueError("Expected inspect or preview")
+        syncing = len(sys.argv) == 2 and sys.argv[1] == "sync-workspaces"
+        if not syncing and (len(sys.argv) != 3 or sys.argv[1] != "preview"):
+            raise ValueError("Expected inspect, preview or sync-workspaces")
         runtime = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
         descriptor = os.open(runtime / "quickshell-monitor-switch.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         with os.fdopen(descriptor, "w") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock, fcntl.LOCK_EX | (0 if syncing else fcntl.LOCK_NB))
+            if syncing:
+                sync_workspaces()
+                return
             signal.signal(signal.SIGTERM, interrupted)
             signal.signal(signal.SIGINT, interrupted)
             preview(json.loads(sys.argv[2]))

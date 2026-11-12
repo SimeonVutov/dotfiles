@@ -69,6 +69,22 @@ class DisplayTests(unittest.TestCase):
                                 + control.ORDER_PREFIX + '{"invalid": true}\n')
             self.assertEqual(control.restore_order(replacement, paths[0]), replacement)
 
+    def test_workspace_sync_uses_restored_order_and_skips_matching_rules(self):
+        ordered = [self.monitors[1], self.monitors[0], self.monitors[2]]
+        with patch.object(control, "discover", return_value={"monitors": ordered}), \
+             patch.object(control, "hyprctl", side_effect=lambda *a, **kw: {"workspacerules": [], "workspaces": [], "activeworkspace": {"id": 1}}.get(a[0], "ok")), \
+             patch.object(control, "bind_workspaces") as bind:
+            control.sync_workspaces()
+            self.assertEqual(bind.call_args.args[0][1]["name"], "DP-1")
+
+        rules = [{"workspaceString": str(n), "monitor": m["selector"]}
+                 for n, m in control.workspace_targets(ordered).items()]
+        with patch.object(control, "discover", return_value={"monitors": ordered}), \
+             patch.object(control, "hyprctl", return_value=rules), \
+             patch.object(control, "bind_workspaces") as bind:
+            control.sync_workspaces()
+            bind.assert_not_called()
+
     def test_invalid_requests_are_rejected_before_apply(self):
         variants = []
         for changes in ({"x": 400}, {"x": 9000}, {"rate": float("nan")}, {"rate": 61},
