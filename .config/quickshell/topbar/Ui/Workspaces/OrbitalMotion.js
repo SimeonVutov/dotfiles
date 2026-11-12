@@ -76,6 +76,7 @@ function tangentRoutes(source, destination, direction, bodies) {
     const distance = Math.hypot(dx, dy);
     if (!Number.isFinite(distance) || distance <= 2 * radiusX)
         return [];
+
     const routes = [];
     for (const opposite of [false, true]) {
         const along = opposite ? 2 * radiusX / distance : 0;
@@ -126,43 +127,52 @@ function sampleDeparture(plan, seconds) {
         plan.direction * travel.speed, plan.direction * travel.acceleration) };
 }
 
-function sampleTransfer(route, seconds) {
-    if (route.curve) {
-        const timing = sample(route.curve, seconds);
-        const progress = Math.max(0, Math.min(1, timing.p[0]));
-        const count = route.curve.segments ? route.curve.segments.length : 1;
-        const segment = Math.min(count - 1, Math.floor(progress * count));
-        const t = progress * count - segment;
-        const u = 1 - t;
-        const points = route.curve.segments ? route.curve.segments[segment] : route.curve.controls;
-        const pose = {p: [], v: [], a: []};
-        for (let axis = 0; axis < 3; axis++) {
-            const first = 3 * (u * u * (points[1][axis] - points[0][axis])
-                + 2 * u * t * (points[2][axis] - points[1][axis]) + t * t * (points[3][axis] - points[2][axis]));
-            const second = 6 * (u * (points[2][axis] - 2 * points[1][axis] + points[0][axis])
-                + t * (points[3][axis] - 2 * points[2][axis] + points[1][axis]));
-            pose.p.push(u ** 3 * points[0][axis] + 3 * u * u * t * points[1][axis]
-                + 3 * u * t * t * points[2][axis] + t ** 3 * points[3][axis]);
-            pose.v.push(first * timing.v[0] * count);
-            pose.a.push(second * (timing.v[0] * count) ** 2 + first * timing.a[0] * count);
-        }
-        const angle = Math.PI * t;
-        const sine = Math.sin(angle), cosine = Math.cos(angle);
-        const firstBend = 4 * sine ** 3 * cosine * Math.PI;
-        const secondBend = 4 * (3 * sine * sine * cosine * cosine - sine ** 4) * Math.PI * Math.PI;
-        for (let axis = 0; axis < 3; axis++) {
-            const bend = route.curve.arc * route.curve.normal[axis];
-            pose.p[axis] += bend * sine ** 4;
-            pose.v[axis] += bend * firstBend * timing.v[0];
-            pose.a[axis] += bend * (secondBend * timing.v[0] ** 2 + firstBend * timing.a[0]);
-        }
-        return pose;
+function sampleCurve(curve, seconds) {
+    const timing = sample(curve, seconds);
+    const progress = Math.max(0, Math.min(1, timing.p[0]));
+    const count = curve.segments ? curve.segments.length : 1;
+    const segment = Math.min(count - 1, Math.floor(progress * count));
+    const t = progress * count - segment;
+    const u = 1 - t;
+    const points = curve.segments ? curve.segments[segment] : curve.controls;
+    const pose = {p: [], v: [], a: []};
+
+    for (let axis = 0; axis < 3; axis++) {
+        const first = 3 * (u * u * (points[1][axis] - points[0][axis])
+            + 2 * u * t * (points[2][axis] - points[1][axis]) + t * t * (points[3][axis] - points[2][axis]));
+        const second = 6 * (u * (points[2][axis] - 2 * points[1][axis] + points[0][axis])
+            + t * (points[3][axis] - 2 * points[2][axis] + points[1][axis]));
+        pose.p.push(u ** 3 * points[0][axis] + 3 * u * u * t * points[1][axis]
+            + 3 * u * t * t * points[2][axis] + t ** 3 * points[3][axis]);
+        pose.v.push(first * timing.v[0] * count);
+        pose.a.push(second * (timing.v[0] * count) ** 2 + first * timing.a[0] * count);
     }
+
+    const angle = Math.PI * t;
+    const sine = Math.sin(angle);
+    const cosine = Math.cos(angle);
+    const firstBend = 4 * sine ** 3 * cosine * Math.PI;
+    const secondBend = 4 * (3 * sine * sine * cosine * cosine - sine ** 4) * Math.PI * Math.PI;
+    for (let axis = 0; axis < 3; axis++) {
+        const bend = curve.arc * curve.normal[axis];
+        pose.p[axis] += bend * sine ** 4;
+        pose.v[axis] += bend * firstBend * timing.v[0];
+        pose.a[axis] += bend * (secondBend * timing.v[0] ** 2 + firstBend * timing.a[0]);
+    }
+
+    return pose;
+}
+
+function sampleTransfer(route, seconds) {
+    if (route.curve)
+        return sampleCurve(route.curve, seconds);
+
     const travel = progression(route.length, route.duration, radiusX * angularSpeed, seconds);
     const vector = [(route.end[0] - route.start[0]) / route.length,
         (route.end[1] - route.start[1]) / route.length];
     const plane = [route.start[0] + vector[0] * travel.position, route.start[1] + vector[1] * travel.position];
     const tangent = [vector[0], vector[1] * radiusY / radiusX, vector[1] * radiusZ / radiusX];
+
     // Monitor height differences translate the orbit plane without adding depth at arrival.
     const depth = (route.destination[1] - route.source[1]) * radiusZ / radiusY;
     const t = Math.max(0, Math.min(1, seconds / route.duration));

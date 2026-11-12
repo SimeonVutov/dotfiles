@@ -348,6 +348,7 @@ Item {
     function screenPose(screen) {
         if (!Motion.finitePose(pose))
             return null;
+
         const point = mapToItem(null, pose.p[0], pose.p[1]);
         return {
             p: [screen.x + point.x, screen.y + point.y, pose.p[2]],
@@ -359,6 +360,7 @@ Item {
     function departureState(screen) {
         if (!flight || flight.mode !== "orbit")
             return null;
+
         const center = centerFor(flight.orbitId, false);
         if (!center)
             return null;
@@ -374,15 +376,16 @@ Item {
         pose = null;
         settledActiveId = activeId;
         synchronize();
+
         const center = centerFor(activeId, true);
-        if (center && slotFor(activeId) >= 0) {
-            revealBody(activeId);
-            flight = Flight.create(activeId, center);
-            pose = flight.pose;
-            heading = flight.heading;
-        }
         if (!center || slotFor(activeId) < 0)
             return null;
+
+        revealBody(activeId);
+        flight = Flight.create(activeId, center);
+        pose = flight.pose;
+        heading = flight.heading;
+
         const point = mapToItem(null, center[0], center[1]);
         return {id: activeId, center: [screen.x + point.x, screen.y + point.y], live: true, settled: true};
     }
@@ -391,11 +394,13 @@ Item {
         const center = centerFor(arrival.orbitId, true);
         if (!center)
             return;
+
         flight = Flight.create(arrival.orbitId, center);
         flight.angle = arrival.angle;
         flight.direction = arrival.direction;
         flight.heading = arrival.heading;
         flight.pose = Motion.orbit(center, arrival.angle, arrival.direction * Motion.angularSpeed);
+
         pose = flight.pose;
         heading = flight.heading;
         ++flightRevision;
@@ -407,19 +412,21 @@ Item {
         heading = state.heading;
         throttle = state.throttle;
         braking = state.braking;
+
         clock += seconds;
         recordTrail();
     }
 
     function recordTrail() {
-        if (!layoutMoving && clock >= nextTrailAt) {
-            const next = (trailHead + 1) % trailCapacity;
-            trailPoints[next] = { x: pose.p[0], y: pose.p[1], z: pose.p[2], heat: throttle, time: clock };
-            trailHead = next;
-            trailClock = clock;
-            nextTrailAt = nextTrailAt < clock - trailInterval
-                ? clock + trailInterval : nextTrailAt + trailInterval;
-        }
+        if (layoutMoving || clock < nextTrailAt)
+            return;
+
+        const next = (trailHead + 1) % trailCapacity;
+        trailPoints[next] = { x: pose.p[0], y: pose.p[1], z: pose.p[2], heat: throttle, time: clock };
+        trailHead = next;
+        trailClock = clock;
+        nextTrailAt = nextTrailAt < clock - trailInterval
+            ? clock + trailInterval : nextTrailAt + trailInterval;
     }
 
     function advance(seconds) {

@@ -14,16 +14,20 @@ Singleton {
     property string focusedMonitor: Hyprland.focusedMonitor?.name || ""
     property string monitorName: ""
     property var scenes: ({})
+
     property var transfer: null
     property var bodies: []
     property string destination: ""
     property int destinationId: -1
+
     property var pose: null
     property real heading: 0
     property real elapsed: 0
+
     property var trailPoints: []
     property int trailRevision: 0
     property real trailOpacity: 1
+
     property string stage: "idle"
     property string departureMonitor: ""
     readonly property bool travelling: transfer !== null
@@ -36,6 +40,7 @@ Singleton {
     function unregisterScene(name, scene) {
         if (scenes[name]?.scene === scene)
             delete scenes[name];
+
         Qt.callLater(followFocus);
     }
 
@@ -43,8 +48,10 @@ Singleton {
         if (!focusedMonitor) {
             retry.stop();
             fade.stop();
+
             if (scenes[departureMonitor])
                 scenes[departureMonitor].scene.externalDeparture = false;
+
             stage = "idle";
             transfer = null;
             monitorName = "";
@@ -52,16 +59,20 @@ Singleton {
             ++trailRevision;
             return;
         }
+
         if (!monitorName && !travelling) {
             monitorName = focusedMonitor;
             return;
         }
+
         if (!travelling && focusedMonitor === monitorName)
             return;
+
         // Keep a committed flight intact. followFocus runs again after capture
         // and reads the latest request, so rapid switches cannot restart the curve.
         if (travelling && stage === "transfer")
             return;
+
         if (travelling && focusedMonitor === departureMonitor) {
             destination = departureMonitor;
             destinationId = transfer.orbitId;
@@ -72,11 +83,13 @@ Singleton {
         const target = scenes[focusedMonitor];
         if (!target)
             return;
+
         const arrival = target.scene.arrivalTarget(target.screen);
         const previous = bodies.find(body => body.id === destinationId);
         if (travelling && destination === focusedMonitor && destinationId === arrival?.id
                 && previous?.center[0] === arrival.center[0] && previous?.center[1] === arrival.center[1])
             return;
+
         const source = scenes[monitorName];
         const departure = travelling ? null : source?.scene.departureState(source.screen);
         if (!arrival || (!travelling && source && !departure)) {
@@ -100,6 +113,7 @@ Singleton {
             stage = "departure";
             transfer = Object.assign({}, departure.state, {outerTransfers: true});
         }
+
         bodies = bodies.filter(body => body.id === transfer.orbitId).concat([arrival]);
         destination = focusedMonitor;
         destinationId = arrival.id;
@@ -121,11 +135,16 @@ Singleton {
         }
 
         // Long tangent handles shape the curve; a separate timing curve preserves orbital speed at both ends.
-        const length = Math.max(1, distance * .35, Math.hypot(start.v[0], start.v[1]) * route.duration / 3);
-        const startSpeed = Math.max(.01, Math.hypot(start.v[0], start.v[1]));
+        const orbitalSpeed = Math.hypot(start.v[0], start.v[1]);
+        const startSpeed = Math.max(.01, orbitalSpeed);
         const endSpeed = Math.hypot(end.v[0], end.v[1]);
-        const controls = [start.p, start.p.map((value, i) => value + start.v[i] / startSpeed * length),
-            end.p.map((value, i) => value - end.v[i] / endSpeed * length), end.p];
+        const length = Math.max(1, distance * .35, orbitalSpeed * route.duration / 3);
+        const controls = [
+            start.p,
+            start.p.map((value, axis) => value + start.v[axis] / startSpeed * length),
+            end.p.map((value, axis) => value - end.v[axis] / endSpeed * length),
+            end.p
+        ];
 
         const timingStart = {p: [0, 0, 0], v: [startSpeed / (3 * length), 0, 0], a: [0, 0, 0]};
         const timingEnd = {p: [1, 0, 0], v: [endSpeed / (3 * length), 0, 0], a: [0, 0, 0]};
@@ -144,14 +163,17 @@ Singleton {
         const dt = Math.min(seconds, .1);
         if (dt <= 0 || !transfer)
             return;
+
         elapsed += dt;
         Flight.advance(transfer, dt, bodies);
+
         const route = transfer.plan?.route;
         if (route && !route.curve)
             shapeRoute(route);
 
         pose = transfer.pose;
         heading = transfer.heading;
+
         if (stage === "departure") {
             const source = scenes[departureMonitor];
             if (transfer.mode === "transfer" || !source) {
@@ -163,6 +185,7 @@ Singleton {
                 source.scene.displayDeparture(transfer, source.screen, dt);
             }
         }
+
         if (stage === "transfer")
             trailPoints.push({x: pose.p[0], y: pose.p[1], time: elapsed});
         while (trailPoints.length > 100 || (trailPoints.length > 1 && elapsed - trailPoints[0].time > .65))
@@ -176,9 +199,11 @@ Singleton {
             const source = scenes[departureMonitor];
             if (source)
                 source.scene.externalDeparture = false;
+
             monitorName = destination;
             stage = "idle";
             transfer = null;
+
             fade.start();
             Qt.callLater(followFocus);
         }

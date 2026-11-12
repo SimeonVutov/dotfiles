@@ -13,6 +13,7 @@ RowLayout {
     readonly property var names: monitors.map(m => m.name).sort()
     property string dragging: ""
     property real dragX: 0
+
     spacing: 14
     implicitHeight: 36
 
@@ -53,7 +54,10 @@ RowLayout {
 
                 Behavior on x {
                     enabled: !chip.moving
-                    NumberAnimation { duration: Theme.durationFast; easing.type: Theme.easingEmphasized }
+                    NumberAnimation {
+                        duration: Theme.durationFast
+                        easing.type: Theme.easingEmphasized
+                    }
                 }
 
                 RowLayout {
@@ -66,12 +70,14 @@ RowLayout {
                         font.pixelSize: Theme.fontSizeSmall
                         font.weight: Font.DemiBold
                     }
+
                     BarText {
                         Layout.fillWidth: true
                         text: chip.monitor?.internal ? "Laptop" : chip.name
                         font.pixelSize: Theme.fontSizeSmall
                         elide: Text.ElideRight
                     }
+
                     BarText {
                         text: "⠿"
                         color: Theme.popupSubtleText
@@ -102,6 +108,7 @@ RowLayout {
                     onTranslationChanged: {
                         if (!active)
                             return;
+
                         root.dragX = Math.max(0, Math.min(track.width - chip.width, chip.startX + translation.x));
                         const position = Math.round(root.dragX / (track.chipWidth + track.gap));
                         if (position !== chip.position)

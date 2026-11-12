@@ -26,13 +26,18 @@ ORDER_PREFIX = "-- monitor-switch-order: "
 def saved_order(line):
     if not line.startswith(ORDER_PREFIX):
         return None
+
     try:
         order = json.loads(line[len(ORDER_PREFIX):])
     except ValueError:
         return None
-    if isinstance(order, list) and all(isinstance(item, str) for item in order) and len(set(order)) == len(order):
-        return order
-    return None
+
+    if not isinstance(order, list) or not all(isinstance(item, str) for item in order):
+        return None
+    if len(set(order)) != len(order):
+        return None
+
+    return order
 
 
 def restore_order(monitors, path):
@@ -40,10 +45,12 @@ def restore_order(monitors, path):
     by_identity = {m.get("identity", m["selector"]): m for m in monitors}
     if len(by_identity) != len(monitors) or not path.exists():
         return monitors
+
     for line in reversed(path.read_text().splitlines()):
         order = saved_order(line)
         if order is not None and set(order) == set(by_identity):
             return [by_identity[item] for item in order]
+
     return monitors
 
 
@@ -99,6 +106,7 @@ def discover():
             "x": output.get("x", 0), "y": output.get("y", 0),
             "mirror": names_by_id.get(str(output.get("mirrorOf", "none")), "none"), "modes": modes,
         })
+
     monitors.sort(key=lambda m: (not m["internal"], m["name"]))
     config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr/conf"
     monitors = restore_order(monitors, config / "monitors/current.lua")
@@ -340,6 +348,7 @@ def persist(monitors, targets, paths):
     existing = paths[0].read_text() if paths[0].exists() else ""
     retained = []
     order = [m.get("identity", m["selector"]) for m in monitors]
+
     for line in existing.splitlines():
         previous_order = saved_order(line)
         if previous_order is not None and set(previous_order) == set(order):
@@ -348,11 +357,14 @@ def persist(monitors, targets, paths):
         if saved and json.loads(saved[1]) in selectors:
             continue
         retained.append(line)
+
     stable = {m["name"]: m["selector"] for m in monitors}
     saved = [dict(m, mirror=stable.get(m["mirror"], "none")) for m in monitors]
-    contents = ["\n".join(retained + [ORDER_PREFIX + json.dumps(order)] + [saved_monitor_rule(m) for m in saved]) + "\n",
-                "".join(workspace_rule(n, m["selector"]) + "\n" for n, m in targets.items())]
+    monitor_lines = retained + [ORDER_PREFIX + json.dumps(order)] + [saved_monitor_rule(m) for m in saved]
+    workspace_lines = [workspace_rule(number, monitor["selector"]) for number, monitor in targets.items()]
+    contents = ["\n".join(monitor_lines) + "\n", "".join(line + "\n" for line in workspace_lines)]
     backups = [path.read_text() if path.exists() else None for path in paths]
+
     try:
         for path, content in zip(paths, contents):
             atomic_write(path, content)
@@ -458,9 +470,12 @@ def sync_workspaces():
     monitors = discover()["monitors"]
     if not any(m["enabled"] and m["mirror"] == "none" for m in monitors):
         return
+
     targets = workspace_targets(monitors)
-    rules = {str(rule.get("workspaceString")): rule.get("monitor")
-             for rule in hyprctl("workspacerules", as_json=True)}
+    rules = {
+        str(rule.get("workspaceString")): rule.get("monitor")
+        for rule in hyprctl("workspacerules", as_json=True)
+    }
     if all(rules.get(str(number)) in (monitor["name"], monitor["selector"])
            for number, monitor in targets.items()):
         return
@@ -475,9 +490,11 @@ def main():
         if len(sys.argv) == 2 and sys.argv[1] == "inspect":
             emit("state", **discover())
             return
+
         syncing = len(sys.argv) == 2 and sys.argv[1] == "sync-workspaces"
         if not syncing and (len(sys.argv) != 3 or sys.argv[1] != "preview"):
             raise ValueError("Expected inspect, preview or sync-workspaces")
+
         runtime = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
         descriptor = os.open(runtime / "quickshell-monitor-switch.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         with os.fdopen(descriptor, "w") as lock:
@@ -485,6 +502,7 @@ def main():
             if syncing:
                 sync_workspaces()
                 return
+
             signal.signal(signal.SIGTERM, interrupted)
             signal.signal(signal.SIGINT, interrupted)
             preview(json.loads(sys.argv[2]))

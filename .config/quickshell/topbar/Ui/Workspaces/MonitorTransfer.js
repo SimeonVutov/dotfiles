@@ -7,9 +7,11 @@ function sharedEdge(source, target) {
         const size = axis === 0 ? "width" : "height";
         const crossPosition = axis === 0 ? "y" : "x";
         const crossSize = axis === 0 ? "height" : "width";
+
         const direction = target[position] >= source[position] + source[size] - 1 ? 1 : -1;
         const edge = source[position] + (direction > 0 ? source[size] : 0);
         const otherEdge = target[position] + (direction > 0 ? 0 : target[size]);
+
         const low = Math.max(source[crossPosition], target[crossPosition]);
         const high = Math.min(source[crossPosition] + source[crossSize], target[crossPosition] + target[crossSize]);
 
@@ -23,6 +25,7 @@ function tangentHandle(pose, screen, direction, desiredLength) {
     const speed = Math.max(.01, Math.hypot(pose.v[0], pose.v[1]));
     const vector = pose.v.map(value => direction * value / speed);
     let length = desiredLength;
+
     for (const axis of [0, 1]) {
         const low = axis === 0 ? screen.x : screen.y;
         const high = low + (axis === 0 ? screen.width : screen.height);
@@ -31,7 +34,12 @@ function tangentHandle(pose, screen, direction, desiredLength) {
             length = Math.min(length, Math.max(.01, (boundary - pose.p[axis]) / vector[axis]));
         }
     }
-    return {point: pose.p.map((value, axis) => value + vector[axis] * length), length: length, speed: speed};
+
+    return {
+        point: pose.p.map((value, axis) => value + vector[axis] * length),
+        length: length,
+        speed: speed
+    };
 }
 
 function throughSharedEdge(start, end, screens, duration) {
@@ -41,6 +49,7 @@ function throughSharedEdge(start, end, screens, duration) {
     const target = containing(end.p);
     if (!source || !target || source === target)
         return null;
+
     const edge = sharedEdge(source, target);
     if (!edge)
         return null;
@@ -58,6 +67,7 @@ function throughSharedEdge(start, end, screens, duration) {
     const targetDistance = Math.hypot(end.p[0] - crossing[0], end.p[1] - crossing[1]);
     const departure = tangentHandle(start, source, 1, sourceDistance * .35);
     const arrival = tangentHandle(end, target, -1, targetDistance * .35);
+
     const sourceSize = axis === 0 ? source.width : source.height;
     const targetSize = axis === 0 ? target.width : target.height;
     const reach = Math.min(sourceDistance * .35, targetDistance * .35, sourceSize * .4, targetSize * .4);
@@ -69,8 +79,10 @@ function throughSharedEdge(start, end, screens, duration) {
     // Each cubic stays inside its screen's convex bounds. Equal handles at the
     // shared edge keep position and velocity continuous across both surfaces.
     const segments = [[start.p, departure.point, before, crossing], [crossing, after, arrival.point, end.p]];
+
     const timingStart = {p: [0, 0, 0], v: [departure.speed / (6 * departure.length), 0, 0], a: [0, 0, 0]};
     const timingEnd = {p: [1, 0, 0], v: [arrival.speed / (6 * arrival.length), 0, 0], a: [0, 0, 0]};
+
     return {
         axes: Motion.coefficients(timingStart, timingEnd, duration),
         duration: duration,

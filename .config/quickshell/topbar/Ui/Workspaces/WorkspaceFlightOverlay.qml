@@ -23,7 +23,13 @@ Scope {
             WlrLayershell.namespace: "quickshell-workspace-flight"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             mask: Region {}
-            anchors { top: true; bottom: true; left: true; right: true }
+
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
 
             Canvas {
                 id: trail
@@ -32,14 +38,17 @@ Scope {
                 onPaint: {
                     const ctx = getContext("2d");
                     ctx.reset();
+
                     const points = root.coordinator.trailPoints;
                     if (points.length < 2)
                         return;
+
                     ctx.lineCap = "round";
                     for (let i = 1; i < points.length; ++i) {
                         const from = points[i - 1];
                         const to = points[i];
                         const strength = Math.max(0, 1 - (root.coordinator.elapsed - to.time) / .65);
+
                         ctx.beginPath();
                         ctx.moveTo(from.x - overlay.screen.x, from.y - overlay.screen.y);
                         ctx.lineTo(to.x - overlay.screen.x, to.y - overlay.screen.y);
@@ -51,7 +60,9 @@ Scope {
 
                 Connections {
                     target: root.coordinator
-                    function onTrailRevisionChanged() { trail.requestPaint(); }
+                    function onTrailRevisionChanged() {
+                        trail.requestPaint();
+                    }
                 }
             }
 
