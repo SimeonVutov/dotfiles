@@ -1,18 +1,20 @@
 import QtQuick
 import qs.Ui
 import qs.Common
-import qs.Services
+import qs.Core.Media
 
 // Playback timeline. Click or drag anywhere on it to seek; while dragging it
 // shows where you're heading rather than where the track actually is.
 Item {
     id: root
 
+    required property Player player
+
     property real trackHeight: 4
-    property bool interactive: Players.canSeek && Players.length > 0
+    property bool interactive: root.player.canSeek && root.player.length > 0
 
     // Ratio the player reports, or the one being dragged to.
-    readonly property real playbackRatio: Players.length > 0 ? Math.max(0, Math.min(1, Players.position / Players.length)) : 0
+    readonly property real playbackRatio: root.player.length > 0 ? Math.max(0, Math.min(1, root.player.position / root.player.length)) : 0
     property real dragRatio: -1
     readonly property real ratio: dragRatio >= 0 ? dragRatio : playbackRatio
 
@@ -95,7 +97,7 @@ Item {
         }
         onReleased: {
             if (root.dragRatio >= 0)
-                Players.seekToFraction(root.dragRatio);
+                root.player.seekToFraction(root.dragRatio);
             root.dragRatio = -1;
         }
         onCanceled: root.dragRatio = -1

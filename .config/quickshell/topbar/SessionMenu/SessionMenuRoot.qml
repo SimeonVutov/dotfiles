@@ -160,7 +160,7 @@ Item {
             onActionRequested: action => {
                 if (action === "lock") {
                     root.finish();
-                    Quickshell.execDetached(["hyprlock"]);
+                    Quickshell.execDetached(["sh", Quickshell.env("HOME") + "/.config/scripts/lock-screen.sh"]);
                     return;
                 }
 
@@ -168,8 +168,8 @@ Item {
                     exit: ["hyprctl", "dispatch", "hl.dsp.exit()"],
                     reboot: ["systemctl", "reboot"],
                     shutdown: ["systemctl", "poweroff"],
-                    suspend: ["sh", "-c", "loginctl lock-session && systemctl suspend"],
-                    hibernate: ["sh", "-c", "loginctl lock-session && systemctl hibernate"]
+                    suspend: ["sh", "-c", "sh ~/.config/scripts/lock-screen.sh && systemctl suspend"],
+                    hibernate: ["sh", "-c", "sh ~/.config/scripts/lock-screen.sh && systemctl hibernate"]
                 };
                 if (!commands[action])
                     return;

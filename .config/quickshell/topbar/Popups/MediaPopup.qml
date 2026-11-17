@@ -5,11 +5,13 @@ import QtQuick.Layouts
 import qs.Common
 import qs.Ui
 import qs.Ui.Media
-import qs.Services
+import qs.Core.Media
 
 // The expanded player: art, track, timeline, transport.
 PopupPanel {
     id: root
+
+    required property Player player
 
     panelWidth: 400
     contentPadding: 18
@@ -18,19 +20,20 @@ PopupPanel {
     onOverlayDismissed: sourcePicker.expanded = false
     overlayPage: Component {
         MediaSourceMenu {
+            player: root.player
             onDismissed: sourcePicker.expanded = false
         }
     }
 
     // Position updates only run while this is actually on screen.
     onOpenChanged: {
-        Players.watchPosition(open);
+        root.player.watchPosition(open);
         if (!open)
             sourcePicker.expanded = false;
     }
     Component.onDestruction: {
         if (open)
-            Players.watchPosition(false);
+            root.player.watchPosition(false);
     }
 
     Item {
@@ -43,7 +46,7 @@ PopupPanel {
             height: 112
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            source: root.visible ? Players.artUrl : ""
+            source: root.visible ? root.player.artUrl : ""
         }
 
         Column {
@@ -55,7 +58,7 @@ PopupPanel {
 
             Text {
                 width: parent.width
-                text: Players.title || "Nothing playing"
+                text: root.player.title || "Nothing playing"
                 color: Theme.popupText
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSize
@@ -66,7 +69,7 @@ PopupPanel {
 
             Text {
                 width: parent.width
-                text: Players.artist || Players.identity
+                text: root.player.artist || root.player.identity
                 color: Theme.popupSubtleText
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeLabel
@@ -81,18 +84,19 @@ PopupPanel {
             }
 
             SeekBar {
+                player: root.player
                 width: parent.width
-                visible: Players.length > 0
+                visible: root.player.length > 0
             }
 
             Item {
                 width: parent.width
                 height: 14
-                visible: Players.length > 0
+                visible: root.player.length > 0
 
                 Text {
                     anchors.left: parent.left
-                    text: Players.formatTime(Players.position)
+                    text: root.player.formatTime(root.player.position)
                     color: Theme.popupSubtleText
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeTiny
@@ -101,7 +105,7 @@ PopupPanel {
 
                 Text {
                     anchors.right: parent.right
-                    text: Players.formatTime(Players.length)
+                    text: root.player.formatTime(root.player.length)
                     color: Theme.popupSubtleText
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeTiny
@@ -123,8 +127,8 @@ PopupPanel {
                     icon: Icons.mediaPrevious
                     size: 20
                     color: Theme.popupText
-                    enabled: Players.canGoPrevious
-                    onClicked: Players.previous()
+                    enabled: root.player.canGoPrevious
+                    onClicked: root.player.previous()
                 }
 
                 PlaybackButton {
@@ -133,9 +137,9 @@ PopupPanel {
                     idleColor: Theme.popupAccent
                     iconColor: Theme.popupBackground
                     iconSize: 18
-                    playing: Players.isPlaying
-                    enabled: !!Players.activePlayer && Players.activePlayer.canTogglePlaying
-                    onClicked: Players.togglePlaying()
+                    playing: root.player.isPlaying
+                    enabled: !!root.player.activePlayer && root.player.activePlayer.canTogglePlaying
+                    onClicked: root.player.togglePlaying()
                 }
 
                 IconButton {
@@ -143,13 +147,14 @@ PopupPanel {
                     icon: Icons.mediaNext
                     size: 20
                     color: Theme.popupText
-                    enabled: Players.canGoNext
-                    onClicked: Players.next()
+                    enabled: root.player.canGoNext
+                    onClicked: root.player.next()
                 }
             }
         }
     }
     MediaSourcePicker {
+        player: root.player
         id: sourcePicker
         Layout.fillWidth: true
     }

@@ -6,6 +6,9 @@ Item {
     id: root
 
     property string prefix: "overlay"
+    property string directory: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+    property real scale: 0
+    property bool privateFile: false
     readonly property bool busy: capture.running || cancelling
 
     signal completed(string source)
@@ -17,13 +20,20 @@ Item {
     property string path: ""
 
     function start(monitor) {
-        if (busy)
+        if (busy || !directory)
             return false;
 
         release();
         requestId++;
-        path = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshell-" + prefix + "-" + Date.now() + "-" + requestId + ".ppm";
-        capture.command = monitor ? ["grim", "-t", "ppm", "-o", monitor, path] : ["grim", "-t", "ppm", path];
+        path = directory + "/quickshell-" + prefix + "-" + Quickshell.processId + "-" + Date.now() + "-" + requestId + ".ppm";
+        const command = ["grim", "-t", "ppm"];
+        if (scale > 0)
+            command.push("-s", String(scale));
+        if (monitor)
+            command.push("-o", monitor);
+        command.push(path);
+
+        capture.command = privateFile ? ["sh", "-c", 'umask 077; exec "$@"', "quickshell-capture"].concat(command) : command;
         cancelling = false;
         capture.running = true;
         return true;

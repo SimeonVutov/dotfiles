@@ -13,6 +13,7 @@ ColumnLayout {
     spacing: 8
 
     BarText {
+        visible: root.label.length > 0
         text: root.label
         color: Theme.popupSubtleText
         font.pixelSize: Theme.fontSizeCaption
@@ -31,7 +32,11 @@ ColumnLayout {
         palette.button: Theme.popupSurface
         palette.highlight: Theme.popupBorder
         palette.highlightedText: Theme.popupText
+        palette.light: Theme.overlaySurfaceHover
+        palette.midlight: Theme.popupBorder
+        palette.dark: Theme.popupSubtleText
         onActivated: index => root.chosen(index)
+
         background: Rectangle {
             radius: 9
             color: Theme.popupSurface

@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.Bar
 import qs.Common
+import qs.Core.Media
 import qs.Popups
 
 // Regression gate for everything under Modules/, Popups/, Ui/, Services/,
@@ -44,6 +45,7 @@ ShellRoot {
                     open: false
                 }
                 MediaPopup {
+                    player: Player {}
                     open: false
                 }
                 AudioPopup {

@@ -1,13 +1,10 @@
 pragma ComponentBehavior: Bound
-pragma Singleton
 
 import QtQuick
-import Quickshell
 import Quickshell.Services.Mpris
-import qs.Common
 
-// Shared media selection and transport; position refresh is subscriber driven.
-Singleton {
+// An independent media controller; views can own or inject an instance.
+Item {
     id: root
 
     readonly property var allPlayers: Mpris.players.values
@@ -34,13 +31,7 @@ Singleton {
     readonly property string artUrl: activePlayer ? (activePlayer.trackArtUrl || "") : ""
     readonly property string identity: activePlayer ? (activePlayer.identity || "") : ""
 
-    // "Title - Artist", falling back to just the title when there's no artist.
-    readonly property string label: {
-        if (!title)
-            return "";
-        return artist ? title + Config.media.separator + artist : title;
-    }
-    readonly property string trackKey: activePlayer ? String(activePlayer.uniqueId || label) : ""
+    readonly property string trackKey: activePlayer ? String(activePlayer.uniqueId || title + " - " + artist) : ""
 
     readonly property bool canGoNext: !!activePlayer && activePlayer.canGoNext
     readonly property bool canGoPrevious: !!activePlayer && activePlayer.canGoPrevious

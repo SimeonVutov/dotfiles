@@ -1,13 +1,15 @@
 import QtQuick
 import qs.Ui
 import qs.Common
-import qs.Services
+import qs.Core.Media
 
 Rectangle {
     id: root
 
+    required property Player player
+
     property bool expanded: false
-    readonly property bool hasSources: Players.allPlayers.length > 0
+    readonly property bool hasSources: root.player.allPlayers.length > 0
     implicitHeight: 56
     radius: 10
     color: trigger.containsMouse && hasSources ? Theme.popupBorder : Theme.popupSurface
@@ -42,7 +44,7 @@ Rectangle {
         }
         BarText {
             width: parent.width
-            text: root.hasSources ? ((Players.manualPlayerId ? "" : "Automatic · ") + (Players.identity || "Choose source")) : "No media sources"
+            text: root.hasSources ? ((root.player.manualPlayerId ? "" : "Automatic · ") + (root.player.identity || "Choose source")) : "No media sources"
             font.pixelSize: Theme.fontSizeLabel
             elide: Text.ElideRight
         }

@@ -6,6 +6,8 @@ Rectangle {
 
     property int diameter: 28
     property int glyphSize: 12
+    property string icon: Icons.close
+    readonly property bool hovered: hover.containsMouse
     signal clicked
 
     width: diameter
@@ -19,13 +21,22 @@ Rectangle {
         }
     }
 
-    IconButton {
+    Text {
+        anchors.fill: parent
+        text: root.icon
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        font.family: Theme.fontFamily
+        font.pixelSize: root.glyphSize
+        color: Theme.popupText
+        renderType: Text.QtRendering
+    }
+
+    MouseArea {
         id: hover
-        anchors.centerIn: parent
-        width: parent.width
-        height: parent.height
-        size: root.glyphSize
-        icon: Icons.close
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
     }
 }

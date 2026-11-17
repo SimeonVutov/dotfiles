@@ -5,14 +5,16 @@ import qs.Ui
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import qs.Common
-import qs.Services
+import qs.Core.Media
 
 Item {
     id: root
+
+    required property Player player
     signal dismissed
 
     function choosePlayer(player) {
-        Players.selectPlayer(player);
+        root.player.selectPlayer(player);
         dismissed();
     }
 
@@ -63,18 +65,18 @@ Item {
                     title: "Automatic"
                     subtitle: "Follow the playing source"
                     icon: Icons.automatic
-                    selected: Players.manualPlayerId === ""
+                    selected: root.player.manualPlayerId === ""
                     onChosen: root.choosePlayer(null)
                 }
                 Repeater {
-                    model: Players.allPlayers
+                    model: root.player.allPlayers
                     MediaSourceOption {
                         required property var modelData
                         width: rows.width
-                        title: Players.sourceName(modelData)
+                        title: root.player.sourceName(modelData)
                         subtitle: (modelData.isPlaying ? "Playing · " : "") + (modelData.trackTitle || "No track information")
                         artUrl: modelData.trackArtUrl || ""
-                        selected: Players.manualPlayerId === modelData.dbusName
+                        selected: root.player.manualPlayerId === modelData.dbusName
                         onChosen: root.choosePlayer(modelData)
                     }
                 }

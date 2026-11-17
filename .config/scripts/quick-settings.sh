@@ -1,7 +1,7 @@
 #!/bin/sh
 menu="${1:-monitors}"
 case "$menu" in
-    monitors) ;;
+    monitors|lockscreen) ;;
     *) exit 2 ;;
 esac
 
