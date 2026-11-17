@@ -473,11 +473,11 @@ keeping their cell spans. The editor previews the layout on each selected displa
 The password widget is required; invalid saved layouts fall back to a working
 default. The left panel edits placed widgets; the right panel lists unplaced ones.
 
-Clock and password widgets work immediately. Music, calendar, tasks, and progress
-are layout placeholders for later implementations. Register a trusted component
+Clock, music player, and password widgets work immediately. Calendar, tasks, and
+progress are layout placeholders for later implementations. Register a trusted component
 and its cell span/settings in `quickshell/topbar/Lockscreen/WidgetCatalog.js`; its QML
 root receives `widgetSettings` and fills its allotted rectangle. Authentication
-stays outside this component registry. See the local lockscreen README for details.
+stays outside this component registry.
 
 The wallpaper pipeline creates `~/.cache/blurred_wallpaper.png` once per change.
 Both the lockscreen and editor use that image without live blur. The lockscreen
