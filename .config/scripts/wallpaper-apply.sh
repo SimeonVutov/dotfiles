@@ -1,5 +1,5 @@
-# ~/.config/scripts/wallpaper-apply.sh
 #!/usr/bin/env bash
+# ~/.config/scripts/wallpaper-apply.sh
 set -euo pipefail
 
 WALLPAPER="${1:-}"
