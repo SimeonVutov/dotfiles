@@ -45,6 +45,19 @@ ShaderEffect {
         previousSince > clock + 1 ? 1e9 : previousSince, previousSince > clock + 1 ? -1 : previousUntil,
         olderSince > clock + 1 ? 1e9 : olderSince, olderSince > clock + 1 ? -1 : olderUntil)
 
+    // Bumped each time the launcher opens: the clock starts over then, so
+    // every earlier selection is forgotten.
+    property int epoch: 0
+
+    onEpochChanged: {
+        previousSince = 1e9;
+        previousUntil = -1;
+        olderSince = 1e9;
+        olderUntil = -1;
+        selectedSince = highlighted ? 0 : 1e9;
+        selectedUntil = highlighted ? 1e9 : -1;
+    }
+
     onHighlightedChanged: {
         if (highlighted) {
             olderSince = previousSince;

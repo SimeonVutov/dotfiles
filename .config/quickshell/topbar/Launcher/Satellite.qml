@@ -22,6 +22,7 @@ Item {
     // The radio link's shared clock (seconds) and brightness (0..1).
     property real linkClock: 0
     property real linkStrength: 1
+    property int linkEpoch: 0
     property bool selected: false
     property bool departing: false
     property real presence: 0
@@ -168,6 +169,7 @@ Item {
         highlighted: root.selected
         strength: root.linkStrength
         clock: root.linkClock
+        epoch: root.linkEpoch
         seed: root.slot * .618 % 1
     }
 

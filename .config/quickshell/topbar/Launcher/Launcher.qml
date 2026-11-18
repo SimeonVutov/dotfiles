@@ -86,6 +86,7 @@ FocusScope {
     // The radio links' shared clock, running only while links can show, and
     // their brightness: the fewer satellites match, the stronger each link.
     property real linkClock: 0
+    property int linkEpoch: 0
     readonly property real linkStrength: Math.min(1, 6 / Math.max(1, results.length))
 
     NumberAnimation on linkClock {
@@ -129,6 +130,8 @@ FocusScope {
         snapshot = "";
         launchError = "";
         regenerateLayout();
+        linkClock = 0;
+        linkEpoch++;
     }
 
     function regenerateLayout() {
@@ -524,6 +527,7 @@ FocusScope {
                 warming: root.warming
                 tracking: root.beamsEnabled
                 linkClock: root.linkClock
+                linkEpoch: root.linkEpoch
                 linkStrength: root.linkStrength
                 selected: entry !== null && entry === root.highlightedApp
                 departing: root.pendingLaunch !== null && entry === root.pendingLaunch
