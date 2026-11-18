@@ -14,10 +14,7 @@ const DEFAULTS = {
 };
 
 function emptyLayout(scale) {
-    return {
-        points: [],
-        scale: scale
-    };
+    return { points: [], scale: scale };
 }
 
 function create(count, width, height, settings) {
@@ -33,13 +30,8 @@ function create(count, width, height, settings) {
 
         if (field.rangeX > 0 && field.rangeY > 0) {
             const points = scatter(count, field, options);
-
-            if (points.length === count) {
-                return {
-                    points: points,
-                    scale: scale
-                };
-            }
+            if (points.length === count)
+                return { points: points, scale: scale };
         }
 
         scale *= options.scaleDecay;
@@ -71,66 +63,66 @@ function measureField(scale, width, height, options) {
 
 function scatter(count, field, options) {
     const points = [];
-    // Spatial hash keyed by the spacing itself, so a candidate only ever has to
-    // be compared against the nine buckets surrounding it.
-    const buckets = {};
+    const spacingX = field.spacingX;
+    const spacingY = field.spacingY;
+    const rangeX = field.rangeX;
+    const rangeY = field.rangeY;
+    const centerRadius = options.centerRadius;
+    const centerRadiusSquared = centerRadius * centerRadius;
+    // A grid of cells as large as the spacing, so a candidate only ever has to be
+    // compared against the nine cells around it. Cells hold indices into xs and ys.
+    // Plain numbers index it: building string keys here made the layout slow.
+    const columns = Math.ceil(2 * rangeX / spacingX) + 3;
+    const rows = Math.ceil(2 * rangeY / spacingY) + 3;
+    const cells = new Array(columns * rows);
+    const xs = [];
+    const ys = [];
     const candidateLimit = count * options.candidatesPerItem;
-    const point = { x: 0, y: 0 };
 
-    for (let candidate = 0; candidate < candidateLimit && points.length < count; candidate++) {
-        point.x = (Math.random() * 2 - 1) * field.rangeX;
-        point.y = (Math.random() * 2 - 1) * field.rangeY;
+    for (let candidate = 0; candidate < candidateLimit && xs.length < count; candidate++) {
+        const x = (Math.random() * 2 - 1) * rangeX;
+        const y = (Math.random() * 2 - 1) * rangeY;
 
-        if (overlapsCenter(point, field, options.centerRadius))
+        const distanceX = Math.max(0, Math.abs(x) - field.halfWidth);
+        const distanceY = Math.max(0, Math.abs(y) - field.halfHeight);
+        if (distanceX * distanceX + distanceY * distanceY < centerRadiusSquared)
             continue;
 
-        const bucketX = Math.floor(point.x / field.spacingX);
-        const bucketY = Math.floor(point.y / field.spacingY);
+        const column = Math.floor((x + rangeX) / spacingX) + 1;
+        const row = Math.floor((y + rangeY) / spacingY) + 1;
+        let blocked = false;
 
-        if (overlapsNeighbour(point, bucketX, bucketY, field, buckets))
+        for (let c = column - 1; c <= column + 1 && !blocked; c++) {
+            for (let r = row - 1; r <= row + 1; r++) {
+                const nearby = cells[c * rows + r];
+                if (!nearby)
+                    continue;
+
+                for (let i = 0; i < nearby.length; i++) {
+                    const other = nearby[i];
+                    if (Math.abs(xs[other] - x) < spacingX && Math.abs(ys[other] - y) < spacingY) {
+                        blocked = true;
+                        break;
+                    }
+                }
+                if (blocked)
+                    break;
+            }
+        }
+
+        if (blocked)
             continue;
 
-        const accepted = { x: point.x, y: point.y };
-        points.push(accepted);
-        addToBucket(buckets, bucketX, bucketY, accepted);
+        const index = xs.length;
+        xs.push(x);
+        ys.push(y);
+        const key = column * rows + row;
+        if (cells[key])
+            cells[key].push(index);
+        else
+            cells[key] = [index];
+        points.push({ x: x, y: y });
     }
 
     return points;
-}
-
-function overlapsCenter(point, field, centerRadius) {
-    const distanceX = Math.max(0, Math.abs(point.x) - field.halfWidth);
-    const distanceY = Math.max(0, Math.abs(point.y) - field.halfHeight);
-    return Math.hypot(distanceX, distanceY) < centerRadius;
-}
-
-function overlapsNeighbour(point, bucketX, bucketY, field, buckets) {
-    for (let offsetX = -1; offsetX <= 1; offsetX++) {
-        for (let offsetY = -1; offsetY <= 1; offsetY++) {
-            const nearby = buckets[bucketKey(bucketX + offsetX, bucketY + offsetY)];
-            if (!nearby)
-                continue;
-
-            for (let i = 0; i < nearby.length; i++) {
-                const other = nearby[i];
-                if (Math.abs(other.x - point.x) < field.spacingX && Math.abs(other.y - point.y) < field.spacingY)
-                    return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-function addToBucket(buckets, bucketX, bucketY, point) {
-    const key = bucketKey(bucketX, bucketY);
-
-    if (!buckets[key])
-        buckets[key] = [];
-
-    buckets[key].push(point);
-}
-
-function bucketKey(x, y) {
-    return x + ":" + y;
 }

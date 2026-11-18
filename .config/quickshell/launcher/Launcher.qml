@@ -305,7 +305,12 @@ FocusScope {
         Qt.callLater(focusSearch);
     }
     Component.onCompleted: {
-        catalogRefresh.restart();
+        // This process starts for each opening, so the applications are often
+        // loaded already: start from them rather than waiting out the delay.
+        if (applications.length)
+            settledApplications = applications.slice();
+        else
+            catalogRefresh.restart();
         scheduleLayout();
         if (presenting)
             ascent.start();
@@ -502,6 +507,13 @@ FocusScope {
             layoutScale: root.layout.scale
         }
 
+        IconCatalog {
+            id: icons
+
+            names: root.catalog.map(app => app.icon)
+            idle: root.settled > .99 && !root.closing
+        }
+
         Repeater {
             id: satellites
 
@@ -516,6 +528,7 @@ FocusScope {
 
                 slot: index
                 entry: root.catalog[index]
+                iconSource: icons.source(entry?.icon)
                 active: root.resultSet.has(entry)
                 basePosition: root.layout.points[index] || Qt.point(0, 0)
                 visible: root.layout.points.length === root.catalog.length

@@ -10,6 +10,8 @@ Item {
     property real visualScale: 1
     property real globeRadius: Theme.globeRadius
     property var entry: null
+    // The icon's image source, from the launcher's IconCatalog.
+    property string iconSource: ""
     // Shared craft texture (a ShaderEffectSource over a SatelliteArt) and the
     // transparent margin it keeps around the art.
     property Item craftTexture: null
@@ -258,7 +260,7 @@ Item {
                     height: Theme.iconSize
                     sourceSize.width: craft.iconSourceSize
                     sourceSize.height: craft.iconSourceSize
-                    source: root.entry?.icon ? Quickshell.iconPath(root.entry.icon, true) : ""
+                    source: root.iconSource
                     asynchronous: true
                     opacity: root.departing ? 0 : 1
 
