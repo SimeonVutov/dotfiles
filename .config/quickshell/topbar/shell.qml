@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.Bar
 import qs.SessionMenu
-import qs.Launcher
 import qs.Settings
 
 ShellRoot {
@@ -17,19 +16,9 @@ ShellRoot {
     SessionMenuRoot {
         id: sessionMenu
     }
-    LauncherRoot {
-        id: launcher
-    }
     SettingsRoot {}
 
-    // Hyprland binds these directly, so opening skips a shell script and an IPC client.
-    GlobalShortcut {
-        appid: "quickshell-topbar"
-        name: "launcher"
-        description: "Toggle app launcher"
-        onPressed: launcher.toggle()
-    }
-
+    // Hyprland binds this directly, so opening skips a shell script and an IPC client.
     GlobalShortcut {
         appid: "quickshell-topbar"
         name: "session-menu"

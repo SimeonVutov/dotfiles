@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import qs.Launcher
 
 // Safe preview: selecting an application never executes it.
 ShellRoot {
