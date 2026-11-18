@@ -1,5 +1,8 @@
 import QtQuick
 
+// The search HUD: a glass capsule floating in front of the lower part of the
+// planet, with the result status underneath. The item is centred on the planet;
+// `reach` tells the satellite layout how far from that centre it extends.
 Item {
     id: root
 
@@ -13,8 +16,31 @@ Item {
     signal moved(int delta)
     signal movedInDirection(int dx, int dy)
 
-    readonly property real entranceScale: .65
-    readonly property real entranceRise: 110
+    readonly property real entranceScale: .85
+    readonly property real entranceRise: 40
+
+    QtObject {
+        id: capsule
+
+        readonly property real width: 236
+        readonly property real height: 46
+        // Capsule centre below the planet's centre, in planet radii.
+        readonly property real offset: .62
+        readonly property real padding: 18
+        readonly property real iconSize: 16
+        readonly property real iconGap: 12
+        readonly property real statusGap: 8
+        readonly property real statusWidth: 200
+    }
+
+    // Farthest corner of the capsule or the status line from the planet's centre.
+    readonly property real reach: {
+        const top = Theme.globeRadius * capsule.offset - capsule.height / 2;
+        const statusBottom = top + capsule.height + capsule.statusGap + status.height;
+        return Math.max(Theme.globeRadius,
+            Math.hypot(capsule.width / 2, top + capsule.height),
+            Math.hypot(capsule.statusWidth / 2, statusBottom));
+    }
 
     function focusInput() {
         input.forceActiveFocus();
@@ -28,65 +54,68 @@ Item {
         y: (1 - root.settled) * root.entranceRise
     }
 
-    // Rows run down the dial's axis rather than in a Column, so their offsets
-    // stay independent of font metrics and the block keeps its optical centre.
-    QtObject {
-        id: dial
-
-        readonly property real diameter: 214
-        readonly property real sidePadding: 18
-        readonly property real rulerWidth: 98
-        readonly property real rulerHeight: 1
-        readonly property real statusWidth: 180
-
-        readonly property real headingTop: 45
-        readonly property real headingGap: 38
-        readonly property real queryHeight: 32
-        readonly property real queryGap: 16
-        readonly property real rulerGap: 18
-
-        readonly property real queryTop: headingTop + headingGap
-        readonly property real rulerTop: queryTop + queryHeight + queryGap
-        readonly property real statusTop: rulerTop + rulerHeight + rulerGap
-    }
-
-    Globe {
-        anchors.fill: parent
-        opacity: .7
-    }
-
     Rectangle {
-        anchors.centerIn: parent
-        width: dial.diameter
-        height: width
-        radius: width / 2
-        color: Theme.background
-        border.color: Theme.border
+        id: field
 
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: dial.headingTop
-            text: "Applications"
-            color: Theme.muted
-            font.family: Theme.font
-            font.pixelSize: Theme.fontHeading
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: root.height / 2 + Theme.globeRadius * capsule.offset - height / 2
+        width: capsule.width
+        height: capsule.height
+        radius: height / 2
+        color: Theme.glass
+        border.color: Qt.alpha(Theme.atmosphere, input.activeFocus ? .55 : .3)
+
+        Behavior on border.color {
+            ColorAnimation {
+                duration: Theme.motion
+            }
+        }
+
+        // Magnifier, drawn so it does not depend on an icon font.
+        Item {
+            id: icon
+
+            x: capsule.padding
+            anchors.verticalCenter: parent.verticalCenter
+            width: capsule.iconSize
+            height: capsule.iconSize
+
+            Rectangle {
+                width: parent.width * .72
+                height: width
+                radius: width / 2
+                color: "transparent"
+                border.color: Theme.atmosphere
+                border.width: 1.6
+            }
+
+            Rectangle {
+                x: parent.width * .6
+                y: parent.height * .68
+                width: parent.width * .42
+                height: 1.8
+                radius: height / 2
+                rotation: 45
+                transformOrigin: Item.Left
+                color: Theme.atmosphere
+            }
         }
 
         TextInput {
             id: input
 
             objectName: "search"
-            anchors.left: parent.left
+            anchors.left: icon.right
+            anchors.leftMargin: capsule.iconGap
             anchors.right: parent.right
-            anchors.margins: dial.sidePadding
-            y: dial.queryTop
-            height: dial.queryHeight
+            anchors.rightMargin: capsule.padding
+            anchors.verticalCenter: parent.verticalCenter
             focus: true
             color: Theme.text
             selectionColor: Theme.selection
             font.family: Theme.font
-            font.pixelSize: Theme.fontQuery
-            horizontalAlignment: TextInput.AlignHCenter
+            font.pixelSize: Theme.fontSearch
+            verticalAlignment: TextInput.AlignVCenter
             selectByMouse: true
             clip: true
             maximumLength: 120
@@ -102,34 +131,27 @@ Item {
             Keys.onBacktabPressed: root.moved(-1)
 
             Text {
-                anchors.centerIn: parent
+                anchors.verticalCenter: parent.verticalCenter
                 visible: !input.text.length
-                text: "Search"
-                color: Theme.text
+                text: "Search applications"
+                color: Theme.muted
                 font: input.font
             }
         }
+    }
 
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: dial.rulerTop
-            width: dial.rulerWidth
-            height: dial.rulerHeight
-            color: Theme.border
-        }
+    Text {
+        id: status
 
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: dial.statusTop
-            width: dial.statusWidth
-            text: root.statusText
-            wrapMode: Text.Wrap
-            maximumLineCount: 3
-            elide: Text.ElideRight
-            horizontalAlignment: Text.AlignHCenter
-            color: Theme.muted
-            font.family: Theme.font
-            font.pixelSize: Theme.fontCaption
-        }
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: field.bottom
+        anchors.topMargin: capsule.statusGap
+        width: capsule.statusWidth
+        text: root.statusText
+        horizontalAlignment: Text.AlignHCenter
+        elide: Text.ElideRight
+        color: Theme.muted
+        font.family: Theme.font
+        font.pixelSize: Theme.fontCaption
     }
 }
