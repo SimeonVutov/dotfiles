@@ -82,11 +82,11 @@ Item {
             snapshots.release();
             root.unlocking = false;
             root.unlockProgress = 0;
-            Quickshell.watchFiles = true;
-            // Re-enabling the watcher does not detect edits made while locked.
+            // The locker runs only while needed: lock-screen.sh starts a fresh
+            // one for the next lock, so nothing stays in memory in between.
             Qt.callLater(() => {
                 if (!session.locked && !root.lockRequested)
-                    Quickshell.reload(false);
+                    Qt.quit();
             });
         }
     }
