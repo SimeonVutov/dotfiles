@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import "Flight.js" as Flight
 import "Scatter.js" as Scatter
 import "Search.js" as Search
 
@@ -15,8 +16,19 @@ FocusScope {
     readonly property int catalogFallbackDelay: 250
     property string snapshot: ""
     property bool presenting: true
-    property real progress: 0
     property alias query: searchConsole.query
+
+    // The flight (Flight.js). The entrance runs `progress` from 0 to 1. Closing
+    // runs `closeProgress` as a landing (cancelled in orbit), an abort (cancelled
+    // during lift-off) or an exit (an app was chosen), starting from the state
+    // the flight was in when it began.
+    property real progress: 0
+    property string closeMode: ""
+    property real closeProgress: 0
+    property var closeFrom: null
+    property real closeClock: 0
+    // Fades the whole launcher when a landing is skipped with a second cancel.
+    property real fade: 1
 
     // The globe stops growing past this viewport; smaller screens scale it down.
     readonly property real referenceViewportWidth: 600
@@ -24,10 +36,22 @@ FocusScope {
     readonly property real globeScale: Math.min(1, width / referenceViewportWidth, height / referenceViewportHeight)
     readonly property real globeRadius: Theme.globeRadius * globeScale
 
-    // The entrance only begins revealing the scene at its halfway point.
-    readonly property real revealFrom: .5
-    readonly property real reveal: Math.max(0, Math.min(1, (progress - revealFrom) / (1 - revealFrom)))
-    readonly property real settled: 1 - Math.pow(1 - reveal, 3)
+    readonly property real aspect: width / Math.max(1, height)
+    readonly property var flight: Flight.state(closeMode, progress, closeProgress, closeFrom, aspect, globeRadius / Math.max(1, height))
+    readonly property real clock: closeMode ? closeClock + closeProgress * descent.duration / 1000 : progress * Theme.entranceDuration / 1000
+    readonly property real settled: 1 - Math.pow(1 - flight.reveal, 3)
+    // Early in lift-off, behind the shaking and smoke, everything shown later
+    // is drawn once, invisibly, so its shaders, icons and textures are ready
+    // before it appears instead of stalling the moment it does.
+    readonly property bool warming: !closing && progress > Theme.warmFrom && progress < Theme.warmUntil
+    // The capsule's window during a landing: centre and half size, in screen heights.
+    readonly property rect pane: Qt.rect(aspect / 2, .5, aspect / 2 * Theme.paneWidth * flight.frameZoom,
+        .5 * Theme.paneHeight * flight.frameZoom)
+
+    // Camera shake, in screen heights: a few unrelated frequencies read as rumble.
+    readonly property point shake: Qt.point(
+        flight.shake * (Math.sin(clock * 83) * .55 + Math.sin(clock * 137 + 1.3) * .3 + Math.sin(clock * 47 + .4) * .25),
+        flight.shake * (Math.sin(clock * 97 + 2.1) * .5 + Math.sin(clock * 151 + .7) * .3 + Math.sin(clock * 59 + 1.9) * .3))
 
     readonly property var catalog: settledApplications.filter(a => !a.noDisplay).slice().sort((a, b) => a.name.localeCompare(b.name))
     readonly property var results: Search.rank(catalog, query)
@@ -42,7 +66,8 @@ FocusScope {
     readonly property var scatterOptions: ({
             itemHalfWidth: root.packingHalfWidth,
             itemHalfHeight: root.packingHalfHeight,
-            centerRadius: root.globeRadius + root.globeClearance
+            // Keep satellites clear of the planet and the search capsule in front of it.
+            centerRadius: Math.max(root.globeRadius, searchConsole.reach * root.globeScale) + root.globeClearance
         })
     property var layout: Scatter.emptyLayout(1)
     property bool layoutPending: false
@@ -58,6 +83,18 @@ FocusScope {
 
     property bool closing: false
     property bool beamsEnabled: false
+    // The radio links' shared clock, running only while links can show, and
+    // their brightness: the fewer satellites match, the stronger each link.
+    property real linkClock: 0
+    readonly property real linkStrength: Math.min(1, 6 / Math.max(1, results.length))
+
+    NumberAnimation on linkClock {
+        from: 0
+        to: 3600
+        duration: 3600000
+        loops: Animation.Infinite
+        running: root.presenting && root.beamsEnabled
+    }
 
     property var pendingLaunch: null
     property real flightProgress: 0
@@ -73,8 +110,13 @@ FocusScope {
         ascent.stop();
         delivery.stop();
         descent.stop();
+        skipFade.stop();
         dismissAfterFrame.stop();
         progress = 0;
+        closeMode = "";
+        closeProgress = 0;
+        closeFrom = null;
+        fade = 1;
         flightProgress = 0;
         pendingLaunch = null;
         flightSatellite = null;
@@ -107,24 +149,45 @@ FocusScope {
             searchConsole.focusInput();
     }
 
+    // A second cancel while landing skips the rest of it. The first moments
+    // are ignored, so one key press that reaches both handlers counts once.
     function cancel() {
-        if (closing) {
-            pendingLaunch = null;
-            if (delivery.running) {
-                delivery.stop();
-                beginDescent();
-            }
+        if (closeMode === "landing" || closeMode === "abort") {
+            if (closeProgress > Theme.skipAfter)
+                skip();
             return;
         }
+        if (closeMode === "exit")
+            return;
+
+        pendingLaunch = null;
+        delivery.stop();
         closing = true;
-        beginDescent();
+        beginClose(progress < Theme.abortBefore ? "abort" : "landing");
     }
 
-    function beginDescent() {
+    function beginClose(mode) {
         ascent.stop();
-        descent.from = progress;
-        descent.duration = Math.max(1, ascent.duration * progress);
-        descent.start();
+        closeFrom = flight;
+        closeClock = clock;
+        closeProgress = 0;
+        descent.duration = mode === "landing" ? Theme.landingDuration : mode === "exit" ? Theme.exitDuration : Theme.abortDuration;
+        closeMode = mode;
+        descent.restart();
+    }
+
+    function skip() {
+        if (!skipFade.running)
+            skipFade.start();
+    }
+
+    function finishClose() {
+        const app = root.pendingLaunch;
+        root.pendingLaunch = null;
+        if (app && root.catalog.includes(app))
+            root.launchRequested(app);
+        else
+            root.dismissed();
     }
 
     function activate(entry) {
@@ -138,7 +201,11 @@ FocusScope {
         flightStart = satellite ? satellite.iconPosition() : Qt.point(width / 2, height / 2);
         flightSize = satellite ? Theme.iconSize * satellite.visualScale : Theme.iconSize;
         closing = true;
-        delivery.start();
+        // The icon flies down its beam only once the satellites are out.
+        if (settled > .99)
+            delivery.start();
+        else
+            beginClose("exit");
     }
 
     function launchSelected() {
@@ -147,6 +214,10 @@ FocusScope {
 
     function launchFailed(message) {
         pendingLaunch = null;
+        descent.stop();
+        closeMode = "";
+        closeProgress = 0;
+        closeFrom = null;
         closing = false;
         progress = 1;
         flightProgress = 0;
@@ -214,6 +285,7 @@ FocusScope {
     }
 
     focus: true
+    opacity: fade
 
     onResultsChanged: {
         mouseSelection = false;
@@ -281,36 +353,102 @@ FocusScope {
         to: 1
         duration: Theme.deliveryDuration
         easing.type: Easing.InOutCubic
-        onFinished: root.beginDescent()
+        onFinished: root.beginClose("exit")
     }
 
     NumberAnimation {
         id: descent
         target: root
-        property: "progress"
-        to: 0
+        property: "closeProgress"
+        from: 0
+        to: 1
         easing.type: Easing.Linear
         onFinished: dismissAfterFrame.start()
     }
 
-    Timer {
-        id: dismissAfterFrame
-        interval: Theme.settleDelay
-        onTriggered: {
-            const app = root.pendingLaunch;
-            root.pendingLaunch = null;
-            if (app && root.catalog.includes(app))
-                root.launchRequested(app);
-            else
-                root.dismissed();
+    NumberAnimation {
+        id: skipFade
+        target: root
+        property: "fade"
+        to: 0
+        duration: Theme.skipDuration
+        easing.type: Easing.OutCubic
+        onFinished: {
+            descent.stop();
+            root.finishClose();
         }
     }
 
-    Ascent {
+    // Keeps the settled closing frame visible before the overlay unmaps.
+    Timer {
+        id: dismissAfterFrame
+        interval: Theme.settleDelay
+        onTriggered: root.finishClose()
+    }
+
+    // The desktop capture: the ground at lift-off and the globe's surface.
+    Image {
+        id: capture
+
+        source: root.snapshot
+        visible: false
+        cache: false
+        mipmap: true
+        // Synchronous: arming waits on Image.Ready, so a background decode would
+        // race the open watchdog and drop the capture.
+        asynchronous: false
+        // Read status directly: a binding on it may not have updated yet inside
+        // this handler, which left the launcher waiting for its watchdog.
+        onStatusChanged: if (status === Image.Ready)
+            root.snapshotReady()
+    }
+
+    readonly property bool captureReady: capture.status === Image.Ready
+
+    // Deep space behind everything; without a capture it fades in with altitude
+    // so the real desktop is not covered before the flight starts.
+    Rectangle {
         anchors.fill: parent
-        progress: root.progress
-        snapshot: root.snapshot
-        onSnapshotReady: root.snapshotReady()
+        color: Theme.space
+        opacity: root.captureReady ? 1 : Math.min(1, root.progress * 3)
+    }
+
+    Starfield {
+        x: -Theme.shakeMargin
+        y: -Theme.shakeMargin
+        width: parent.width + Theme.shakeMargin * 2
+        height: parent.height + Theme.shakeMargin * 2
+        level: root.flight.stars
+        streak: root.flight.starsStreak
+        shift: root.flight.starsShift
+        transform: [
+            Scale {
+                origin.x: root.width / 2 + Theme.shakeMargin
+                origin.y: root.height / 2 + Theme.shakeMargin
+                xScale: root.flight.starsZoom
+                yScale: root.flight.starsZoom
+            },
+            Translate {
+                x: root.shake.x * root.height
+                y: root.shake.y * root.height
+            }
+        ]
+    }
+
+    World {
+        flight: root.flight
+        surface: capture
+        hasSurface: root.captureReady ? 1 : 0
+        clock: root.clock
+        shake: root.shake
+    }
+
+    Smoke {
+        anchors.fill: parent
+        flight: root.flight
+        clock: root.clock
+        shake: root.shake
+        pane: root.pane
     }
 
     Item {
@@ -318,6 +456,8 @@ FocusScope {
 
         anchors.fill: parent
         enabled: !root.closing
+        opacity: root.flight.ui
+        visible: opacity > 0 && (root.settled > 0 || root.warming)
 
         SearchConsole {
             id: searchConsole
@@ -333,6 +473,32 @@ FocusScope {
             onMovedInDirection: (dx, dy) => root.moveSelectionInDirection(dx, dy)
         }
 
+        // Every satellite draws its craft from one of these two shared textures
+        // (gold or silver foil).
+        SatelliteArt {
+            id: goldArt
+        }
+
+        SatelliteArt {
+            id: silverArt
+
+            silver: true
+        }
+
+        CraftTexture {
+            id: goldCraft
+
+            sourceItem: goldArt
+            layoutScale: root.layout.scale
+        }
+
+        CraftTexture {
+            id: silverCraft
+
+            sourceItem: silverArt
+            layoutScale: root.layout.scale
+        }
+
         Repeater {
             id: satellites
 
@@ -340,6 +506,10 @@ FocusScope {
 
             Satellite {
                 required property int index
+
+                // About one in three wears silver foil.
+                craftTexture: index % 3 === 1 ? silverCraft : goldCraft
+                craftArtMargin: goldCraft.margin
 
                 slot: index
                 entry: root.catalog[index]
@@ -351,7 +521,10 @@ FocusScope {
                 width: scene.width
                 height: scene.height
                 arrival: root.settled
+                warming: root.warming
                 tracking: root.beamsEnabled
+                linkClock: root.linkClock
+                linkStrength: root.linkStrength
                 selected: entry !== null && entry === root.highlightedApp
                 departing: root.pendingLaunch !== null && entry === root.pendingLaunch
             }
@@ -385,10 +558,25 @@ FocusScope {
         }
     }
 
+    Cockpit {
+        flight: root.flight
+        pane: root.pane
+        clock: root.clock
+        warming: root.warming
+    }
+
+    // The touchdown's flash.
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.flash
+        opacity: root.flight.flash * .35
+        visible: opacity > 0
+    }
+
     DeliveryFlight {
         anchors.fill: parent
         launching: root.pendingLaunch !== null
-        sceneVisible: root.closing && root.progress > root.revealFrom
+        sceneVisible: root.closing && root.settled > .99
         progress: root.flightProgress
         settled: root.settled
         origin: root.deliveryOrigin

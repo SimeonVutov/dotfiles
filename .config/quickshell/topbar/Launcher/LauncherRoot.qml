@@ -164,7 +164,11 @@ Item {
     PanelWindow {
         visible: root.opened && root.armed
         screen: Quickshell.screens.find(screen => screen.name === root.monitor) || Quickshell.screens[0]
-        color: "transparent"
+        // The flight covers the whole screen with the captured desktop or space
+        // from its first frame, so the surface is opaque: the compositor can skip
+        // drawing (and blurring) the windows underneath on every frame.
+        color: "black"
+        surfaceFormat.opaque: true
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-launcher"
