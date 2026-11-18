@@ -1,144 +1,112 @@
 import QtQuick
 
-Item {
+// A satellite's radio link to the planet (shaders/link.frag): arcs of signal
+// rippling between the satellite's dish and a ground station on the planet.
+// It comes up while the satellite matches the search, and fades out with the
+// satellite when the search drops it.
+ShaderEffect {
     id: root
 
+    // The ground station on the planet (start) and the satellite (end).
     property real startX: 0
     property real startY: 0
     property real endX: 0
     property real endY: 0
     property bool connected: false
+    property bool highlighted: false
+    // 0..1, brighter when only a few satellites are linked.
+    property real strength: 1
+    // Seconds, shared by every link.
+    property real clock: 0
+    // 0..1, so neighbouring links do not ripple in step.
+    property real seed: 0
 
-    property real reach: 0
-    property real scatter: 1
+    // Shader inputs.
+    property color colour: Theme.atmosphere
+    property real span: Math.max(1, Math.hypot(endX - startX, endY - startY))
+    property real breadth: Math.min(70, 11 + span * .25)
+    property real link: 0
+    property real selected: highlighted ? 1 : 0
+    // When the satellite became, and stopped being, the active one on the
+    // shared clock, for the current and the two previous selections. Arcs sent
+    // in those periods are the active stream, so arcs already on their way
+    // finish their trip whatever is selected later; only new arcs follow the
+    // current selection. The clock starts over each time the launcher opens,
+    // so times from an earlier opening are dropped here.
+    property real selectedSince: 1e9
+    property real selectedUntil: -1
+    property real previousSince: 1e9
+    property real previousUntil: -1
+    property real olderSince: 1e9
+    property real olderUntil: -1
+    property real activeSince: selectedSince > clock + 1 ? (highlighted ? 0 : 1e9) : selectedSince
+    property real activeUntil: selectedUntil > clock + 1 && !highlighted ? -1 : selectedUntil
+    property vector4d earlier: Qt.vector4d(
+        previousSince > clock + 1 ? 1e9 : previousSince, previousSince > clock + 1 ? -1 : previousUntil,
+        olderSince > clock + 1 ? 1e9 : olderSince, olderSince > clock + 1 ? -1 : olderUntil)
 
-    readonly property real length: Math.hypot(endX - startX, endY - startY)
-    readonly property real angle: Math.atan2(endY - startY, endX - startX) * 180 / Math.PI
+    onHighlightedChanged: {
+        if (highlighted) {
+            olderSince = previousSince;
+            olderUntil = previousUntil;
+            previousSince = selectedSince;
+            previousUntil = selectedUntil;
+            selectedSince = clock;
+            selectedUntil = 1e9;
+        } else {
+            selectedUntil = clock;
+        }
+    }
+    Component.onCompleted: if (highlighted) {
+        selectedSince = 0;
+        selectedUntil = 1e9;
+    }
 
-    // The beam is snapshotted where it broke, so the debris scatters from that
-    // spot instead of trailing the satellite that has already drifted on.
-    property real frozenX: 0
-    property real frozenY: 0
-    property real frozenLength: 0
-    property real frozenAngle: 0
+    Behavior on selected {
+        NumberAnimation {
+            duration: Theme.motion
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    x: startX
+    y: startY - breadth / 2
+    width: span
+    height: breadth
+    transformOrigin: Item.Left
+    rotation: Math.atan2(endY - startY, endX - startX) * 180 / Math.PI
+    visible: link > 0
 
     onConnectedChanged: {
-        extend.stop();
-        burst.stop();
-
         if (connected) {
-            scatter = 1;
-            extend.from = reach;
-            extend.start();
-            return;
+            fade.stop();
+            rise.restart();
+        } else if (link > 0) {
+            rise.stop();
+            fade.restart();
         }
-
-        if (reach <= 0)
-            return;
-
-        frozenX = startX;
-        frozenY = startY;
-        frozenLength = length * reach;
-        frozenAngle = angle;
-        reach = 0;
-        scatter = 0;
-        burst.restart();
     }
 
     NumberAnimation {
-        id: extend
+        id: rise
 
         target: root
-        property: "reach"
+        property: "link"
         to: 1
-        duration: Theme.beamExtendDuration
+        duration: Theme.linkRiseDuration
         easing.type: Easing.OutCubic
     }
 
+    // Same timing as the satellite's own fade, so they leave together.
     NumberAnimation {
-        id: burst
+        id: fade
 
         target: root
-        property: "scatter"
-        to: 1
-        duration: Theme.beamBurstDuration
-        easing.type: Easing.OutQuad
+        property: "link"
+        to: 0
+        duration: Theme.fadeDuration
+        easing.type: Easing.InCubic
     }
 
-    Item {
-        id: line
-
-        readonly property real tip: root.length * root.reach
-        readonly property real trailOpacity: .32
-        readonly property real tipSize: 4
-        readonly property real tipOpacity: .8
-
-        x: root.startX
-        y: root.startY
-        rotation: root.angle
-        visible: root.connected && root.reach > 0
-
-        Rectangle {
-            y: -height / 2
-            width: line.tip
-            height: 1
-            color: Theme.text
-            opacity: line.trailOpacity
-        }
-
-        Rectangle {
-            x: line.tip - width / 2
-            y: -height / 2
-            width: line.tipSize
-            height: width
-            radius: width / 2
-            color: Theme.text
-            opacity: line.tipOpacity
-        }
-    }
-
-    Item {
-        id: debris
-
-        readonly property int count: 14
-
-        // Shards fall into lanes of growing offset from the beam axis.
-        readonly property int lanes: 4
-        readonly property real laneSpread: 8
-        readonly property real laneStep: 4
-        readonly property real spreadAlong: 14
-        readonly property real spin: 90
-
-        readonly property real shardRatio: .6
-        readonly property real shardShrink: .7
-        readonly property real peakOpacity: .7
-
-        readonly property real slideFrequency: 5.1
-        readonly property real driftFrequency: 2.6
-        readonly property real spinFrequency: 3.3
-
-        x: root.frozenX
-        y: root.frozenY
-        rotation: root.frozenAngle
-        visible: burst.running
-
-        Repeater {
-            model: debris.count
-
-            Rectangle {
-                required property int index
-
-                readonly property real slot: root.frozenLength * (index / debris.count)
-                readonly property real spreadAcross: debris.laneSpread + index % debris.lanes * debris.laneStep
-
-                x: slot + Math.sin(index * debris.slideFrequency) * root.scatter * debris.spreadAlong
-                y: Math.cos(index * debris.driftFrequency) * root.scatter * spreadAcross
-                rotation: Math.sin(index * debris.spinFrequency) * root.scatter * debris.spin
-                width: Math.max(1, root.frozenLength / debris.count * debris.shardRatio) * (1 - root.scatter * debris.shardShrink)
-                height: 1
-                color: Theme.text
-                opacity: (1 - root.scatter) * debris.peakOpacity
-            }
-        }
-    }
+    fragmentShader: Qt.resolvedUrl("shaders/link.frag.qsb")
 }

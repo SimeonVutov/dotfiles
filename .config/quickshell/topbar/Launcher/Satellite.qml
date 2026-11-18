@@ -10,10 +10,18 @@ Item {
     property real visualScale: 1
     property real globeRadius: Theme.globeRadius
     property var entry: null
+    // Shared craft texture (a ShaderEffectSource over a SatelliteArt) and the
+    // transparent margin it keeps around the art.
+    property Item craftTexture: null
+    property real craftArtMargin: 0
 
     property bool active: false
     property real arrival: 1
+    property bool warming: false
     property bool tracking: false
+    // The radio link's shared clock (seconds) and brightness (0..1).
+    property real linkClock: 0
+    property real linkStrength: 1
     property bool selected: false
     property bool departing: false
     property real presence: 0
@@ -27,10 +35,13 @@ Item {
     readonly property bool moving: visible && showingEntry && arrival > barelyVisible && !departing
     readonly property bool beaming: tracking && accepted && presence > barelyVisible && arrival > nearlySettled
 
-    readonly property real entranceLift: 65
-    readonly property int entranceStaggerSlots: 8
-    readonly property real entranceStaggerStep: 3
-    readonly property real entranceRise: entranceLift + slot % entranceStaggerSlots * entranceStaggerStep
+    // Deployment: each craft flies out from the planet to its orbit, in a few
+    // staggered groups, growing to full size on the way.
+    readonly property int deployGroups: 6
+    readonly property real deployStagger: .32
+    readonly property real deployDelay: slot % deployGroups / (deployGroups - 1) * deployStagger
+    readonly property real deployed: Math.max(0, Math.min(1, (arrival - deployDelay) / (1 - deployDelay)))
+    readonly property real deployReach: .18 + .82 * (1 - Math.pow(1 - deployed, 3))
 
     readonly property real centerOffsetX: basePosition.x + drift
     readonly property real centerOffsetY: basePosition.y + bob
@@ -149,12 +160,15 @@ Item {
     }
 
     Beam {
-        visible: root.arrival > 0
         startX: root.beamStart.x
         startY: root.beamStart.y
         endX: root.iconCenter.x
         endY: root.iconCenter.y
         connected: root.beaming
+        highlighted: root.selected
+        strength: root.linkStrength
+        clock: root.linkClock
+        seed: root.slot * .618 % 1
     }
 
     Item {
@@ -163,20 +177,25 @@ Item {
         objectName: "satelliteHitTarget"
 
         readonly property real hullSize: 76
-        readonly property real hullRadius: 18
-        readonly property real hullOutlineInset: 4
         readonly property real iconSourceSize: 64
-        readonly property real wingHullGap: 12
-        readonly property real arrayInsetY: 16
         readonly property real labelGap: 10
+        readonly property Item art: root.craftTexture ? root.craftTexture.sourceItem : null
         readonly property bool highlighted: root.selected
 
         width: Theme.craftWidth
         height: Theme.craftHeight
-        x: root.width / 2 + root.centerOffsetX - width / 2
-        y: root.height / 2 + root.centerOffsetY - height / 2 + (1 - root.arrival) * root.entranceRise
+        x: root.width / 2 + root.centerOffsetX * root.deployReach - width / 2
+        y: root.height / 2 + root.centerOffsetY * root.deployReach - height / 2
         scale: root.visualScale * (highlighted ? Theme.craftHoverScale : 1)
-        opacity: root.presence * root.arrival
+        // While warming up, drawn at an invisible opacity rather than skipped.
+        opacity: root.presence * Math.max(root.warming ? .004 : 0, Math.min(1, root.deployed * 3))
+        // Growth during deployment, kept apart from the animated hover scale.
+        transform: Scale {
+            origin.x: craft.width / 2
+            origin.y: craft.height / 2
+            xScale: .5 + .5 * root.deployReach
+            yScale: xScale
+        }
         visible: root.entry !== null && opacity > 0
 
         Behavior on scale {
@@ -193,38 +212,42 @@ Item {
             height: craft.hullSize
             rotation: root.bankAngle
 
-            SatelliteWing {
-                x: (body.width - craft.hullSize) / 2 - craft.wingHullGap - width
-                y: craft.arrayInsetY
-            }
-            SatelliteWing {
-                x: (body.width + craft.hullSize) / 2 + craft.wingHullGap
-                y: craft.arrayInsetY
-                mirrored: true
+            // The whole craft from the shared texture, placed so its bus lines up
+            // with the hull below.
+            ShaderEffect {
+                readonly property real margin: root.craftArtMargin
+
+                visible: craft.art !== null
+                x: craft.art ? hull.x - craft.art.hullX - margin : 0
+                y: craft.art ? hull.y - craft.art.hullY - margin : 0
+                width: craft.art ? craft.art.width + margin * 2 : 0
+                height: craft.art ? craft.art.height + margin * 2 : 0
+                property variant source: root.craftTexture
             }
 
-            Rectangle {
+            Item {
                 id: hull
 
                 x: (body.width - width) / 2
                 width: craft.hullSize
                 height: craft.hullSize
-                radius: craft.hullRadius
-                color: craft.highlighted ? Theme.surfaceHover : Theme.surface
-                border.color: root.selected ? Theme.text : Theme.borderBright
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Theme.motion
-                    }
-                }
-
+                // Selection ring in the atmosphere colour, around the instrument face.
                 Rectangle {
                     anchors.fill: parent
-                    anchors.margins: craft.hullOutlineInset
-                    radius: parent.radius - anchors.margins
+                    anchors.margins: 6
+                    radius: 14
                     color: "transparent"
-                    border.color: Theme.border
+                    border.color: Theme.atmosphere
+                    border.width: 2
+                    opacity: craft.highlighted ? 1 : 0
+                    visible: opacity > 0
+
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Theme.motion
+                        }
+                    }
                 }
 
                 Image {
