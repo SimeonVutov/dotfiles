@@ -14,16 +14,26 @@ ShellRoot {
 
         Bar {}
     }
-    SessionMenuRoot {}
+    SessionMenuRoot {
+        id: sessionMenu
+    }
     LauncherRoot {
         id: launcher
     }
     SettingsRoot {}
 
+    // Hyprland binds these directly, so opening skips a shell script and an IPC client.
     GlobalShortcut {
         appid: "quickshell-topbar"
         name: "launcher"
         description: "Toggle app launcher"
         onPressed: launcher.toggle()
+    }
+
+    GlobalShortcut {
+        appid: "quickshell-topbar"
+        name: "session-menu"
+        description: "Toggle session menu"
+        onPressed: sessionMenu.toggle()
     }
 }
