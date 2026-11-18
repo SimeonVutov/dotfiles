@@ -1,7 +1,6 @@
 import QtQuick
 import QtTest
 import Quickshell
-import qs.Launcher
 
 ShellRoot {
     FloatingWindow {

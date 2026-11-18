@@ -1,6 +1,6 @@
 #!/bin/sh
 case "${1:-}" in
-    topbar|wallpaper|lockscreen) ;;
+    topbar|wallpaper|lockscreen|launcher) ;;
     *) exit 2 ;;
 esac
 if [ ! -f /usr/share/glvnd/egl_vendor.d/50_mesa.json ]; then
@@ -10,6 +10,11 @@ fi
 
 quickshell_malloc_conf='narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:0'
 export MALLOC_CONF="$quickshell_malloc_conf"
+
+# Time animations by the clock. Qt's default driver steps them by the primary
+# screen's refresh interval and flips between that and the clock when frames run
+# late, so animations change speed mid-flight and crawl on slower monitors.
+export QSG_USE_SIMPLE_ANIMATION_DRIVER=1
 
 if [ "$1" = lockscreen ]; then
     ulimit -c 0

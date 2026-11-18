@@ -416,6 +416,18 @@ sudo udevadm control --reload-rules
 ```
 
 Check that `/dev/dri/amd-igpu` and `/dev/dri/nvidia-dgpu` exist after reboot.
+
+To let the NVIDIA dGPU power off while it is unused (it wakes for `prime-run`
+apps, CUDA work, or a display on its ports), also install the runtime power
+management rule and driver option, then reboot:
+
+```bash
+sudo install -m 644 ~/dotfiles/.config/hypr/conf/environments/udev/80-nvidia-runtime-pm.rules /etc/udev/rules.d/
+sudo install -m 644 ~/dotfiles/.config/hypr/conf/environments/udev/nvidia-runtime-pm.conf /etc/modprobe.d/
+```
+
+After the reboot, with only the laptop display in use and no dGPU apps running,
+`cat /sys/bus/pci/devices/0000:01:00.0/power/runtime_status` should report `suspended`.
 On other hardware, select an appropriate profile in
 `.config/hypr/conf/environments.lua` instead of using `hybrid.lua` unchanged.
 

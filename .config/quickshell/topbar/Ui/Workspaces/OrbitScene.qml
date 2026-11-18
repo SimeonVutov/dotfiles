@@ -556,9 +556,11 @@ Item {
         }
     }
 
+    // Overlays open on the focused screen and cover the rocket, so the scene pauses
+    // instead of competing with their animation for the GPU and the GUI thread.
     FrameAnimation {
         running: root.motionEnabled && !root.externalDeparture && root.visible && root.Window.window !== null
-            && root.Window.window.visible && root.flight !== null
+            && root.Window.window.visible && root.flight !== null && OverlayController.owner === ""
         onTriggered: root.advance(frameTime)
     }
 
