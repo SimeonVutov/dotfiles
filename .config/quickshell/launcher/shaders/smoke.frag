@@ -27,28 +27,22 @@ const vec3 CORE = vec3(1.0, .93, .78);
 const vec3 FLAME = vec3(1.0, .56, .2);
 const vec3 EMBER = vec3(.85, .24, .06);
 
-// Pad smoke, flow: the clouds swell outward from the pad, so the noise is
-// scaled about the centre and both sides stay one continuous cloud. How far
-// the noise is stretched across and down, how fast the clouds swell, and how
-// fast they roll upward.
-const float SMOKE_FLOW_ACROSS = 1.7;
+// Pad smoke flow: noise stretch across and down, how fast the clouds swell
+// outward and how fast they roll upward.
+const vec2 SMOKE_FLOW = vec2(1.7, 2.2);
 const float SMOKE_SWELL_RATE = .55;
-const float SMOKE_FLOW_DOWN = 2.2;
 const float SMOKE_ROLL_SPEED = .45;
 
-// Pad smoke, shape: the cloud top is highest over the pad and lower to the
-// sides (the share that is always present, the share that peaks over the pad,
-// and how narrow that peak is), and billows up and down with the noise (its
-// base level and variation).
+// Pad smoke shape: the cloud top is highest over the pad (base share, centre
+// share, how narrow the centre peak is) and billows with the noise.
 const float CLOUD_BASE_SHARE = .45;
 const float CLOUD_CENTRE_SHARE = .55;
 const float CLOUD_CENTRE_NARROWNESS = .6;
 const float BILLOW_BASE = .55;
 const float BILLOW_VARIATION = .9;
 
-// Pad smoke, density: how softly the top edge fades in (above and below the
-// cloud top), the overall density, the scale and offset of the finer noise
-// layered on top, and how much that detail varies the density.
+// Pad smoke density: softness of the top edge, overall density, and the scale,
+// offset and strength of the fine noise layered on top.
 const vec2 SMOKE_EDGE_SOFTNESS = vec2(.03, .07);
 const float SMOKE_DENSITY = 1.25;
 const float DETAIL_SCALE = 2.3;
@@ -56,43 +50,35 @@ const float DETAIL_OFFSET = 7.3;
 const float DETAIL_DENSITY_BASE = .65;
 const float DETAIL_DENSITY_DEPTH = .5;
 
-// Pad smoke, colour: sunlit white billows with shaded folds. The shaded and
-// sunlit colours, how deep below the cloud top the sunlight reaches, and how
-// much sunlight and detail brighten the smoke.
+// Pad smoke colour: shaded folds and sunlit billows, how deep the sunlight
+// reaches below the cloud top, and how much sunlight and detail brighten it.
 const vec3 SMOKE_SHADE = vec3(.52, .53, .56);
 const vec3 SMOKE_SUNLIT = vec3(.98, .97, .95);
 const vec2 SMOKE_SUNLIT_RANGE = vec2(.16, -.01);
 const float SUNLIGHT_WEIGHT = .6;
 const float DETAIL_WEIGHT = .55;
 
-// Pad smoke, firelight: the flame lights the smoke orange only close to the
-// pad. The lit colour (a boost of the flame plus an offset), how far the
-// light reaches across and down, and how quickly it fades.
+// Pad smoke firelight: the flame lights the smoke orange close to the pad.
 const float FIRELIGHT_BOOST = 1.2;
 const vec3 FIRELIGHT_OFFSET = vec3(.15, .07, 0.0);
-const float FIRELIGHT_REACH_ACROSS = 1.3;
-const float FIRELIGHT_REACH_DOWN = 2.2;
+const vec2 FIRELIGHT_REACH = vec2(1.3, 2.2);
 const float FIRELIGHT_FALLOFF = 3.6;
 
-// Re-entry plasma, streaks: it streams out from the middle of the view in
-// streaks around the window. How many streaks go around, how stretched they
+// Re-entry plasma streaks: how many go around the window, how stretched they
 // are along the stream, and how fast they stream.
 const float PLASMA_STREAK_COUNT = 14.0;
 const float PLASMA_STREAK_STRETCH = 2.0;
 const float PLASMA_STREAM_SPEED = 5.5;
 
-// Re-entry plasma, sheet: where the plasma wraps the window's edges (the
-// range of edge distance over which it fades in), how ragged the streaks make
-// that boundary, and the glow's base level and streak variation.
+// Re-entry plasma sheet: where it wraps the window's edges, how ragged the
+// streaks make that boundary, and the glow's base level and streak variation.
 const vec2 SHEET_RANGE = vec2(.45, 1.1);
 const float SHEET_RAGGEDNESS = .35;
 const float PLASMA_GLOW_BASE = .5;
 const float PLASMA_GLOW_STREAKS = .6;
 
-// Re-entry plasma, sparks of burning material: how many go around, how
-// stretched they are along the stream, how fast they stream, the noise level
-// that becomes a spark, how far from the window they appear, and how bright
-// they are.
+// Re-entry sparks: how many go around, their stretch and speed, the noise level
+// that becomes a spark, how far from the window they appear, and their brightness.
 const float SPARK_COUNT = 380.0;
 const float SPARK_STRETCH = 14.0;
 const float SPARK_SPEED = 20.0;
@@ -100,20 +86,17 @@ const vec2 SPARK_THRESHOLD = vec2(.93, .99);
 const vec2 SPARK_EDGE_RANGE = vec2(.3, .8);
 const float SPARK_BRIGHTNESS = 2.0;
 
-// Re-entry plasma, colour: the streak level at which the plasma turns from
-// flame to white-hot, how brightly the plasma lights, the faint tint over the
-// whole window, and how much glow and tint make the plasma opaque.
+// Re-entry plasma colour: where it turns from flame to white-hot, how brightly
+// it lights, the faint tint over the window, and how opaque glow and tint make it.
 const vec2 WHITE_HOT_RANGE = vec2(.75, 1.0);
 const float PLASMA_LIGHT = 1.3;
 const float PLASMA_TINT = .1;
 const float PLASMA_GLOW_OPACITY = .7;
 const float PLASMA_TINT_OPACITY = .6;
 
-// Flame tongues licking up from the pad, white-hot at their roots: how much
-// the noise is stretched across and up, how fast it rises, the tongues' base
-// height and turbulence, how tall they are away from and over the pad (and how
-// narrow that peak is), how much of the root stays flame coloured, and where
-// the white-hot part begins.
+// Flame tongues: noise stretch and rise speed, base height and turbulence, how
+// tall they are away from and over the pad (and how narrow the peak is), how
+// much of the root stays flame coloured, and where the white-hot part begins.
 const vec2 FLAME_FLOW = vec2(7.0, 5.0);
 const float FLAME_RISE_SPEED = 6.0;
 const float TONGUE_BASE_HEIGHT = .07;
@@ -126,10 +109,9 @@ const float WHITE_HOT_ROOT = .5;
 const float FLAME_BRIGHTNESS = 1.3;
 const float FLAME_OPACITY = .85;
 
-// The exhaust's light rising over the whole bottom of the view: how quickly it
-// fades upward, its strength away from and over the pad (and how narrow that
-// peak is), how bright and how opaque it is, and its flicker (base level,
-// depth, rate and noise seed).
+// The exhaust's light over the bottom of the view: falloff upward, strength
+// away from and over the pad, brightness, opacity, and flicker (base, depth,
+// rate, noise seed).
 const float EXHAUST_FALLOFF = 3.2;
 const float EXHAUST_EDGE_SHARE = .55;
 const float EXHAUST_CENTRE_SHARE = .45;
@@ -204,7 +186,7 @@ vec4 padSmoke(vec2 p) {
 
     // The clouds swell outward from the pad: the noise is scaled about the
     // centre, so both sides stay one continuous cloud.
-    vec2 flow = vec2(dx * SMOKE_FLOW_ACROSS / (1.0 + clock * SMOKE_SWELL_RATE), (p.y - base) * SMOKE_FLOW_DOWN + clock * SMOKE_ROLL_SPEED);
+    vec2 flow = vec2(dx * SMOKE_FLOW.x / (1.0 + clock * SMOKE_SWELL_RATE), (p.y - base) * SMOKE_FLOW.y + clock * SMOKE_ROLL_SPEED);
     float billow = fbm(flow);
     float height = padRise * (CLOUD_BASE_SHARE + CLOUD_CENTRE_SHARE * exp(-dx * dx * CLOUD_CENTRE_NARROWNESS)) * (BILLOW_BASE + BILLOW_VARIATION * billow);
     float top = base - height;
@@ -219,7 +201,7 @@ vec4 padSmoke(vec2 p) {
     // only close to the pad.
     float lit = smoothstep(top + SMOKE_SUNLIT_RANGE.x, top + SMOKE_SUNLIT_RANGE.y, p.y);
     vec3 colour = mix(SMOKE_SHADE, SMOKE_SUNLIT, clamp(lit * SUNLIGHT_WEIGHT + detail * DETAIL_WEIGHT, 0.0, 1.0));
-    float toFire = length(vec2(dx * FIRELIGHT_REACH_ACROSS, (p.y - base) * FIRELIGHT_REACH_DOWN));
+    float toFire = length(vec2(dx * FIRELIGHT_REACH.x, (p.y - base) * FIRELIGHT_REACH.y));
     colour = mix(colour, FLAME * FIRELIGHT_BOOST + FIRELIGHT_OFFSET, exp(-toFire * FIRELIGHT_FALLOFF) * fire);
     return vec4(colour, 1.0) * clamp(density, 0.0, 1.0);
 }

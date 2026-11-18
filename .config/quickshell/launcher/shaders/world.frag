@@ -39,40 +39,35 @@ layout(binding = 1) uniform sampler2D source;
 // feature is behind a test of its uniform and nothing unused is computed.
 
 // The atmosphere's colour, the sky from low to high altitude, and the
-// direction of the sun (towards the viewer, up and to the left) used to light
-// the globe and its halo.
+// direction of the sun used to light the globe and its halo.
 const vec3 AIR = vec3(.45, .72, 1.0);
 const vec3 SKY_LOW = vec3(.42, .64, .9);
 const vec3 SKY_HIGH = vec3(.12, .26, .52);
 const vec3 SUN = vec3(-.5, -.56, .66);
 const vec2 SUN_SIDE = vec2(-.666, -.746);
 
-// Per-pixel jitter for the speed blur (interleaved gradient noise), so the
-// blur reads as motion and not as banding: its scale and direction.
+// Per-pixel jitter for the speed blur (interleaved gradient noise), so it
+// reads as motion and not as banding.
 const float JITTER_SCALE = 52.9829189;
 const vec2 JITTER_DIRECTION = vec2(.06711056, .00583715);
 
-// Speed blur: how far, as a share of the streak, the two extra taps reach
-// either side of the middle one.
+// How far, as a share of the streak, the speed blur's extra taps reach.
 const float STREAK_TAP_REACH = .5;
 
-// Heat shimmer: where it is strongest. Rising from the engines it grows
-// towards the bottom of the view; around the window's edges it grows with
-// distance from the middle (a base level plus a share that ramps up).
+// Heat shimmer strength: rising from the engines it grows towards the bottom of
+// the view; around the window's edges it grows with distance from the middle.
 const vec2 SHIMMER_ENGINE_RANGE = vec2(.55, 1.05);
 const float SHIMMER_EDGE_BASE = .35;
 const float SHIMMER_EDGE_SHARE = .65;
 const vec2 SHIMMER_EDGE_RANGE = vec2(.02, .55);
 
-// Heat shimmer waves: the spatial frequency and speed along each axis, and
-// how far they displace the picture, in screen heights.
+// Heat shimmer waves: frequency and speed per axis, and displacement in screen heights.
 const vec2 SHIMMER_FREQUENCY = vec2(64.0, 57.0);
 const vec2 SHIMMER_SPEED = vec2(29.0, 23.0);
 const float SHIMMER_STRENGTH = .0022;
 
-// Touchdown shock: how sharply the pressure ring is confined, how far it
-// pushes the picture, over what distance from the middle it starts to act,
-// and how far it splits the colour channels.
+// Touchdown shock: how tight the pressure ring is, how far it pushes the
+// picture, where it starts to act, and how far it splits the colour channels.
 const float SHOCK_SHARPNESS = 5.0;
 const float SHOCK_PUSH = .03;
 const vec2 SHOCK_CENTRE_RANGE = vec2(0.0, .25);
@@ -82,10 +77,8 @@ const float SHOCK_COLOUR_SPLIT = .005;
 const vec3 BARE_GROUND_LOW = vec3(.05, .16, .3);
 const vec3 BARE_GROUND_HIGH = vec3(.1, .36, .55);
 
-// A lit globe: how the day side ramps in, how much light the ground keeps at
-// night and how much more the day adds, and the atmosphere at the globe's edge
-// (how bright it is, how much of it shows on the night side and how much more
-// the day adds).
+// A lit globe: the day side's ramp, the ground's night and day light, and the
+// atmosphere at the edge (brightness, night share, day share).
 const vec2 DAY_RANGE = vec2(-.35, .75);
 const float NIGHT_LIGHT = .2;
 const float DAY_LIGHT = .8;
@@ -93,20 +86,18 @@ const float EDGE_ATMOSPHERE_BRIGHTNESS = .7;
 const float EDGE_ATMOSPHERE_NIGHT_SHARE = .25;
 const float EDGE_ATMOSPHERE_DAY_SHARE = .75;
 
-// Blue haze over the far ground below the horizon: how quickly it fades down
-// the desktop, how strong it is, and its tint in daylight and in space.
+// Blue haze over the far ground below the horizon: falloff down the desktop,
+// strength, and tint in daylight and in space.
 const float FAR_HAZE_FALLOFF = 9.0;
 const float FAR_HAZE_STRENGTH = .45;
 const vec2 FAR_HAZE_TINT = vec2(.85, .45);
 
-// The atmosphere's glow above the horizon: a tight bright band and a wide
-// faint one (their falloff and weight).
+// Glow above the horizon: a tight bright band and a wide faint one (falloff, weight).
 const vec2 HORIZON_BAND_FALLOFF = vec2(40.0, 9.0);
 const vec2 HORIZON_BAND_WEIGHT = vec2(.55, .2);
 
-// The halo around the globe: a tight and a wide ring (falloff and weight), and
-// how much brighter it is on the sun side (the dimmest level and the share
-// that ramps up towards the sun).
+// Halo around the globe: a tight and a wide ring (falloff, weight), dimmer on
+// the side away from the sun.
 const vec2 HALO_FALLOFF = vec2(9.0, 2.4);
 const vec2 HALO_WEIGHT = vec2(.55, .12);
 const float HALO_DIM_SIDE = .35;
