@@ -1,7 +1,7 @@
 #!/bin/sh
 # Open a full-screen overlay, or close it when it is already open.
 #
-# Usage: quickshell-overlay.sh launcher|sessionmenu
+# Usage: quickshell-overlay.sh launcher|sessionmenu|wallpaper
 #
 # An overlay is a Quickshell process of its own that exists only while it is
 # open: a key press starts it from scratch and it exits when it closes, so it
@@ -9,10 +9,12 @@
 # captured here while the process starts, instead of after it is up.
 
 config="${1:-}"
-# The name of each overlay's IPC target.
+# The name of each overlay's IPC target, and whether it draws the desktop as it
+# was when it opened (the wallpaper picker only dims the live desktop).
 case "$config" in
-    launcher) target=launcher ;;
-    sessionmenu) target=menu ;;
+    launcher) target=launcher; capturing=yes ;;
+    sessionmenu) target=menu; capturing=yes ;;
+    wallpaper) target=wallpaper; capturing=no ;;
     *) exit 2 ;;
 esac
 
@@ -23,16 +25,19 @@ if [ "${2:-}" = --run ]; then
     # Holds the lock for as long as the overlay lives.
     monitor=$(hyprctl -j activeworkspace 2>/dev/null | sed -n 's/.*"monitor": *"\([^"]*\)".*/\1/p')
     if [ -n "$monitor" ]; then
-        capture="$runtime/quickshell-$config-$$.ppm"
-        export QS_OVERLAY_MONITOR="$monitor" QS_OVERLAY_CAPTURE="$capture"
-        # The marker comes last, so a snapshot is never read half written.
-        (grim -t ppm -o "$monitor" "$capture.part" && mv "$capture.part" "$capture" && : >"$capture.ok") >/dev/null 2>&1 &
+        export QS_OVERLAY_MONITOR="$monitor"
+        if [ "$capturing" = yes ]; then
+            capture="$runtime/quickshell-$config-$$.ppm"
+            export QS_OVERLAY_CAPTURE="$capture"
+            # The marker comes last, so a snapshot is never read half written.
+            (grim -t ppm -o "$monitor" "$capture.part" && mv "$capture.part" "$capture" && : >"$capture.ok") >/dev/null 2>&1 &
+        fi
     fi
 
     # The bar closes its own overlays and pauses its animation under this one;
     # the other overlay process, if there is one, closes.
     (qs ipc -n -c topbar call overlays begin "$config" >/dev/null 2>&1 &)
-    for other in launcher:launcher sessionmenu:menu; do
+    for other in launcher:launcher sessionmenu:menu wallpaper:wallpaper; do
         [ "${other%%:*}" = "$config" ] && continue
         (qs ipc -n -c "${other%%:*}" call "${other##*:}" close >/dev/null 2>&1 &)
     done

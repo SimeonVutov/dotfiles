@@ -8,6 +8,7 @@ hl.window_rule({ match = { title = "^(Picture-in-Picture)$" }, float = true, pin
 hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
 hl.layer_rule({ match = { namespace = "^(quickshell-session-menu)$" }, no_anim = true })
 hl.layer_rule({ match = { namespace = "^(quickshell-launcher)$" }, no_anim = true })
+hl.layer_rule({ match = { namespace = "^(quickshell:wallpaper-picker)$" }, no_anim = true })
 hl.layer_rule({ match = { namespace = "^(quickshell-settings)$" }, no_anim = true })
 hl.layer_rule({ match = { namespace = "^(quickshell-settings-confirm)$" }, no_anim = true })
 hl.layer_rule({ match = { namespace = "^(quickshell-workspace-flight)$" }, no_anim = true })

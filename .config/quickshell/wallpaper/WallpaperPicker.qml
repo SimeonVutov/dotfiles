@@ -23,6 +23,8 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:wallpaper-picker"
     visible: false
     color: "transparent"
+    // The monitor holding the focus, as found by quickshell-overlay.sh.
+    screen: Quickshell.screens.find(screen => screen.name === Quickshell.env("QS_OVERLAY_MONITOR")) || Quickshell.screens[0]
 
     readonly property string home: Quickshell.env("HOME")
     readonly property string applyScript: home + "/.config/scripts/wallpaper-apply.sh"
@@ -68,14 +70,20 @@ PanelWindow {
         }
     }
 
+    // Opens as soon as the process is up, and ends when it closes
+    // (quickshell-overlay.sh starts it).
+    Component.onCompleted: openPicker()
+
     IpcHandler {
         target: "wallpaper"
 
+        function close(): void {
+            root.closePicker();
+        }
+
+        // The picker exists only while open, so a toggle can only close it.
         function toggle(): void {
-            if (root.visible)
-                root.closePicker();
-            else
-                root.openPicker();
+            root.closePicker();
         }
     }
 

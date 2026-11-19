@@ -10,10 +10,10 @@ Singleton {
     signal closeRequested(string owner)
     signal granted(string owner)
 
-    // Full-screen overlays that run as processes of their own (the app launcher
-    // and the session menu), by name. They cannot take part in the arbitration
-    // below, so they announce themselves and an overlay of this process asks
-    // them to close instead.
+    // Full-screen overlays that run as processes of their own (the app launcher,
+    // the session menu and the wallpaper picker), by name. They cannot take part
+    // in the arbitration below, so they announce themselves and an overlay of
+    // this process asks them to close instead.
     property var externalOverlays: ({})
 
     // Whether anything covers the screen, in this process or another.
@@ -22,6 +22,7 @@ Singleton {
     function closeOverlayProcesses() {
         Quickshell.execDetached(["qs", "ipc", "-n", "-c", "launcher", "call", "launcher", "close"]);
         Quickshell.execDetached(["qs", "ipc", "-n", "-c", "sessionmenu", "call", "menu", "close"]);
+        Quickshell.execDetached(["qs", "ipc", "-n", "-c", "wallpaper", "call", "wallpaper", "close"]);
     }
 
     // An overlay process opened: it takes the screen from this process's overlay.
