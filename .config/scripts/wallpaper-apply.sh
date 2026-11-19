@@ -106,6 +106,3 @@ mv -f -- "$BLURRED_TEMP" "$BLURRED_WALLPAPER"
 rm -f "$TMP_PNG"
 log "Done"
 
-# Kill quickshell as it is not needed anymore
-# !!! IMPORTANT: If we add more functionality in quickshell like top bar, REMOVE THIS LINE
-pkill -f "qs -c wallpaper" 2>/dev/null || true
