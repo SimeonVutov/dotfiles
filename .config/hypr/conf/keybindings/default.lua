@@ -12,7 +12,7 @@ hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 hl.bind(mainMod .. " + M", hl.dsp.exit())
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(variables.browser))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + P", hl.dsp.global("quickshell-topbar:session-menu"))
+hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("sh ~/.config/scripts/session-menu.sh"))
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit")) -- dwindle
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("sh ~/.config/scripts/app-launcher.sh"))
