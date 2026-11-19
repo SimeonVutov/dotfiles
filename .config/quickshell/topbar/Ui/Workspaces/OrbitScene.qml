@@ -560,7 +560,7 @@ Item {
     // instead of competing with their animation for the GPU and the GUI thread.
     FrameAnimation {
         running: root.motionEnabled && !root.externalDeparture && root.visible && root.Window.window !== null
-            && root.Window.window.visible && root.flight !== null && OverlayController.owner === ""
+            && root.Window.window.visible && root.flight !== null && !OverlayController.active
         onTriggered: root.advance(frameTime)
     }
 

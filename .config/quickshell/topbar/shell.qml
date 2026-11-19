@@ -20,13 +20,18 @@ ShellRoot {
     }
     SettingsRoot {}
 
-    // The app launcher is a process of its own (quickshell/launcher); it asks
-    // for the screen to be cleared before it opens.
+    // The app launcher is a process of its own (quickshell/launcher). It tells
+    // the bar when it opens, so the bar clears its overlays and pauses its
+    // animation, and when it closes.
     IpcHandler {
         target: "overlays"
 
-        function dismiss(): void {
-            OverlayController.dismiss();
+        function begin(name: string): void {
+            OverlayController.beginExternal(name);
+        }
+
+        function end(name: string): void {
+            OverlayController.endExternal(name);
         }
     }
 

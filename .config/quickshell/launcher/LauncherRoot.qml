@@ -4,90 +4,30 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.Common
 
-// One opening of the launcher, whose process ends when it closes. The desktop
-// is captured while the process starts (app-launcher.sh does it and names the
-// file), so the capture is usually done by the time the window is built. The
-// window maps once the snapshot is ready or the capture deadline expires.
-//
-// Nothing here may wait on a Timer: with the clock-driven animation driver
-// (QSG_USE_SIMPLE_ANIMATION_DRIVER) timers only run once a window is on screen,
-// and this process has none until the launcher maps.
+// One opening of the launcher, whose process ends when it closes. The shared
+// OverlaySession brings in the desktop capture and decides when the window maps.
 Item {
     id: root
 
-    // The monitor holding the focus, as found by app-launcher.sh.
-    readonly property string monitor: Quickshell.env("QS_LAUNCHER_MONITOR") || Quickshell.screens[0]?.name || ""
-    readonly property var targetScreen: Quickshell.screens.find(screen => screen.name === monitor) || Quickshell.screens[0]
     // The launcher inside the window, once it is built.
     readonly property var launcher: windowLoader.item?.launcher ?? null
-    // A capture made ahead of this process, and the marker that appears once it
-    // is complete. Without one, the capture is made here.
-    readonly property string preparedCapture: Quickshell.env("QS_LAUNCHER_CAPTURE")
-
-    property bool opened: false
-    property bool armed: false
-    // The desktop capture, handed to the launcher.
-    property string snapshotSource: ""
 
     // Opens as soon as the process is up.
-    Component.onCompleted: open()
-
-    function open() {
-        if (opened)
-            return;
-
-        if (preparedCapture) {
-            // Before the window, so the wait runs while the window is built.
-            awaitCapture.running = true;
-            opened = true;
-            return;
-        }
-
-        // Before the window: the capture runs while the window is built.
-        const capturing = capture.start(monitor);
-        opened = true;
-        if (!capturing)
-            arm();
-    }
-
-    // Idempotent: whichever of snapshotReady, a failed capture or the capture
-    // deadline comes first is the one that maps the window.
-    function arm() {
-        if (!opened || armed)
-            return;
-
-        armed = true;
-        Qt.callLater(focusSearch);
-    }
+    Component.onCompleted: session.open()
 
     function focusSearch() {
         launcher?.focusSearch();
     }
 
     function close() {
-        if (!opened)
+        if (!session.opened)
             return;
 
         // Nothing is on screen before the window maps, so there is nothing to land.
-        if (!armed)
-            finish();
+        if (!session.armed)
+            session.finish();
         else
             launcher?.cancel();
-    }
-
-    // The process ends here, taking the window and everything else with it.
-    function finish() {
-        if (!opened)
-            return;
-
-        opened = false;
-        armed = false;
-        // The process ends before the capture's own clean-up would run.
-        capture.cancel();
-        capture.release();
-        if (preparedCapture)
-            Quickshell.execDetached(["rm", "-f", "--", preparedCapture, preparedCapture + ".part", preparedCapture + ".ok"]);
-        Qt.quit();
     }
 
     function launch(entry) {
@@ -98,7 +38,7 @@ Item {
 
         try {
             entry.execute();
-            finish();
+            session.finish();
         } catch (error) {
             const name = entry.name || "application";
             const message = "Could not launch " + name;
@@ -120,56 +60,26 @@ Item {
         }
     }
 
-    DesktopCapture {
-        id: capture
+    OverlaySession {
+        id: session
 
-        prefix: "launcher"
-
-        onCompleted: source => {
-            // A capture that lands after arming has missed its slot; handing it
-            // over now would pop the desktop in mid-animation.
-            if (root.opened && !root.armed)
-                root.snapshotSource = source;
-            else
-                capture.release();
-        }
-
-        onFailed: {
-            if (root.opened)
-                root.arm();
-        }
-    }
-
-    // Waits for the prepared capture's marker, which comes last so that a
-    // snapshot is never read half written. It ends at once if the marker is
-    // there already, and gives up after about 250 ms, when the launcher maps
-    // without a snapshot instead of waiting for the compositor indefinitely.
-    Process {
-        id: awaitCapture
-
-        command: ["sh", "-c", 'n=0; while [ ! -e "$1" ] && [ "$n" -lt 40 ]; do sleep 0.005; n=$((n + 1)); done; [ -e "$1" ]',
-            "sh", root.preparedCapture + ".ok"]
-        onExited: (code, status) => {
-            if (!root.opened || root.armed)
-                return;
-
-            if (code === 0 && status === 0)
-                root.snapshotSource = "file://" + root.preparedCapture;
-            else
-                root.arm();
+        capturePrefix: "launcher"
+        onArmedChanged: {
+            if (armed)
+                Qt.callLater(root.focusSearch);
         }
     }
 
     LazyLoader {
         id: windowLoader
 
-        active: root.opened
+        active: session.opened
 
         PanelWindow {
             readonly property alias launcher: menu
 
-            visible: root.armed
-            screen: root.targetScreen
+            visible: session.armed
+            screen: session.targetScreen
             // The flight covers the whole screen with the captured desktop or space
             // from its first frame, so the surface is opaque: the compositor can skip
             // drawing (and blurring) the windows underneath on every frame.
@@ -193,19 +103,14 @@ Item {
                 // The screen's size rather than the window's, which starts at zero
                 // and would make the launcher lay itself out again as the first
                 // frames draw.
-                width: root.targetScreen?.width ?? 0
-                height: root.targetScreen?.height ?? 0
-                presenting: root.armed
-                snapshot: root.snapshotSource
-                onSnapshotReady: root.arm()
-                onDismissed: root.finish()
+                width: session.targetScreen?.width ?? 0
+                height: session.targetScreen?.height ?? 0
+                presenting: session.armed
+                snapshot: session.snapshotSource
+                onSnapshotReady: session.arm()
+                onDismissed: session.finish()
                 onLaunchRequested: entry => root.launch(entry)
             }
         }
-    }
-
-    Component.onDestruction: {
-        capture.cancel();
-        capture.release();
     }
 }
