@@ -39,16 +39,8 @@ Item {
     property real emptySince: 0
     property bool ready: false
     property var pendingBodies: ({})
-    property var trailPoints: []
-    property int trailHead: -1
-    property real trailClock: 0
-    property real nextTrailAt: 0
-    property real wheelSteps: 0
-    property real lastWheelAt: -1000
     property int retiringCount: 0
     readonly property int stride: 48
-    readonly property int trailCapacity: 80
-    readonly property real trailInterval: 1 / 90
     readonly property real reflowDuration: 0.38
 
     implicitWidth: targetWidth
@@ -58,6 +50,8 @@ Item {
     clip: true
 
     ListModel { id: slots }
+
+    TrailBuffer { id: trailBuffer }
 
     Behavior on implicitWidth {
         NumberAnimation { duration: 380; easing.type: Easing.InOutCubic }
@@ -78,32 +72,9 @@ Item {
         onTriggered: root.queueSync()
     }
 
-    Timer {
-        id: wheelDelay
-        interval: 90
-        onTriggered: root.flushWheel()
-    }
-
     function queueSync() {
         if (ready)
             Qt.callLater(root.synchronize);
-    }
-
-    function flushWheel() {
-        if (Math.abs(wheelSteps) < 120)
-            return;
-        const now = Date.now();
-        const remaining = 90 - (now - lastWheelAt);
-        if (remaining > 0) {
-            if (!wheelDelay.running) {
-                wheelDelay.interval = Math.ceil(remaining);
-                wheelDelay.start();
-            }
-            return;
-        }
-        wheelRequested(wheelSteps > 0 ? -1 : 1);
-        wheelSteps = 0;
-        lastWheelAt = now;
     }
 
     function slotFor(id) {
@@ -229,28 +200,18 @@ Item {
         }
     }
 
-    function synchronize() {
-        if (!ready)
-            return;
-        const observed = workspaces.filter(workspace => workspace && workspace.id > 0)
+    // The workspaces Hyprland reports, in id order.
+    function observedWorkspaces() {
+        return workspaces.filter(workspace => workspace && workspace.id > 0)
             .map(workspace => ({ workspaceId: workspace.id, label: String(workspace.name) }))
             .filter((workspace, index, list) => list.findIndex(other => other.workspaceId === workspace.workspaceId) === index)
             .sort((a, b) => a.workspaceId - b.workspaceId);
-        const now = Date.now();
-        if (!observed.length && activeId < 1) {
-            if (!slots.count)
-                return;
-            if (!emptySince)
-                emptySince = now;
-            if (now - emptySince < bodySettle.interval) {
-                if (!bodySettle.running)
-                    bodySettle.start();
-                return;
-            }
-            resetForMonitor();
-            return;
-        }
-        emptySince = 0;
+    }
+
+    // The observed workspaces that may have a body now. A workspace without one
+    // waits for the active workspace to settle and for its own settle delay, so
+    // one that flickers in and out never grows a body.
+    function admittedWorkspaces(observed, now) {
         const observedIds = new Set(observed.map(workspace => workspace.workspaceId));
         for (const id of Object.keys(pendingBodies)) {
             if (!observedIds.has(Number(id)))
@@ -276,6 +237,12 @@ Item {
         });
         if (waiting && !bodySettle.running)
             bodySettle.start();
+        return desired;
+    }
+
+    // Gives every desired workspace a body and retires the others. Returns
+    // whether any body changed.
+    function applyDesired(desired) {
         const desiredIds = new Set(desired.map(workspace => workspace.workspaceId));
         let changed = false;
         for (let i = 0; i < desired.length; ++i) {
@@ -297,11 +264,12 @@ Item {
             if (!desiredIds.has(slots.get(i).workspaceId))
                 changed = setPresent(i, false) || changed;
         }
-        if (changed) {
-            reflow();
-        }
-        if (!desiredIds.has(activeId))
-            return;
+        return changed;
+    }
+
+    // Starts the ship from the active workspace's body when there is no flight,
+    // and aims it at the active workspace.
+    function steerShip() {
         if (!Motion.finitePose(pose)) {
             const center = centerFor(activeId, false);
             if (!center)
@@ -314,6 +282,34 @@ Item {
         }
         if (flight)
             Flight.request(flight, activeId);
+    }
+
+    function synchronize() {
+        if (!ready)
+            return;
+        const observed = observedWorkspaces();
+        const now = Date.now();
+        if (!observed.length && activeId < 1) {
+            if (!slots.count)
+                return;
+            if (!emptySince)
+                emptySince = now;
+            if (now - emptySince < bodySettle.interval) {
+                if (!bodySettle.running)
+                    bodySettle.start();
+                return;
+            }
+            resetForMonitor();
+            return;
+        }
+        emptySince = 0;
+
+        const desired = admittedWorkspaces(observed, now);
+        if (applyDesired(desired))
+            reflow();
+        if (!desired.some(workspace => workspace.workspaceId === activeId))
+            return;
+        steerShip();
     }
 
     function flightBodies() {
@@ -334,15 +330,8 @@ Item {
         return bodies;
     }
 
-    function trailPoint(ageIndex) {
-        return trailHead < 0 ? null : trailPoints[(trailHead - ageIndex + trailCapacity) % trailCapacity] || null;
-    }
-
     function clearTrail() {
-        trailPoints = [];
-        trailHead = -1;
-        trailClock = clock;
-        nextTrailAt = clock;
+        trailBuffer.clear(clock);
     }
 
     function screenPose(screen) {
@@ -418,21 +407,14 @@ Item {
     }
 
     function recordTrail() {
-        if (layoutMoving || clock < nextTrailAt)
+        if (layoutMoving)
             return;
 
-        const next = (trailHead + 1) % trailCapacity;
-        trailPoints[next] = { x: pose.p[0], y: pose.p[1], z: pose.p[2], heat: throttle, time: clock };
-        trailHead = next;
-        trailClock = clock;
-        nextTrailAt = nextTrailAt < clock - trailInterval
-            ? clock + trailInterval : nextTrailAt + trailInterval;
+        trailBuffer.record(pose, throttle, clock);
     }
 
-    function advance(seconds) {
-        if (!Number.isFinite(seconds) || seconds <= 0)
-            return;
-        const dt = Math.min(seconds, 0.25);
+    // Moves the clocks forward and finishes any reflow of the bodies.
+    function advanceLayout(seconds) {
         clock += seconds;
         if (layoutClock < layoutUntil)
             layoutClock = Math.min(clock, layoutUntil);
@@ -442,8 +424,10 @@ Item {
         }
         if (retiringCount > 0)
             pruneRetired();
-        if (!shipActive)
-            return;
+    }
+
+    // Flies the ship for `dt` seconds, orbiting or heading for another body.
+    function advanceShip(dt) {
         if (slots.count === 0) {
             pose = null;
             flight = null;
@@ -490,10 +474,18 @@ Item {
         recordTrail();
     }
 
+    function advance(seconds) {
+        if (!Number.isFinite(seconds) || seconds <= 0)
+            return;
+        advanceLayout(seconds);
+        if (!shipActive)
+            return;
+        advanceShip(Math.min(seconds, 0.25));
+    }
+
     function resetForMonitor() {
         activeSettle.stop();
         bodySettle.stop();
-        wheelDelay.stop();
         slots.clear();
         pendingBodies = ({});
         layoutRoutes = ({});
@@ -509,8 +501,7 @@ Item {
         pose = null;
         clearTrail();
         retiringCount = 0;
-        wheelSteps = 0;
-        lastWheelAt = -1000;
+        wheelStepper.reset();
         settledActiveId = activeId;
         lastActiveChangeAt = 0;
         emptySince = 0;
@@ -549,12 +540,6 @@ Item {
             synchronize();
         }
     }
-    onScrollEnabledChanged: {
-        if (!scrollEnabled) {
-            wheelDelay.stop();
-            wheelSteps = 0;
-        }
-    }
 
     // Overlays open on the focused screen and cover the rocket, so the scene pauses
     // instead of competing with their animation for the GPU and the GUI thread.
@@ -572,29 +557,9 @@ Item {
         z: -2
     }
 
-    Repeater {
-        model: root.trailCapacity - 1
-
-        Rectangle {
-            required property int index
-            readonly property var head: root.trailPoint(index)
-            readonly property var tail: root.trailPoint(index + 1)
-            readonly property bool connected: head && tail && head.time - tail.time < 0.09
-                && head.z * tail.z >= 0
-                && Math.hypot(tail.x - head.x, tail.y - head.y) < 36
-            readonly property real age: head ? root.trailClock - head.time : 2
-            x: head ? head.x : 0
-            y: head ? head.y - height / 2 : 0
-            width: connected ? Math.hypot(tail.x - head.x, tail.y - head.y) + 0.25 : 0
-            height: 1.2
-            radius: 0.6
-            transformOrigin: Item.Left
-            rotation: head && tail ? Math.atan2(tail.y - head.y, tail.x - head.x) * 180 / Math.PI : 0
-            color: head && head.heat > 0.25 ? "#E8C59B" : "#FFFFFF"
-            opacity: Math.max(0, 1 - age / 1.05) * 0.58
-            visible: root.shipActive && connected && opacity > 0
-            z: head && head.z > 0 ? 2 : 0
-        }
+    TrailLines {
+        trail: trailBuffer
+        shown: root.shipActive
     }
 
     Repeater {
@@ -618,23 +583,9 @@ Item {
         }
     }
 
-    Repeater {
-        model: 8
-
-        Rectangle {
-            required property int index
-            readonly property var point: root.trailPoint(index * 3)
-            readonly property real age: point ? root.trailClock - point.time : 2
-            x: point ? point.x + Math.sin(index * 12.7) * age * 12 : 0
-            y: point ? point.y + Math.cos(index * 8.3) * age * 10 : 0
-            width: index % 3 === 0 ? 1.5 : 1
-            height: width
-            radius: width / 2
-            color: "#FFE4BD"
-            opacity: point ? point.heat * Math.max(0, 1 - age / 0.5) * 0.8 : 0
-            visible: root.shipActive && opacity > 0.01
-            z: point && point.z > 0 ? 2 : 0
-        }
+    TrailSparks {
+        trail: trailBuffer
+        shown: root.shipActive
     }
 
     OrbitalShip {
@@ -649,19 +600,11 @@ Item {
         clock: root.clock
     }
 
-    MouseArea {
+    WheelStepper {
+        id: wheelStepper
+
         anchors.fill: parent
-        acceptedButtons: Qt.NoButton
         enabled: root.scrollEnabled
-        onWheel: wheel => {
-            const delta = wheel.angleDelta.y || wheel.pixelDelta.y * 2;
-            if (!delta)
-                return;
-            if (root.wheelSteps * delta < 0)
-                root.wheelSteps = 0;
-            root.wheelSteps = Math.max(-120, Math.min(120, root.wheelSteps + delta));
-            root.flushWheel();
-            wheel.accepted = true;
-        }
+        onStepRequested: direction => root.wheelRequested(direction)
     }
 }
