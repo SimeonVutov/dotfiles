@@ -9,9 +9,9 @@ ColumnLayout {
     id: root
 
     property bool active: false
-    readonly property var wifiNetwork: Connectivity.passwordNetwork
+    readonly property var wifiNetwork: WifiService.passwordNetwork
     readonly property bool wifi: !!wifiNetwork
-    readonly property var prompt: Connectivity.bluetoothPrompt
+    readonly property var prompt: BluetoothService.bluetoothPrompt
     readonly property bool inputNeeded: wifi || (!!prompt && (prompt.kind === "pin" || prompt.kind === "passkey"))
     readonly property bool validInput: !inputNeeded || (!wifi && prompt && prompt.kind === "passkey" ? /^[0-9]{1,6}$/.test(field.text) : field.text.length > 0)
 
@@ -20,9 +20,9 @@ ColumnLayout {
     function cancel() {
         field.clear();
         if (wifi)
-            Connectivity.passwordNetwork = null;
+            WifiService.passwordNetwork = null;
         else
-            Connectivity.cancelBluetooth();
+            BluetoothService.cancelBluetooth();
     }
     function submit() {
         if (!active || !validInput)
@@ -30,9 +30,9 @@ ColumnLayout {
         const value = field.text;
         field.clear();
         if (wifi)
-            Connectivity.submitPassword(value);
+            WifiService.submitPassword(value);
         else
-            Connectivity.answerBluetooth(value);
+            BluetoothService.answerBluetooth(value);
     }
 
     onActiveChanged: {
@@ -56,7 +56,7 @@ ColumnLayout {
 
     BarText {
         Layout.fillWidth: true
-        text: root.wifi ? root.wifiNetwork.name : Connectivity.bluetoothName
+        text: root.wifi ? root.wifiNetwork.name : BluetoothService.bluetoothName
         font.pixelSize: Theme.fontSizeSmall
         elide: Text.ElideRight
     }
