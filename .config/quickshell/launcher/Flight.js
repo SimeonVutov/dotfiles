@@ -243,3 +243,11 @@ function state(mode, progress, closeProgress, from, aspect, radius) {
 
     return entrance(progress, aspect, radius);
 }
+
+// Camera shake, in screen heights: a few unrelated frequencies read as rumble.
+function shake(amount, clock) {
+    return {
+        x: amount * (Math.sin(clock * 83) * .55 + Math.sin(clock * 137 + 1.3) * .3 + Math.sin(clock * 47 + .4) * .25),
+        y: amount * (Math.sin(clock * 97 + 2.1) * .5 + Math.sin(clock * 151 + .7) * .3 + Math.sin(clock * 59 + 1.9) * .3)
+    };
+}

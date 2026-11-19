@@ -9,10 +9,10 @@ import qs.Services
 DeviceListView {
     id: root
 
-    scanning: Connectivity.wifiScanning
+    scanning: WifiService.wifiScanning
     spacing: 4
-    emptyText: !Connectivity.wifiOn ? "Turn on Wi-Fi to see networks." : Connectivity.wifiScanning ? "Looking for nearby networks…" : "Scan to find nearby networks."
-    model: Connectivity.wifiOn ? Connectivity.networks : []
+    emptyText: !WifiService.wifiOn ? "Turn on Wi-Fi to see networks." : WifiService.wifiScanning ? "Looking for nearby networks…" : "Scan to find nearby networks."
+    model: WifiService.wifiOn ? WifiService.networks : []
 
     addTransition: Transition {
         NumberAnimation {
@@ -46,7 +46,7 @@ DeviceListView {
         subtitle: (modelData.connected ? "Connected" : modelData.known ? "Saved" : WifiSecurityType.toString(modelData.security)) + " · " + Math.round(modelData.signalStrength * 100) + "% · " + modelData.device.name
         action: busy ? "Working…" : modelData.connected ? "Disconnect" : "Connect"
         secondaryAction: modelData.known ? "Forget" : ""
-        onActivated: Connectivity.connectWifi(modelData)
-        onSecondaryActivated: Connectivity.forgetWifi(modelData)
+        onActivated: WifiService.connectWifi(modelData)
+        onSecondaryActivated: WifiService.forgetWifi(modelData)
     }
 }

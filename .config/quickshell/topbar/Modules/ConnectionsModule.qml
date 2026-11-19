@@ -31,7 +31,7 @@ BarModule {
         return device.batteryAvailable ? name + "  " + Icons.bluetoothBattery + " " + Math.round(device.battery * 100) + "%" : name;
     }
 
-    readonly property var bluetoothLabels: bluetoothSelected ? Connectivity.connectedBluetoothDevices.map(device => bluetoothLabel(device)) : []
+    readonly property var bluetoothLabels: bluetoothSelected ? BluetoothService.connectedBluetoothDevices.map(device => bluetoothLabel(device)) : []
 
     Pill {
         id: pill
@@ -46,8 +46,8 @@ BarModule {
                 width: root.showWifi ? implicitWidth : 0
                 visible: width > 0
                 compact: root.autoView === "icons"
-                icon: Connectivity.wiredConnected ? Icons.ethernet : Connectivity.wifiOn ? Icons.wifi : Icons.wifiDisabled
-                label: Connectivity.wiredConnected ? "Ethernet" : Connectivity.currentWifi ? Connectivity.currentWifi.name : ""
+                icon: WifiService.wiredConnected ? Icons.ethernet : WifiService.wifiOn ? Icons.wifi : Icons.wifiDisabled
+                label: WifiService.wiredConnected ? "Ethernet" : WifiService.currentWifi ? WifiService.currentWifi.name : ""
                 onClicked: connectionsPopup.showTab("wifi")
             }
 
@@ -62,7 +62,7 @@ BarModule {
                 width: root.showBluetooth ? implicitWidth : 0
                 visible: width > 0
                 compact: root.autoView === "icons"
-                icon: !Connectivity.bluetoothOn ? Icons.bluetoothDisabled : Connectivity.connectedCount > 0 ? Icons.bluetoothConnected : Icons.bluetooth
+                icon: !BluetoothService.bluetoothOn ? Icons.bluetoothDisabled : BluetoothService.connectedCount > 0 ? Icons.bluetoothConnected : Icons.bluetooth
                 rotatingLabels: root.bluetoothLabels
                 onClicked: connectionsPopup.showTab("bluetooth")
             }

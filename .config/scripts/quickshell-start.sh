@@ -1,6 +1,6 @@
 #!/bin/sh
 case "${1:-}" in
-    topbar|wallpaper|lockscreen|launcher) ;;
+    topbar|wallpaper|lockscreen|launcher|sessionmenu) ;;
     *) exit 2 ;;
 esac
 if [ ! -f /usr/share/glvnd/egl_vendor.d/50_mesa.json ]; then

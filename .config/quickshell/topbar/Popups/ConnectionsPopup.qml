@@ -19,7 +19,7 @@ PopupPanel {
     smoothAnchorMovement: true
     contentPadding: 14
     rowSpacing: 8
-    overlayActive: !!Connectivity.passwordNetwork || !!Connectivity.bluetoothPrompt
+    overlayActive: !!WifiService.passwordNetwork || !!BluetoothService.bluetoothPrompt
     overlayPage: Component {
         ConnectionPrompt {
             active: root.open && root.overlayActive
@@ -33,9 +33,9 @@ PopupPanel {
     }
 
     onOverlayDismissed: {
-        Connectivity.passwordNetwork = null;
-        if (Connectivity.bluetoothPrompt)
-            Connectivity.cancelBluetooth();
+        WifiService.passwordNetwork = null;
+        if (BluetoothService.bluetoothPrompt)
+            BluetoothService.cancelBluetooth();
     }
 
     Subscriber {
@@ -76,19 +76,19 @@ PopupPanel {
             RadioToggle {
                 width: parent.width
                 heading: "Wi-Fi"
-                glyph: Connectivity.wifiOn ? Icons.wifi : Icons.wifiDisabled
-                subtitle: Connectivity.wifiStatus
-                powered: Connectivity.wifiOn
-                enabled: Connectivity.wifiDevices.length > 0 && Networking.wifiHardwareEnabled
-                onClicked: Connectivity.toggleWifi()
+                glyph: WifiService.wifiOn ? Icons.wifi : Icons.wifiDisabled
+                subtitle: WifiService.wifiStatus
+                powered: WifiService.wifiOn
+                enabled: WifiService.wifiDevices.length > 0 && Networking.wifiHardwareEnabled
+                onClicked: WifiService.toggleWifi()
             }
 
             ConnectionListHeader {
                 width: parent.width
                 title: "Networks"
-                scanning: Connectivity.wifiScanning
-                scanEnabled: Connectivity.wifiOn
-                onScanClicked: Connectivity.scanWifi()
+                scanning: WifiService.wifiScanning
+                scanEnabled: WifiService.wifiOn
+                onScanClicked: WifiService.scanWifi()
             }
 
             WifiConnections {
@@ -105,19 +105,19 @@ PopupPanel {
             RadioToggle {
                 width: parent.width
                 heading: "Bluetooth"
-                glyph: !Connectivity.bluetoothOn ? Icons.bluetoothDisabled : Connectivity.connectedCount > 0 ? Icons.bluetoothConnected : Icons.bluetooth
-                subtitle: Connectivity.bluetoothStatus
-                powered: Connectivity.bluetoothOn
-                enabled: !!Connectivity.adapter && Connectivity.adapter.state !== BluetoothAdapterState.Blocked && Connectivity.adapter.state !== BluetoothAdapterState.Enabling && Connectivity.adapter.state !== BluetoothAdapterState.Disabling
-                onClicked: Connectivity.toggleBluetooth()
+                glyph: !BluetoothService.bluetoothOn ? Icons.bluetoothDisabled : BluetoothService.connectedCount > 0 ? Icons.bluetoothConnected : Icons.bluetooth
+                subtitle: BluetoothService.bluetoothStatus
+                powered: BluetoothService.bluetoothOn
+                enabled: !!BluetoothService.adapter && BluetoothService.adapter.state !== BluetoothAdapterState.Blocked && BluetoothService.adapter.state !== BluetoothAdapterState.Enabling && BluetoothService.adapter.state !== BluetoothAdapterState.Disabling
+                onClicked: BluetoothService.toggleBluetooth()
             }
 
             ConnectionListHeader {
                 width: parent.width
                 title: "Devices"
-                scanning: Connectivity.bluetoothScanning
-                scanEnabled: Connectivity.bluetoothOn
-                onScanClicked: Connectivity.scanBluetooth()
+                scanning: BluetoothService.bluetoothScanning
+                scanEnabled: BluetoothService.bluetoothOn
+                onScanClicked: BluetoothService.scanBluetooth()
             }
 
             BluetoothConnections {

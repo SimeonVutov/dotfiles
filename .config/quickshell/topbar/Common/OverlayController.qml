@@ -10,21 +10,36 @@ Singleton {
     signal closeRequested(string owner)
     signal granted(string owner)
 
-    // The app launcher is a process of its own, so it cannot take part in the
-    // arbitration below: an overlay of this process asks it to close instead.
-    function closeLauncher() {
+    // Full-screen overlays that run as processes of their own (the app launcher,
+    // the session menu and the wallpaper picker), by name. They cannot take part
+    // in the arbitration below, so they announce themselves and an overlay of
+    // this process asks them to close instead.
+    property var externalOverlays: ({})
+
+    // Whether anything covers the screen, in this process or another.
+    readonly property bool active: owner !== "" || Object.keys(externalOverlays).length > 0
+
+    function closeOverlayProcesses() {
         Quickshell.execDetached(["qs", "ipc", "-n", "-c", "launcher", "call", "launcher", "close"]);
+        Quickshell.execDetached(["qs", "ipc", "-n", "-c", "sessionmenu", "call", "menu", "close"]);
+        Quickshell.execDetached(["qs", "ipc", "-n", "-c", "wallpaper", "call", "wallpaper", "close"]);
     }
 
-    // Closes whatever overlay of this process is open, so that the launcher
-    // can take the screen.
-    function dismiss() {
+    // An overlay process opened: it takes the screen from this process's overlay.
+    function beginExternal(name) {
+        externalOverlays = Object.assign({}, externalOverlays, {[name]: true});
         if (owner)
             closeRequested(owner);
     }
 
+    function endExternal(name) {
+        const remaining = Object.assign({}, externalOverlays);
+        delete remaining[name];
+        externalOverlays = remaining;
+    }
+
     function request(candidate) {
-        closeLauncher();
+        closeOverlayProcesses();
         if (!owner || owner === candidate) {
             owner = candidate;
             return true;

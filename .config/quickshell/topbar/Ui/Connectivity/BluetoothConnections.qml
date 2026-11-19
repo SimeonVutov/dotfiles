@@ -10,19 +10,19 @@ import qs.Services
 DeviceListView {
     id: root
 
-    scanning: Connectivity.bluetoothScanning
+    scanning: BluetoothService.bluetoothScanning
     spacing: 4
-    emptyText: !Connectivity.bluetoothOn ? "Turn on Bluetooth to see devices." : Connectivity.bluetoothScanning ? "Looking for nearby devices…" : "Scan with your device in pairing mode."
+    emptyText: !BluetoothService.bluetoothOn ? "Turn on Bluetooth to see devices." : BluetoothService.bluetoothScanning ? "Looking for nearby devices…" : "Scan with your device in pairing mode."
 
     ScriptModel {
         id: deviceModel
         comparisonMode: ObjectComparison.Identity
         values: {
             // Track reordering even when device identities stay unchanged.
-            const revision = Connectivity.bluetoothSortRevision;
-            if (!Connectivity.bluetoothOn)
+            const revision = BluetoothService.bluetoothSortRevision;
+            if (!BluetoothService.bluetoothOn)
                 return [];
-            return Connectivity.bluetoothDisplayDevices;
+            return BluetoothService.bluetoothDisplayDevices;
         }
     }
 
@@ -30,7 +30,7 @@ DeviceListView {
     delegate: ConnectionRow {
         required property var modelData
         readonly property bool changing: modelData.pairing || modelData.state === BluetoothDeviceState.Connecting || modelData.state === BluetoothDeviceState.Disconnecting
-        readonly property bool targetBusy: Connectivity.bluetoothTarget === modelData.dbusPath || changing
+        readonly property bool targetBusy: BluetoothService.bluetoothTarget === modelData.dbusPath || changing
         width: ListView.view.width
         title: modelData.name || modelData.deviceName || modelData.address
         subtitle: (modelData.connected ? "Connected" : modelData.paired ? "Saved device" : "Available") + (modelData.trusted ? " · Trusted" : "") + (modelData.batteryAvailable ? " · " + Icons.bluetoothBattery + " " + Math.round(modelData.battery * 100) + "%" : "") + (Bluetooth.adapters.values.length > 1 ? " · " + modelData.adapter.name : "")
@@ -38,7 +38,7 @@ DeviceListView {
         busy: targetBusy || !modelData.adapter.enabled || modelData.blocked
         action: targetBusy ? "Working…" : modelData.connected ? "Disconnect" : modelData.paired ? "Connect" : "Pair"
         secondaryAction: modelData.paired ? "Unpair" : ""
-        onActivated: Connectivity.actBluetooth(modelData, modelData.connected ? "disconnect" : modelData.paired ? "connect" : "pair")
-        onSecondaryActivated: Connectivity.forgetBluetooth(modelData)
+        onActivated: BluetoothService.actBluetooth(modelData, modelData.connected ? "disconnect" : modelData.paired ? "connect" : "pair")
+        onSecondaryActivated: BluetoothService.forgetBluetooth(modelData)
     }
 }
